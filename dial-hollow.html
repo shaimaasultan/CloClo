@@ -591,7 +591,7 @@
     text-align:center;
     transition:opacity .2s ease;
   }
-  .scene.is-room ~ .hub-status, .scene.is-active ~ .hub-status, .scene.is-contacts ~ .hub-status{
+  .scene.is-room ~ .hub-status, .scene.is-active ~ .hub-status, .scene.is-contacts ~ .hub-status, .scene.is-recents ~ .hub-status{
     opacity:0; visibility:hidden; pointer-events:none;
   }
   .hub-status__caption{
@@ -625,10 +625,10 @@
   .room-keeper.mood-bored .room-mouth--neutral{ display:none; }
   .room-keeper.mood-bored .room-mouth--bored{ display:block; }
 
-  .scene.is-room, .scene.is-contacts{ height:min(100vw,580px); min-height:500px; }
-  .scene.is-room .dial-wrap, .scene.is-contacts .dial-wrap,
-  .scene.is-room .cradle, .scene.is-contacts .cradle,
-  .scene.is-room .handset-hit, .scene.is-contacts .handset-hit{ opacity:0; pointer-events:none; }
+  .scene.is-room, .scene.is-contacts, .scene.is-recents{ height:min(100vw,580px); min-height:500px; }
+  .scene.is-room .dial-wrap, .scene.is-contacts .dial-wrap, .scene.is-recents .dial-wrap,
+  .scene.is-room .cradle, .scene.is-contacts .cradle, .scene.is-recents .cradle,
+  .scene.is-room .handset-hit, .scene.is-contacts .handset-hit, .scene.is-recents .handset-hit{ opacity:0; pointer-events:none; }
 
   .contacts-screen{
     position:absolute; inset:0; z-index:5;
@@ -675,6 +675,22 @@
     flex-shrink:0; width:16px; height:16px;
     color:var(--dev-highlight);
   }
+  .recent-row__meta{
+    display:flex; align-items:center; gap:5px;
+  }
+  .recent-row__attime{
+    display:block; margin-top:1px;
+    color:rgba(239,230,211,.4);
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  }
+  .recent-row__type{
+    flex-shrink:0; width:11px; height:11px;
+    color:rgba(239,230,211,.5);
+  }
+  .contact-row[data-type="incoming"] .recent-row__type,
+  .contact-row[data-type="missed"] .recent-row__type{ transform:rotate(180deg); }
+  .contact-row[data-type="missed"] .recent-row__type,
+  .contact-row[data-type="missed"] .contact-row__name{ color:#e6a49c; }
 
   .keeper-room{
     position:absolute; inset:0; z-index:5;
@@ -1027,6 +1043,17 @@
             <div class="contacts-list" id="contactsList" role="list"></div>
           </div>
 
+          <div class="contacts-screen" id="recentsScreen">
+            <div class="keeper-room__head">
+              <button class="room-back" id="recentsBack">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+                <span id="txtRecentsBack">Dial</span>
+              </button>
+              <span class="keeper-room__title" id="txtRecentsTitle">Recents</span>
+            </div>
+            <div class="contacts-list" id="recentsList" role="list"></div>
+          </div>
+
           <div class="call-screen" id="callScreen">
             <div class="call-screen__head">
               <div>
@@ -1116,6 +1143,14 @@
       youLabel:'You',
       dockNames:{contacts:'Contacts', recents:'Recents', keeper:'Keeper', sounds:'Sounds', settings:'Settings'},
       contactsTitle:'Contacts',
+      recentsTitle:'Recents',
+      callTypeNames:{incoming:'Incoming', outgoing:'Outgoing', missed:'Missed'},
+      recents:[
+        {callerIdx:0, type:'incoming', time:'2m ago', meta:'Driving · light rain · 9:42 PM their time'},
+        {callerIdx:1, type:'outgoing', time:'Yesterday', meta:'At the gym · clear skies · 6:30 PM their time'},
+        {callerIdx:2, type:'missed', time:'Yesterday', meta:'At home · snow falling · 11:20 PM their time'},
+        {callerIdx:0, type:'outgoing', time:'Monday', meta:'At home · clear skies · 8:00 AM their time'}
+      ],
       toastTemplate:'NAME opens in the full build',
       callers:[
         {name:'Nadia', meta:'Driving · light rain · 9:42 PM their time', sky:'rain'},
@@ -1162,6 +1197,14 @@
       youLabel:'أنا',
       dockNames:{contacts:'جهات الاتصال', recents:'الأخيرة', keeper:'الحارس', sounds:'نغمات', settings:'الإعدادات'},
       contactsTitle:'جهات الاتصال',
+      recentsTitle:'الأخيرة',
+      callTypeNames:{incoming:'واردة', outgoing:'صادرة', missed:'فايتة'},
+      recents:[
+        {callerIdx:0, type:'incoming', time:'من دقيقتين', meta:'بتسوق · مطر خفيف · 9:42 مساءً عندها'},
+        {callerIdx:1, type:'outgoing', time:'إمبارح', meta:'في الجيم · جو صافي · 6:30 المغرب عنده'},
+        {callerIdx:2, type:'missed', time:'إمبارح', meta:'في البيت · بينزل تلج · 11:20 بالليل عندها'},
+        {callerIdx:0, type:'outgoing', time:'الإتنين', meta:'في البيت · جو صافي · 8:00 الصبح عندها'}
+      ],
       toastTemplate:'شاشة NAME هتفتح في النسخة الكاملة',
       callers:[
         {name:'نادية', meta:'بتسوق · مطر خفيف · 9:42 مساءً عندها', sky:'rain'},
@@ -1827,9 +1870,14 @@
   }
   renderContacts();
 
+  function closeAllScreens(){
+    if(roomOpen) closeRoom();
+    if(contactsOpen) closeContacts();
+    if(recentsOpen) closeRecents();
+  }
   function openContacts(){
     if(callState !== 'idle') return;
-    if(roomOpen) closeRoom();
+    closeAllScreens();
     contactsOpen = true;
     scene.classList.add('is-contacts');
     contactsScreen.classList.add('show');
@@ -1842,7 +1890,7 @@
   function callContact(idx){
     if(callState !== 'idle') return;
     var c = LANG[currentLang].callers[idx];
-    closeContacts();
+    closeAllScreens();
     setWeather(c.sky);
     callState = 'active';
     setActiveUI(true);
@@ -1851,6 +1899,65 @@
   }
   contactsBackBtn.addEventListener('click', closeContacts);
 
+  /* ---------------- recents screen ---------------- */
+  var recentsScreen = document.getElementById('recentsScreen');
+  var recentsBackBtn = document.getElementById('recentsBack');
+  var recentsList = document.getElementById('recentsList');
+  var recentsOpen = false;
+
+  function renderRecents(){
+    var t = LANG[currentLang];
+    recentsList.innerHTML = '';
+    t.recents.forEach(function(entry){
+      var c = t.callers[entry.callerIdx];
+      var row = document.createElement('button');
+      row.className = 'contact-row';
+      row.type = 'button';
+      row.setAttribute('role','listitem');
+      row.dataset.type = entry.type;
+      row.setAttribute('aria-label', t.callTypeNames[entry.type] + ' · ' + c.name + ' · ' + entry.time + ' · ' + entry.meta);
+
+      var avatar = document.createElement('span');
+      avatar.className = 'contact-row__avatar';
+      avatar.textContent = c.name.charAt(0);
+
+      var info = document.createElement('span');
+      info.className = 'contact-row__info';
+      var name = document.createElement('span');
+      name.className = 'contact-row__name';
+      name.textContent = c.name;
+      var meta = document.createElement('span');
+      meta.className = 'contact-row__meta recent-row__meta';
+      meta.innerHTML = '<svg class="recent-row__type" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8 16L16 8M9 8h7v7"/></svg>';
+      meta.appendChild(document.createTextNode(entry.time));
+      var atTime = document.createElement('span');
+      atTime.className = 'contact-row__meta recent-row__attime';
+      atTime.textContent = entry.meta;
+      info.appendChild(name); info.appendChild(meta); info.appendChild(atTime);
+
+      row.appendChild(avatar); row.appendChild(info);
+      row.insertAdjacentHTML('beforeend', '<svg class="contact-row__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5c0-.6.4-1 1-1h2.2c.5 0 .9.3 1 .8l.8 3a1 1 0 0 1-.3 1L7 10.5a11 11 0 0 0 6.5 6.5l1.7-1.7a1 1 0 0 1 1-.3l3 .8c.5.1.8.5.8 1V19c0 .6-.4 1-1 1h-1C10.4 20 4 13.6 4 6V5z"/></svg>');
+
+      row.addEventListener('click', function(){ callContact(entry.callerIdx); });
+      recentsList.appendChild(row);
+    });
+  }
+  renderRecents();
+
+  function openRecents(){
+    if(callState !== 'idle') return;
+    closeAllScreens();
+    recentsOpen = true;
+    scene.classList.add('is-recents');
+    recentsScreen.classList.add('show');
+  }
+  function closeRecents(){
+    recentsOpen = false;
+    scene.classList.remove('is-recents');
+    recentsScreen.classList.remove('show');
+  }
+  recentsBackBtn.addEventListener('click', closeRecents);
+
   /* ---------------- dock toasts ---------------- */
   var toast = document.getElementById('toast');
   var toastTimer = null;
@@ -1858,16 +1965,18 @@
   dockBtns.forEach(function(btn){
     btn.addEventListener('click', function(){
       if(btn.dataset.key === 'keeper'){
-        if(contactsOpen) closeContacts();
-        if(roomOpen) closeRoom(); else openRoom();
+        if(roomOpen){ closeRoom(); } else { closeAllScreens(); openRoom(); }
         return;
       }
       if(btn.dataset.key === 'contacts'){
-        if(contactsOpen) closeContacts(); else openContacts();
+        if(contactsOpen){ closeContacts(); } else { openContacts(); }
         return;
       }
-      if(roomOpen) closeRoom();
-      if(contactsOpen) closeContacts();
+      if(btn.dataset.key === 'recents'){
+        if(recentsOpen){ closeRecents(); } else { openRecents(); }
+        return;
+      }
+      closeAllScreens();
       var name = LANG[currentLang].dockNames[btn.dataset.key];
       toast.textContent = LANG[currentLang].toastTemplate.replace('NAME', name);
       toast.classList.add('show');
@@ -1954,6 +2063,10 @@
     document.getElementById('txtContactsTitle').textContent = t.contactsTitle;
     document.getElementById('txtContactsBack').textContent = t.roomBack;
     renderContacts();
+
+    document.getElementById('txtRecentsTitle').textContent = t.recentsTitle;
+    document.getElementById('txtRecentsBack').textContent = t.roomBack;
+    renderRecents();
   }
 
   langEnBtn.addEventListener('click', function(){ if(currentLang!=='en') applyLang('en'); });
