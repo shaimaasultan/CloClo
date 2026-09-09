@@ -591,7 +591,7 @@
     text-align:center;
     transition:opacity .2s ease;
   }
-  .scene.is-room ~ .hub-status, .scene.is-active ~ .hub-status, .scene.is-contacts ~ .hub-status, .scene.is-recents ~ .hub-status, .scene.is-sounds ~ .hub-status{
+  .scene.is-room ~ .hub-status, .scene.is-active ~ .hub-status, .scene.is-contacts ~ .hub-status, .scene.is-recents ~ .hub-status, .scene.is-sounds ~ .hub-status, .scene.is-settings ~ .hub-status{
     opacity:0; visibility:hidden; pointer-events:none;
   }
   .hub-status__caption{
@@ -625,10 +625,10 @@
   .room-keeper.mood-bored .room-mouth--neutral{ display:none; }
   .room-keeper.mood-bored .room-mouth--bored{ display:block; }
 
-  .scene.is-room, .scene.is-contacts, .scene.is-recents, .scene.is-sounds{ height:min(100vw,580px); min-height:500px; }
-  .scene.is-room .dial-wrap, .scene.is-contacts .dial-wrap, .scene.is-recents .dial-wrap, .scene.is-sounds .dial-wrap,
-  .scene.is-room .cradle, .scene.is-contacts .cradle, .scene.is-recents .cradle, .scene.is-sounds .cradle,
-  .scene.is-room .handset-hit, .scene.is-contacts .handset-hit, .scene.is-recents .handset-hit, .scene.is-sounds .handset-hit{ opacity:0; pointer-events:none; }
+  .scene.is-room, .scene.is-contacts, .scene.is-recents, .scene.is-sounds, .scene.is-settings{ height:min(100vw,580px); min-height:500px; }
+  .scene.is-room .dial-wrap, .scene.is-contacts .dial-wrap, .scene.is-recents .dial-wrap, .scene.is-sounds .dial-wrap, .scene.is-settings .dial-wrap,
+  .scene.is-room .cradle, .scene.is-contacts .cradle, .scene.is-recents .cradle, .scene.is-sounds .cradle, .scene.is-settings .cradle,
+  .scene.is-room .handset-hit, .scene.is-contacts .handset-hit, .scene.is-recents .handset-hit, .scene.is-sounds .handset-hit, .scene.is-settings .handset-hit{ opacity:0; pointer-events:none; }
 
   .contacts-screen{
     position:absolute; inset:0; z-index:5;
@@ -736,6 +736,47 @@
   }
   .tone-btn:focus-visible{ outline:2px solid #6cc2b3; outline-offset:2px; }
 
+  .settings-list{
+    flex:1; min-height:0; overflow-y:auto;
+    padding:8px 16px 16px;
+    display:flex; flex-direction:column; gap:4px;
+  }
+  .setting-row{
+    display:flex; align-items:center; justify-content:space-between; gap:16px;
+    padding:12px 4px;
+    border-bottom:1px solid rgba(255,255,255,.06);
+  }
+  .setting-row__text{ display:flex; flex-direction:column; gap:2px; min-width:0; }
+  .setting-row__label{
+    font-family:'IBM Plex Sans','IBM Plex Sans Arabic', sans-serif;
+    font-weight:600; font-size:.8rem; color:#f3ecdd;
+  }
+  .setting-row__hint{
+    font-family:'IBM Plex Mono','IBM Plex Sans Arabic', monospace;
+    font-size:.6rem; color:rgba(239,230,211,.5);
+  }
+  .switch{
+    flex-shrink:0; position:relative;
+    width:40px; height:24px; border-radius:999px;
+    background:rgba(255,255,255,.14); border:none; padding:0; cursor:pointer;
+  }
+  .switch__thumb{
+    position:absolute; top:3px; left:3px;
+    width:18px; height:18px; border-radius:50%;
+    background:#efe6d3;
+    transition:transform .2s ease;
+  }
+  .switch[aria-checked="true"]{ background:var(--dev-metal-2); }
+  .switch[aria-checked="true"] .switch__thumb{ transform:translateX(16px); background:var(--dev-ink); }
+  [dir="rtl"] .switch[aria-checked="true"] .switch__thumb{ transform:translateX(-16px); }
+  .switch:focus-visible{ outline:2px solid #6cc2b3; outline-offset:2px; }
+  .settings-note{
+    margin:14px 4px 0;
+    font-family:'IBM Plex Mono','IBM Plex Sans Arabic', monospace;
+    font-size:.62rem; letter-spacing:.02em;
+    color:rgba(239,230,211,.4);
+  }
+
   .keeper-room{
     position:absolute; inset:0; z-index:5;
     display:flex; flex-direction:column;
@@ -774,24 +815,8 @@
     color:rgba(239,230,211,.7);
   }
 
-  .toast{
-    position:absolute; left:50%; bottom:70px; z-index:5;
-    transform:translate(-50%,8px);
-    background:#efe6d3;
-    color:#241e1a;
-    font-size:.74rem;
-    font-weight:500;
-    padding:8px 14px;
-    border-radius:999px;
-    opacity:0;
-    transition:opacity .25s ease, transform .25s ease;
-    pointer-events:none;
-    white-space:nowrap;
-  }
-  .toast.show{opacity:1; transform:translate(-50%,0);}
-
   @media (prefers-reduced-motion: reduce){
-    .handset, .line-pill, .toast{transition:none;}
+    .handset, .line-pill{transition:none;}
   }
 </style>
 
@@ -1110,6 +1135,37 @@
             <div class="sounds-list" id="soundsList" role="list"></div>
           </div>
 
+          <div class="contacts-screen" id="settingsScreen">
+            <div class="keeper-room__head">
+              <button class="room-back" id="settingsBack">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+                <span id="txtSettingsBack">Dial</span>
+              </button>
+              <span class="keeper-room__title" id="txtSettingsTitle">Settings</span>
+            </div>
+            <div class="settings-list">
+              <div class="setting-row">
+                <span class="setting-row__text">
+                  <span class="setting-row__label" id="txtSoundLabel">Sound effects</span>
+                  <span class="setting-row__hint" id="txtSoundHint">Dial ticks, clunks, and ringtones</span>
+                </span>
+                <button class="switch" id="soundToggle" role="switch" aria-checked="true" aria-label="Sound effects">
+                  <span class="switch__thumb"></span>
+                </button>
+              </div>
+              <div class="setting-row">
+                <span class="setting-row__text">
+                  <span class="setting-row__label" id="txtPrivacyLabel">Privacy mode</span>
+                  <span class="setting-row__hint" id="txtPrivacyHint">Hides dialled numbers and recent calls</span>
+                </span>
+                <button class="switch" id="privacyToggle" role="switch" aria-checked="false" aria-label="Privacy mode">
+                  <span class="switch__thumb"></span>
+                </button>
+              </div>
+              <p class="settings-note" id="txtSettingsNote">Language and case colour are up top ↑</p>
+            </div>
+          </div>
+
           <div class="call-screen" id="callScreen">
             <div class="call-screen__head">
               <div>
@@ -1148,8 +1204,6 @@
               <p class="transcript__note" id="txtTranscriptNote">Example live translation</p>
             </div>
           </div>
-
-          <div class="toast" id="toast"></div>
         </div>
 
         <div class="hub-status" id="hubStatus">
@@ -1204,13 +1258,19 @@
       soundsTitle:'Sounds',
       soundsHint:'Choose how each caller sounds',
       toneNames:{classic:'Classic', chime:'Chime', buzz:'Retro buzz', pulse:'Digital pulse'},
+      settingsTitle:'Settings',
+      soundLabel:'Sound effects',
+      soundHint:'Dial ticks, clunks, and ringtones',
+      privacyLabel:'Privacy mode',
+      privacyHint:'Hides dialled numbers and recent calls',
+      privacyHidden:'Hidden while Privacy mode is on',
+      settingsNote:'Language and case colour are up top ↑',
       recents:[
         {callerIdx:0, type:'incoming', time:'2m ago', meta:'Driving · light rain · 9:42 PM their time'},
         {callerIdx:1, type:'outgoing', time:'Yesterday', meta:'At the gym · clear skies · 6:30 PM their time'},
         {callerIdx:2, type:'missed', time:'Yesterday', meta:'At home · snow falling · 11:20 PM their time'},
         {callerIdx:0, type:'outgoing', time:'Monday', meta:'At home · clear skies · 8:00 AM their time'}
       ],
-      toastTemplate:'NAME opens in the full build',
       callers:[
         {name:'Nadia', meta:'Driving · light rain · 9:42 PM their time', sky:'rain'},
         {name:'Omar', meta:'At work · clear skies · 2:15 PM their time', sky:'clear'},
@@ -1261,13 +1321,19 @@
       soundsTitle:'نغمات',
       soundsHint:'اختاري نغمة كل حد بيتصل',
       toneNames:{classic:'كلاسيك', chime:'رنة خفيفة', buzz:'رنة قديمة', pulse:'نبضة رقمية'},
+      settingsTitle:'الإعدادات',
+      soundLabel:'المؤثرات الصوتية',
+      soundHint:'صوت القرص، السماعة، والنغمات',
+      privacyLabel:'وضع الخصوصية',
+      privacyHint:'بيخفي الأرقام اللي اتطلبت والمكالمات الأخيرة',
+      privacyHidden:'مخفية أثناء وضع الخصوصية',
+      settingsNote:'اللغة ولون الجسم فوق ↑',
       recents:[
         {callerIdx:0, type:'incoming', time:'من دقيقتين', meta:'بتسوق · مطر خفيف · 9:42 مساءً عندها'},
         {callerIdx:1, type:'outgoing', time:'إمبارح', meta:'في الجيم · جو صافي · 6:30 المغرب عنده'},
         {callerIdx:2, type:'missed', time:'إمبارح', meta:'في البيت · بينزل تلج · 11:20 بالليل عندها'},
         {callerIdx:0, type:'outgoing', time:'الإتنين', meta:'في البيت · جو صافي · 8:00 الصبح عندها'}
       ],
-      toastTemplate:'شاشة NAME هتفتح في النسخة الكاملة',
       callers:[
         {name:'نادية', meta:'بتسوق · مطر خفيف · 9:42 مساءً عندها', sky:'rain'},
         {name:'عمر', meta:'في الشغل · جو صافي · 2:15 الضهر عنده', sky:'clear'},
@@ -1415,7 +1481,9 @@
 
   /* ---------------- audio ---------------- */
   var audioCtx = null;
+  var soundEnabled = true;
   function tone(freq, dur, type, gainPeak){
+    if(!soundEnabled) return;
     if(!audioCtx){ try{ audioCtx = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ return; } }
     var o = audioCtx.createOscillator();
     var g = audioCtx.createGain();
@@ -1607,9 +1675,13 @@
 
   var digitsEl = document.getElementById('digits');
   var dialedStr = '';
+  var privacyMode = false;
+  function refreshDigitsDisplay(){
+    digitsEl.textContent = privacyMode ? dialedStr.replace(/./g,'•') : dialedStr;
+  }
   function appendDigit(d){
     dialedStr = (dialedStr + d).slice(-12);
-    digitsEl.textContent = dialedStr;
+    refreshDigitsDisplay();
   }
   document.getElementById('clearDigits').addEventListener('click', function(){
     dialedStr=''; digitsEl.textContent = '—';
@@ -1965,6 +2037,7 @@
     if(contactsOpen) closeContacts();
     if(recentsOpen) closeRecents();
     if(soundsOpen) closeSounds();
+    if(settingsOpen) closeSettings();
   }
   function openContacts(){
     if(callState !== 'idle') return;
@@ -1999,6 +2072,13 @@
   function renderRecents(){
     var t = LANG[currentLang];
     recentsList.innerHTML = '';
+    if(privacyMode){
+      var hidden = document.createElement('p');
+      hidden.className = 'sounds-hint';
+      hidden.textContent = t.privacyHidden;
+      recentsList.appendChild(hidden);
+      return;
+    }
     t.recents.forEach(function(entry){
       var c = t.callers[entry.callerIdx];
       var row = document.createElement('button');
@@ -2114,9 +2194,40 @@
   }
   soundsBackBtn.addEventListener('click', closeSounds);
 
-  /* ---------------- dock toasts ---------------- */
-  var toast = document.getElementById('toast');
-  var toastTimer = null;
+  /* ---------------- settings screen ---------------- */
+  var settingsScreen = document.getElementById('settingsScreen');
+  var settingsBackBtn = document.getElementById('settingsBack');
+  var soundToggle = document.getElementById('soundToggle');
+  var privacyToggle = document.getElementById('privacyToggle');
+  var settingsOpen = false;
+
+  function openSettings(){
+    if(callState !== 'idle') return;
+    closeAllScreens();
+    settingsOpen = true;
+    scene.classList.add('is-settings');
+    settingsScreen.classList.add('show');
+  }
+  function closeSettings(){
+    settingsOpen = false;
+    scene.classList.remove('is-settings');
+    settingsScreen.classList.remove('show');
+  }
+  settingsBackBtn.addEventListener('click', closeSettings);
+
+  soundToggle.addEventListener('click', function(){
+    soundEnabled = !soundEnabled;
+    soundToggle.setAttribute('aria-checked', String(soundEnabled));
+    if(soundEnabled) tick();
+  });
+  privacyToggle.addEventListener('click', function(){
+    privacyMode = !privacyMode;
+    privacyToggle.setAttribute('aria-checked', String(privacyMode));
+    refreshDigitsDisplay();
+    renderRecents();
+  });
+
+  /* ---------------- dock navigation ---------------- */
   var dockBtns = document.querySelectorAll('.dock-btn');
   dockBtns.forEach(function(btn){
     btn.addEventListener('click', function(){
@@ -2136,12 +2247,10 @@
         if(soundsOpen){ closeSounds(); } else { openSounds(); }
         return;
       }
-      closeAllScreens();
-      var name = LANG[currentLang].dockNames[btn.dataset.key];
-      toast.textContent = LANG[currentLang].toastTemplate.replace('NAME', name);
-      toast.classList.add('show');
-      clearTimeout(toastTimer);
-      toastTimer = setTimeout(function(){ toast.classList.remove('show'); }, 1700);
+      if(btn.dataset.key === 'settings'){
+        if(settingsOpen){ closeSettings(); } else { openSettings(); }
+        return;
+      }
     });
   });
 
@@ -2232,6 +2341,14 @@
     document.getElementById('txtSoundsBack').textContent = t.roomBack;
     document.getElementById('txtSoundsHint').textContent = t.soundsHint;
     renderSounds();
+
+    document.getElementById('txtSettingsTitle').textContent = t.settingsTitle;
+    document.getElementById('txtSettingsBack').textContent = t.roomBack;
+    document.getElementById('txtSoundLabel').textContent = t.soundLabel;
+    document.getElementById('txtSoundHint').textContent = t.soundHint;
+    document.getElementById('txtPrivacyLabel').textContent = t.privacyLabel;
+    document.getElementById('txtPrivacyHint').textContent = t.privacyHint;
+    document.getElementById('txtSettingsNote').textContent = t.settingsNote;
   }
 
   langEnBtn.addEventListener('click', function(){ if(currentLang!=='en') applyLang('en'); });
