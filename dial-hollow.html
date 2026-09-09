@@ -591,7 +591,7 @@
     text-align:center;
     transition:opacity .2s ease;
   }
-  .scene.is-room ~ .hub-status, .scene.is-active ~ .hub-status, .scene.is-contacts ~ .hub-status, .scene.is-recents ~ .hub-status{
+  .scene.is-room ~ .hub-status, .scene.is-active ~ .hub-status, .scene.is-contacts ~ .hub-status, .scene.is-recents ~ .hub-status, .scene.is-sounds ~ .hub-status{
     opacity:0; visibility:hidden; pointer-events:none;
   }
   .hub-status__caption{
@@ -625,10 +625,10 @@
   .room-keeper.mood-bored .room-mouth--neutral{ display:none; }
   .room-keeper.mood-bored .room-mouth--bored{ display:block; }
 
-  .scene.is-room, .scene.is-contacts, .scene.is-recents{ height:min(100vw,580px); min-height:500px; }
-  .scene.is-room .dial-wrap, .scene.is-contacts .dial-wrap, .scene.is-recents .dial-wrap,
-  .scene.is-room .cradle, .scene.is-contacts .cradle, .scene.is-recents .cradle,
-  .scene.is-room .handset-hit, .scene.is-contacts .handset-hit, .scene.is-recents .handset-hit{ opacity:0; pointer-events:none; }
+  .scene.is-room, .scene.is-contacts, .scene.is-recents, .scene.is-sounds{ height:min(100vw,580px); min-height:500px; }
+  .scene.is-room .dial-wrap, .scene.is-contacts .dial-wrap, .scene.is-recents .dial-wrap, .scene.is-sounds .dial-wrap,
+  .scene.is-room .cradle, .scene.is-contacts .cradle, .scene.is-recents .cradle, .scene.is-sounds .cradle,
+  .scene.is-room .handset-hit, .scene.is-contacts .handset-hit, .scene.is-recents .handset-hit, .scene.is-sounds .handset-hit{ opacity:0; pointer-events:none; }
 
   .contacts-screen{
     position:absolute; inset:0; z-index:5;
@@ -691,6 +691,50 @@
   .contact-row[data-type="missed"] .recent-row__type{ transform:rotate(180deg); }
   .contact-row[data-type="missed"] .recent-row__type,
   .contact-row[data-type="missed"] .contact-row__name{ color:#e6a49c; }
+
+  .sounds-hint{
+    margin:0; text-align:center;
+    padding:0 16px 8px;
+    font-family:'IBM Plex Mono','IBM Plex Sans Arabic', monospace;
+    font-size:.62rem; letter-spacing:.04em;
+    color:rgba(239,230,211,.55);
+  }
+  .sounds-list{
+    flex:1; min-height:0; overflow-y:auto;
+    padding:2px 16px 16px;
+    display:flex; flex-direction:column; gap:14px;
+  }
+  .sound-contact{ display:flex; flex-direction:column; gap:8px; }
+  .sound-contact__head{ display:flex; align-items:center; gap:10px; }
+  .sound-contact__avatar{
+    flex-shrink:0;
+    width:30px; height:30px; border-radius:50%;
+    display:grid; place-items:center;
+    background:var(--dev-metal-2); color:var(--dev-ink);
+    font-family:'Big Shoulders Display','IBM Plex Sans Arabic', sans-serif;
+    font-weight:800; font-size:.8rem;
+  }
+  .sound-contact__name{
+    font-family:'IBM Plex Sans','IBM Plex Sans Arabic', sans-serif;
+    font-weight:600; font-size:.8rem; color:#f3ecdd;
+  }
+  .tone-picker{ display:flex; flex-wrap:wrap; gap:6px; }
+  .tone-btn{
+    background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.08);
+    color:rgba(239,230,211,.75);
+    font-family:'IBM Plex Sans','IBM Plex Sans Arabic', sans-serif;
+    font-size:.66rem; font-weight:600;
+    padding:6px 12px; border-radius:999px;
+    cursor:pointer;
+    display:flex; align-items:center; gap:5px;
+  }
+  .tone-btn svg{ width:11px; height:11px; }
+  .tone-btn[aria-pressed="true"]{
+    background:color-mix(in srgb, var(--dev-metal-2) 28%, transparent);
+    border-color:color-mix(in srgb, var(--dev-metal-2) 55%, transparent);
+    color:var(--dev-highlight);
+  }
+  .tone-btn:focus-visible{ outline:2px solid #6cc2b3; outline-offset:2px; }
 
   .keeper-room{
     position:absolute; inset:0; z-index:5;
@@ -1054,6 +1098,18 @@
             <div class="contacts-list" id="recentsList" role="list"></div>
           </div>
 
+          <div class="contacts-screen" id="soundsScreen">
+            <div class="keeper-room__head">
+              <button class="room-back" id="soundsBack">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+                <span id="txtSoundsBack">Dial</span>
+              </button>
+              <span class="keeper-room__title" id="txtSoundsTitle">Sounds</span>
+            </div>
+            <p class="sounds-hint" id="txtSoundsHint">Choose how each caller sounds</p>
+            <div class="sounds-list" id="soundsList" role="list"></div>
+          </div>
+
           <div class="call-screen" id="callScreen">
             <div class="call-screen__head">
               <div>
@@ -1145,6 +1201,9 @@
       contactsTitle:'Contacts',
       recentsTitle:'Recents',
       callTypeNames:{incoming:'Incoming', outgoing:'Outgoing', missed:'Missed'},
+      soundsTitle:'Sounds',
+      soundsHint:'Choose how each caller sounds',
+      toneNames:{classic:'Classic', chime:'Chime', buzz:'Retro buzz', pulse:'Digital pulse'},
       recents:[
         {callerIdx:0, type:'incoming', time:'2m ago', meta:'Driving · light rain · 9:42 PM their time'},
         {callerIdx:1, type:'outgoing', time:'Yesterday', meta:'At the gym · clear skies · 6:30 PM their time'},
@@ -1199,6 +1258,9 @@
       contactsTitle:'جهات الاتصال',
       recentsTitle:'الأخيرة',
       callTypeNames:{incoming:'واردة', outgoing:'صادرة', missed:'فايتة'},
+      soundsTitle:'نغمات',
+      soundsHint:'اختاري نغمة كل حد بيتصل',
+      toneNames:{classic:'كلاسيك', chime:'رنة خفيفة', buzz:'رنة قديمة', pulse:'نبضة رقمية'},
       recents:[
         {callerIdx:0, type:'incoming', time:'من دقيقتين', meta:'بتسوق · مطر خفيف · 9:42 مساءً عندها'},
         {callerIdx:1, type:'outgoing', time:'إمبارح', meta:'في الجيم · جو صافي · 6:30 المغرب عنده'},
@@ -1368,6 +1430,32 @@
   }
   function tick(){ tone(1400, .03, 'square', .05); }
   function clunk(open){ tone(open?180:120, .16, 'sine', .09); }
+
+  var RINGTONES = [
+    {id:'classic', play:function(){
+      tone(1000,.18,'sine',.06);
+      setTimeout(function(){ tone(820,.18,'sine',.06); }, 220);
+    }},
+    {id:'chime', play:function(){
+      tone(880,.12,'triangle',.06);
+      setTimeout(function(){ tone(1108,.12,'triangle',.06); }, 110);
+      setTimeout(function(){ tone(1318,.16,'triangle',.06); }, 220);
+    }},
+    {id:'buzz', play:function(){
+      tone(300,.09,'square',.05);
+      setTimeout(function(){ tone(300,.09,'square',.05); }, 130);
+    }},
+    {id:'pulse', play:function(){
+      tone(650,.06,'square',.05);
+      setTimeout(function(){ tone(950,.06,'square',.05); }, 90);
+      setTimeout(function(){ tone(650,.06,'square',.05); }, 180);
+    }}
+  ];
+  function ringtoneById(id){
+    for(var i=0;i<RINGTONES.length;i++){ if(RINGTONES[i].id===id) return RINGTONES[i]; }
+    return RINGTONES[0];
+  }
+  var contactTones = {0:'classic', 1:'chime', 2:'buzz'};
 
   /* ---------------- dial ---------------- */
   var HOLES = [
@@ -1550,14 +1638,16 @@
     avatar.classList.toggle('awake', active);
   }
 
+  var currentRingerIdx = 0;
   function ringPulse(){
-    tone(1000, .18, 'sine', .06);
-    setTimeout(function(){ tone(820, .18, 'sine', .06); }, 220);
+    ringtoneById(contactTones[currentRingerIdx] || 'classic').play();
   }
 
   function startRinging(){
     var callers = LANG[currentLang].callers;
-    var c = callers[Math.floor(Math.random()*callers.length)];
+    var idx = Math.floor(Math.random()*callers.length);
+    currentRingerIdx = idx;
+    var c = callers[idx];
     callerNameEl.textContent = c.name;
     callerMetaEl.textContent = c.meta;
     setWeather(c.sky);
@@ -1874,6 +1964,7 @@
     if(roomOpen) closeRoom();
     if(contactsOpen) closeContacts();
     if(recentsOpen) closeRecents();
+    if(soundsOpen) closeSounds();
   }
   function openContacts(){
     if(callState !== 'idle') return;
@@ -1958,6 +2049,71 @@
   }
   recentsBackBtn.addEventListener('click', closeRecents);
 
+  /* ---------------- sounds screen ---------------- */
+  var soundsScreen = document.getElementById('soundsScreen');
+  var soundsBackBtn = document.getElementById('soundsBack');
+  var soundsList = document.getElementById('soundsList');
+  var soundsOpen = false;
+
+  function renderSounds(){
+    var t = LANG[currentLang];
+    soundsList.innerHTML = '';
+    t.callers.forEach(function(c, idx){
+      var block = document.createElement('div');
+      block.className = 'sound-contact';
+      block.setAttribute('role','listitem');
+
+      var head = document.createElement('div');
+      head.className = 'sound-contact__head';
+      var avatar = document.createElement('span');
+      avatar.className = 'sound-contact__avatar';
+      avatar.textContent = c.name.charAt(0);
+      var name = document.createElement('span');
+      name.className = 'sound-contact__name';
+      name.textContent = c.name;
+      head.appendChild(avatar); head.appendChild(name);
+
+      var picker = document.createElement('div');
+      picker.className = 'tone-picker';
+      picker.setAttribute('role','group');
+      picker.setAttribute('aria-label', c.name);
+
+      RINGTONES.forEach(function(rt){
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'tone-btn';
+        var pressed = (contactTones[idx] || 'classic') === rt.id;
+        btn.setAttribute('aria-pressed', String(pressed));
+        btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 5a11 11 0 0 1 14 0M8 9a6 6 0 0 1 8 0M12 13v.01"/></svg>';
+        btn.appendChild(document.createTextNode(t.toneNames[rt.id]));
+        btn.addEventListener('click', function(){
+          contactTones[idx] = rt.id;
+          rt.play();
+          picker.querySelectorAll('.tone-btn').forEach(function(b){ b.setAttribute('aria-pressed', String(b===btn)); });
+        });
+        picker.appendChild(btn);
+      });
+
+      block.appendChild(head); block.appendChild(picker);
+      soundsList.appendChild(block);
+    });
+  }
+  renderSounds();
+
+  function openSounds(){
+    if(callState !== 'idle') return;
+    closeAllScreens();
+    soundsOpen = true;
+    scene.classList.add('is-sounds');
+    soundsScreen.classList.add('show');
+  }
+  function closeSounds(){
+    soundsOpen = false;
+    scene.classList.remove('is-sounds');
+    soundsScreen.classList.remove('show');
+  }
+  soundsBackBtn.addEventListener('click', closeSounds);
+
   /* ---------------- dock toasts ---------------- */
   var toast = document.getElementById('toast');
   var toastTimer = null;
@@ -1974,6 +2130,10 @@
       }
       if(btn.dataset.key === 'recents'){
         if(recentsOpen){ closeRecents(); } else { openRecents(); }
+        return;
+      }
+      if(btn.dataset.key === 'sounds'){
+        if(soundsOpen){ closeSounds(); } else { openSounds(); }
         return;
       }
       closeAllScreens();
@@ -2067,6 +2227,11 @@
     document.getElementById('txtRecentsTitle').textContent = t.recentsTitle;
     document.getElementById('txtRecentsBack').textContent = t.roomBack;
     renderRecents();
+
+    document.getElementById('txtSoundsTitle').textContent = t.soundsTitle;
+    document.getElementById('txtSoundsBack').textContent = t.roomBack;
+    document.getElementById('txtSoundsHint').textContent = t.soundsHint;
+    renderSounds();
   }
 
   langEnBtn.addEventListener('click', function(){ if(currentLang!=='en') applyLang('en'); });
