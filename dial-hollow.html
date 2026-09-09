@@ -1,0 +1,1862 @@
+<title>Ranah</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;700;800&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+  :root{
+    --bg:#e7e0d2;
+    --surface:#f4eee1;
+    --surface-2:#ddd2bd;
+    --ink:#241e1a;
+    --ink-muted:#6d6254;
+    --accent:#356d64;
+    --accent-ink:#f6f2e7;
+    --rule:rgba(36,30,26,.14);
+    --shadow:rgba(36,30,26,.22);
+
+    --dev-body-1:#6b2b26;
+    --dev-body-2:#3c1512;
+    --dev-metal-1:#e6c476;
+    --dev-metal-2:#c9a24b;
+    --dev-metal-3:#8a6a2f;
+    --dev-face:#ede3ce;
+    --dev-ink:#241e1a;
+    --dev-ink-muted:#6d6254;
+    --dev-hub-1:#3a2e22;
+    --dev-hub-2:#1c1712;
+    --dev-highlight:#f3d78b;
+  }
+  .page[data-palette="verdigris"]{
+    --dev-body-1:#1f3d34; --dev-body-2:#0f221c;
+    --dev-metal-1:#a8d9c4; --dev-metal-2:#5fa88f; --dev-metal-3:#336354;
+    --dev-face:#e7f0ea; --dev-ink:#16241e; --dev-ink-muted:#5c6f67;
+    --dev-hub-1:#1f322b; --dev-hub-2:#0e1815;
+    --dev-highlight:#bdeedd;
+  }
+  .page[data-palette="ivory"]{
+    --dev-body-1:#cbb994; --dev-body-2:#9c8a63;
+    --dev-metal-1:#f3e6c4; --dev-metal-2:#cdae6e; --dev-metal-3:#8a6a2f;
+    --dev-face:#fbf6ea; --dev-ink:#3a2e1c; --dev-ink-muted:#8a7a5c;
+    --dev-hub-1:#6b5a3c; --dev-hub-2:#3c3020;
+    --dev-highlight:#f6dfa0;
+  }
+  .page[data-palette="graphite"]{
+    --dev-body-1:#2b2b2e; --dev-body-2:#131315;
+    --dev-metal-1:#e8e8ec; --dev-metal-2:#a9a9b2; --dev-metal-3:#6b6b73;
+    --dev-face:#d8d8dc; --dev-ink:#1a1a1c; --dev-ink-muted:#6b6b73;
+    --dev-hub-1:#232326; --dev-hub-2:#101012;
+    --dev-highlight:#9fc2ff;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#14110d;
+      --surface:#1e1a14;
+      --surface-2:#2a2319;
+      --ink:#ede4d4;
+      --ink-muted:#a89b87;
+      --accent:#6cc2b3;
+      --accent-ink:#0c1614;
+      --rule:rgba(237,228,212,.14);
+      --shadow:rgba(0,0,0,.5);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#14110d;
+    --surface:#1e1a14;
+    --surface-2:#2a2319;
+    --ink:#ede4d4;
+    --ink-muted:#a89b87;
+    --accent:#6cc2b3;
+    --accent-ink:#0c1614;
+    --rule:rgba(237,228,212,.14);
+    --shadow:rgba(0,0,0,.5);
+  }
+
+  *{box-sizing:border-box;}
+  body{
+    background:
+      radial-gradient(60% 50% at 50% 8%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 70%),
+      var(--bg);
+    color:var(--ink);
+    font-family:'IBM Plex Sans','IBM Plex Sans Arabic', ui-sans-serif, system-ui, sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .page{
+    max-width:1160px;
+    margin:0 auto;
+    padding:clamp(28px,5vw,64px) clamp(18px,5vw,40px) 56px;
+    display:grid;
+    gap:clamp(28px,4vw,48px);
+  }
+  @media (min-width:900px){
+    .page{grid-template-columns:minmax(220px,270px) 1fr; align-items:start;}
+  }
+
+  .brief{display:flex; flex-direction:column; gap:16px;}
+  .brief-top{display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px 12px;}
+  .controls-cluster{display:flex; align-items:center; gap:10px; flex-shrink:0;}
+  .lang-switch{
+    display:flex; flex-shrink:0;
+    border:1px solid var(--rule);
+    border-radius:999px;
+    padding:2px;
+    gap:2px;
+  }
+  .lang-btn{
+    border:none; background:none; cursor:pointer;
+    padding:4px 12px;
+    border-radius:999px;
+    font-family:'IBM Plex Sans','IBM Plex Sans Arabic', sans-serif;
+    font-size:.72rem;
+    font-weight:600;
+    color:var(--ink-muted);
+  }
+  .lang-btn[aria-pressed="true"]{ background:var(--accent); color:var(--accent-ink); }
+  .lang-btn:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+  .eyebrow{
+    font-family:'IBM Plex Mono','IBM Plex Sans Arabic', ui-monospace, monospace;
+    font-size:.64rem;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:var(--accent);
+    font-weight:600;
+  }
+  h1{
+    font-family:'Big Shoulders Display','IBM Plex Sans Arabic', ui-sans-serif, sans-serif;
+    font-weight:800;
+    font-size:clamp(2rem,5vw,2.6rem);
+    line-height:.92;
+    letter-spacing:-.01em;
+    margin:0;
+    text-wrap:balance;
+  }
+  .lede{
+    max-width:34ch;
+    color:var(--ink-muted);
+    font-size:.86rem;
+    line-height:1.5;
+    margin:0;
+  }
+  .steps-tips{
+    display:flex; gap:10px;
+    border-top:1px solid var(--rule);
+    padding-top:14px;
+  }
+  .step-tip{
+    position:relative;
+    display:inline-flex;
+  }
+  .step-tip__num{
+    font-family:'IBM Plex Mono','IBM Plex Sans Arabic', monospace;
+    font-weight:600;
+    font-size:.66rem;
+    color:var(--accent-ink);
+    background:var(--accent);
+    width:19px; height:19px;
+    border-radius:50%;
+    display:grid; place-items:center;
+    cursor:default;
+  }
+  .step-tip__text{
+    position:absolute;
+    top:calc(100% + 8px);
+    inset-inline-start:0;
+    width:200px;
+    background:var(--surface-2);
+    color:var(--ink);
+    font-size:.74rem;
+    line-height:1.45;
+    padding:9px 11px;
+    border-radius:10px;
+    box-shadow:0 8px 20px -8px var(--shadow);
+    opacity:0; visibility:hidden;
+    transform:translateY(-3px);
+    transition:opacity .15s ease, transform .15s ease;
+    pointer-events:none;
+    z-index:6;
+  }
+  .step-tip:hover .step-tip__text,
+  .step-tip:focus-visible .step-tip__text{
+    opacity:1; visibility:visible; transform:translateY(0);
+  }
+  .step-tip:focus-visible{ outline:2px solid var(--accent); outline-offset:3px; border-radius:50%; }
+
+  .foot-note{
+    font-size:.72rem;
+    color:var(--ink-muted);
+    border-top:1px solid var(--rule);
+    padding-top:14px;
+    line-height:1.5;
+  }
+
+  .demo-control{
+    display:flex; flex-direction:column; gap:8px;
+  }
+  .demo-trigger{
+    display:flex; align-items:center; gap:10px;
+    background:var(--surface-2);
+    color:var(--accent);
+    border:1.5px dashed color-mix(in srgb, var(--accent) 55%, transparent);
+    border-radius:12px;
+    padding:10px 14px;
+    font-family:'IBM Plex Sans','IBM Plex Sans Arabic', sans-serif;
+    font-size:.78rem;
+    font-weight:600;
+    cursor:pointer;
+  }
+  .demo-trigger:hover:not(:disabled){ background:color-mix(in srgb, var(--accent) 12%, var(--surface-2)); }
+  .demo-trigger:disabled{ opacity:.5; cursor:default; }
+  .demo-trigger svg{ width:16px; height:16px; flex-shrink:0; }
+  .demo-trigger:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+  .demo-control__hint{
+    font-size:.68rem;
+    color:var(--ink-muted);
+    line-height:1.5;
+    margin:0;
+  }
+
+  /* ---------- phone stage ---------- */
+  .stage{display:flex; justify-content:center;}
+  .palette-picker__row{ display:flex; gap:6px; flex-shrink:0; }
+  .palette-swatch{
+    width:18px; height:18px; border-radius:50%;
+    border:2px solid transparent;
+    cursor:pointer; padding:0;
+    box-shadow:0 1px 2px var(--shadow);
+  }
+  .palette-swatch[data-palette="oxblood"]{ background:linear-gradient(135deg,#e6c476,#6b2b26); }
+  .palette-swatch[data-palette="verdigris"]{ background:linear-gradient(135deg,#a8d9c4,#1f3d34); }
+  .palette-swatch[data-palette="ivory"]{ background:linear-gradient(135deg,#f3e6c4,#9c8a63); }
+  .palette-swatch[data-palette="graphite"]{ background:linear-gradient(135deg,#e8e8ec,#2b2b2e); }
+  .palette-swatch[aria-pressed="true"]{ border-color:var(--accent); }
+  .palette-swatch:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+  .device{
+    width:min(560px,94vw);
+    background:linear-gradient(165deg,#1c1912,#0e0c08);
+    border-radius:46px;
+    padding:14px;
+    box-shadow:0 30px 60px -20px var(--shadow), inset 0 0 0 1px rgba(255,255,255,.04);
+  }
+  .device__brow{
+    display:flex; justify-content:center;
+    padding:6px 0 10px;
+  }
+  .device__brow::before{
+    content:"";
+    width:74px; height:6px;
+    border-radius:4px;
+    background:rgba(255,255,255,.08);
+  }
+  .screen{
+    position:relative;
+    border-radius:32px;
+    overflow:hidden;
+    background:#0b0a08;
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.05);
+  }
+
+  .statusbar{
+    position:relative; z-index:3;
+    display:flex; align-items:center; justify-content:space-between;
+    padding:14px 18px 8px;
+    color:#efe6d3;
+  }
+  .clock{
+    font-family:'IBM Plex Mono','IBM Plex Sans Arabic', monospace;
+    font-variant-numeric:tabular-nums;
+    font-size:1rem;
+    font-weight:600;
+    letter-spacing:.02em;
+  }
+  .sky-picker{
+    display:flex; flex-direction:column; align-items:flex-end; gap:5px;
+  }
+  .sky-picker__label{
+    font-family:'IBM Plex Mono','IBM Plex Sans Arabic', monospace;
+    font-size:.6rem;
+    letter-spacing:.12em;
+    text-transform:uppercase;
+    color:rgba(239,230,211,.55);
+  }
+  .sky-picker__row{display:flex; gap:5px;}
+  .sky-btn{
+    width:26px; height:26px;
+    border-radius:50%;
+    border:1px solid rgba(239,230,211,.25);
+    background:rgba(11,10,8,.4);
+    color:#efe6d3;
+    display:grid; place-items:center;
+    cursor:pointer;
+    padding:0;
+  }
+  .sky-btn svg{width:14px; height:14px;}
+  .sky-btn[aria-pressed="true"]{
+    background:var(--dev-metal-2);
+    border-color:var(--dev-metal-2);
+    color:var(--dev-ink);
+  }
+  .sky-btn:focus-visible{outline:2px solid #6cc2b3; outline-offset:2px;}
+
+  .scene{
+    position:relative;
+    height:min(80vw,460px);
+    min-height:360px;
+    overflow:hidden;
+  }
+  .sky{
+    position:absolute; inset:0;
+    transition:background 1.2s ease;
+  }
+  .weather-canvas{position:absolute; inset:0; z-index:1;}
+
+  .dial-wrap{
+    position:relative; z-index:2;
+    display:flex; justify-content:center; align-items:flex-end;
+    height:100%;
+    padding-bottom:10px;
+  }
+  .dial-svg{width:min(80%,400px); height:auto; overflow:visible;}
+  .dial-face{ transition:opacity .4s ease; transform-origin:center; }
+  .scene.is-ringing .dial-face{ opacity:.32; }
+  #hubGroup{ transition:transform .3s ease; }
+  .scene.is-ringing #hubGroup{ transform:translateY(46px); }
+
+  .infobar{
+    position:relative; z-index:3;
+    display:flex; align-items:center; justify-content:space-between;
+    gap:10px;
+    padding:0 16px 10px;
+  }
+  .readout{
+    display:flex; align-items:center; gap:8px;
+    background:rgba(11,10,8,.55);
+    border:1px solid color-mix(in srgb, var(--dev-metal-2) 40%, transparent);
+    border-radius:999px;
+    padding:5px 8px 5px 14px;
+  }
+  .readout__label{
+    font-family:'IBM Plex Mono','IBM Plex Sans Arabic', monospace;
+    font-size:.58rem;
+    letter-spacing:.1em;
+    color:rgba(239,230,211,.5);
+  }
+  .readout__digits{
+    font-family:'IBM Plex Mono','IBM Plex Sans Arabic', monospace;
+    font-size:.86rem;
+    letter-spacing:.14em;
+    color:var(--dev-highlight);
+    min-width:1ch;
+  }
+  .readout__clear{
+    width:18px; height:18px;
+    border-radius:50%;
+    border:none;
+    background:rgba(239,230,211,.12);
+    color:#efe6d3;
+    font-size:.7rem;
+    line-height:1;
+    cursor:pointer;
+    display:grid; place-items:center;
+  }
+  .readout__clear:focus-visible{outline:2px solid #6cc2b3;}
+
+  .line-pill{
+    display:flex; align-items:center; gap:6px;
+    background:rgba(53,109,100,.9);
+    color:#f2f8f5;
+    font-family:'IBM Plex Mono','IBM Plex Sans Arabic', monospace;
+    font-size:.62rem;
+    letter-spacing:.1em;
+    padding:5px 9px;
+    border-radius:999px;
+    opacity:0;
+    transition:opacity .35s ease;
+    visibility:hidden;
+  }
+  .infobar.is-open .line-pill{opacity:1; visibility:visible;}
+  .line-pill__dot{
+    width:6px; height:6px; border-radius:50%;
+    background:#bdf0dc;
+  }
+  @media (prefers-reduced-motion: no-preference){
+    .scene.is-open .line-pill__dot{animation:pulse 1.6s ease-in-out infinite;}
+  }
+  @keyframes pulse{ 50%{opacity:.35;} }
+
+  .handset-hit{
+    position:absolute; left:50%; top:8px; z-index:4;
+    transform:translateX(-50%);
+    width:220px; height:94px;
+    background:none; border:none; padding:0;
+    cursor:pointer;
+  }
+  .handset-hit:focus-visible .handset{outline:2px solid #6cc2b3; outline-offset:4px; border-radius:12px;}
+  .handset{
+    width:100%; height:100%;
+    transform-origin:50% 0%;
+    transition:transform .5s cubic-bezier(.34,1.4,.4,1);
+  }
+  .scene.is-open .handset{transform:translateY(-16px) rotate(-7deg);}
+
+  .scene.is-ringing .handset{
+    filter:drop-shadow(0 0 7px color-mix(in srgb, var(--dev-metal-1) 90%, transparent));
+    animation:handsetShake .6s ease-in-out infinite;
+  }
+  @media (prefers-reduced-motion: no-preference){
+    .scene.is-ringing .handset{ animation:handsetShake .6s ease-in-out infinite, handsetGlow 1.4s ease-in-out infinite; }
+  }
+  @keyframes handsetGlow{
+    50%{ filter:drop-shadow(0 0 2px color-mix(in srgb, var(--dev-metal-1) 40%, transparent)); }
+  }
+  @keyframes handsetShake{
+    0%,100%{ transform:rotate(0deg); }
+    20%{ transform:rotate(-6deg); }
+    40%{ transform:rotate(5deg); }
+    60%{ transform:rotate(-4deg); }
+    80%{ transform:rotate(3deg); }
+  }
+
+  .hub-ring{ opacity:0; transform-box:fill-box; transform-origin:center; }
+  @media (prefers-reduced-motion: no-preference){
+    .scene.is-ringing .hub-ring{ animation:hubRingPulse 1.8s ease-out infinite; }
+    .scene.is-ringing .hub-ring--2{ animation-delay:.6s; }
+  }
+  @media (prefers-reduced-motion: reduce){
+    .scene.is-ringing .hub-ring{ opacity:.3; }
+  }
+  @keyframes hubRingPulse{
+    0%{ transform:scale(.92); opacity:.85; }
+    100%{ transform:scale(1.2); opacity:0; }
+  }
+
+  .incoming{
+    position:absolute; inset:0; z-index:3;
+    opacity:0; visibility:hidden; pointer-events:none;
+    transition:opacity .3s ease;
+    text-align:center;
+  }
+  .incoming.show{ opacity:1; visibility:visible; pointer-events:auto; }
+  .incoming__top{
+    position:absolute; left:0; right:0; top:118px;
+    display:flex; flex-direction:column; align-items:center; gap:5px;
+    padding:0 16px;
+  }
+  .incoming__tag{
+    margin:0;
+    font-family:'IBM Plex Mono','IBM Plex Sans Arabic', monospace;
+    font-size:.6rem;
+    letter-spacing:.14em;
+    text-transform:uppercase;
+    color:color-mix(in srgb, var(--dev-metal-1) 85%, transparent);
+  }
+  .incoming__name{
+    margin:0;
+    font-family:'Big Shoulders Display','IBM Plex Sans Arabic', sans-serif;
+    font-weight:800;
+    font-size:1.3rem;
+    color:#f3ecdd;
+  }
+  .incoming__meta{
+    margin:0;
+    font-family:'IBM Plex Mono','IBM Plex Sans Arabic', monospace;
+    font-size:.62rem;
+    letter-spacing:.03em;
+    color:rgba(239,230,211,.7);
+  }
+  .decline-btn{
+    margin-top:2px;
+    background:#7a3630;
+    color:#f6ece7;
+    border:1px solid rgba(255,255,255,.12);
+    border-radius:999px;
+    font-family:'IBM Plex Sans','IBM Plex Sans Arabic', sans-serif;
+    font-size:.72rem;
+    font-weight:600;
+    letter-spacing:.03em;
+    padding:7px 20px;
+    cursor:pointer;
+  }
+  .decline-btn:hover{ background:#8f423b; }
+  .decline-btn:focus-visible{ outline:2px solid #6cc2b3; outline-offset:2px; }
+
+  .cradle{
+    position:absolute; left:50%; top:48px; z-index:2;
+    transform:translateX(-50%);
+    display:flex; gap:142px;
+  }
+  .cradle span{
+    width:11px; height:23px;
+    border-radius:3px;
+    background:linear-gradient(180deg,var(--dev-metal-1),var(--dev-metal-3));
+  }
+
+  .dock{
+    position:relative; z-index:3;
+    display:flex; justify-content:space-between;
+    gap:4px;
+    padding:16px 10px 12px;
+    background:linear-gradient(0deg, rgba(255,255,255,.03), transparent);
+    border-bottom:1px solid rgba(255,255,255,.06);
+  }
+  .dock-btn{
+    flex:1;
+    display:flex; flex-direction:column; align-items:center; gap:5px;
+    background:none; border:none;
+    color:#c9bfa9;
+    font-family:'IBM Plex Sans','IBM Plex Sans Arabic', sans-serif;
+    font-size:.6rem;
+    letter-spacing:.05em;
+    text-transform:uppercase;
+    padding:6px 2px;
+    cursor:pointer;
+    border-radius:12px;
+  }
+  .dock-btn svg{width:20px; height:20px;}
+  .dock-btn:hover, .dock-btn:focus-visible{color:var(--dev-highlight); background:color-mix(in srgb, var(--dev-metal-2) 12%, transparent);}
+  .dock-btn:focus-visible{outline:2px solid #6cc2b3; outline-offset:-2px;}
+
+  .scene{ transition:height .4s ease, min-height .4s ease; }
+  .scene.is-active{ height:min(100vw,580px); min-height:500px; }
+  .scene.is-active .dial-wrap,
+  .scene.is-active .cradle,
+  .scene.is-active .handset-hit{ opacity:0; pointer-events:none; }
+
+  .call-screen{
+    position:absolute; inset:0; z-index:5;
+    display:flex; flex-direction:column;
+    opacity:0; visibility:hidden; pointer-events:none;
+    transition:opacity .35s ease;
+  }
+  .call-screen.show{ opacity:1; visibility:visible; pointer-events:auto; }
+
+  .call-screen__head{
+    display:flex; align-items:flex-start; justify-content:space-between;
+    padding:14px 16px 4px;
+  }
+  .call-screen__name{ display:block; font-family:'Big Shoulders Display','IBM Plex Sans Arabic', sans-serif; font-weight:800; font-size:1.05rem; color:#f3ecdd; }
+  .call-screen__meta{ display:block; font-family:'IBM Plex Mono','IBM Plex Sans Arabic', monospace; font-size:.6rem; color:rgba(239,230,211,.6); margin-top:2px; }
+  .call-screen__timer{ font-family:'IBM Plex Mono','IBM Plex Sans Arabic', monospace; font-size:.78rem; color:var(--dev-highlight); font-variant-numeric:tabular-nums; }
+
+  .call-screen__stage{ display:flex; justify-content:center; padding:2px 0 8px; }
+  .keeper-big{ width:56px; height:56px; }
+  .keeper-big .mouth-open{ display:none; }
+  .keeper-big.talking .mouth-closed{ display:none; }
+  .keeper-big.talking .mouth-open{ display:block; }
+
+  .call-screen__transcript{
+    flex:1; min-height:0; overflow-y:auto;
+    padding:10px 16px 16px; display:flex; flex-direction:column; gap:10px;
+    border-top:1px solid rgba(255,255,255,.06);
+  }
+  .transcript__note{
+    margin:0 0 2px; font-family:'IBM Plex Mono','IBM Plex Sans Arabic', monospace; font-size:.56rem;
+    letter-spacing:.12em; text-transform:uppercase; color:rgba(239,230,211,.4); text-align:center;
+  }
+  .transcript__row{ border-bottom:1px solid rgba(239,230,211,.08); padding-bottom:8px; }
+  .transcript__speaker{ display:block; font-family:'IBM Plex Mono','IBM Plex Sans Arabic', monospace; font-size:.56rem; letter-spacing:.1em; text-transform:uppercase; margin-bottom:3px; }
+  .transcript__row.is-you .transcript__speaker{ color:#6cc2b3; }
+  .transcript__row.is-them .transcript__speaker{ color:var(--dev-metal-1); }
+  .transcript__original{ margin:0; font-family:'IBM Plex Sans','IBM Plex Sans Arabic',sans-serif; font-size:.86rem; color:#f3ecdd; line-height:1.4; }
+  .transcript__original[dir="rtl"]{ text-align:right; }
+  .transcript__translated{ margin:4px 0 0; font-family:'IBM Plex Mono','IBM Plex Sans Arabic', monospace; font-size:.66rem; color:rgba(239,230,211,.55); line-height:1.4; }
+  .transcript__translated[dir="rtl"]{ text-align:right; }
+  .transcript__tag{
+    display:block; font-family:'IBM Plex Mono','IBM Plex Sans Arabic', monospace;
+    font-size:.52rem; letter-spacing:.1em; text-transform:uppercase;
+    color:rgba(239,230,211,.32); margin:4px 0 2px;
+  }
+  .transcript__tag[dir="rtl"]{ text-align:right; }
+  .call-screen__transcript.is-noisy .transcript__row.is-them .transcript__original{ opacity:.6; filter:blur(.35px); }
+
+  .call-screen__controls{ display:flex; justify-content:center; gap:12px; padding:6px 16px 10px; }
+  .callctrl{
+    display:flex; flex-direction:column; align-items:center; gap:4px;
+    background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.08);
+    color:#c9bfa9; width:56px; padding:8px 4px; border-radius:14px;
+    font-family:'IBM Plex Sans','IBM Plex Sans Arabic', sans-serif; font-size:.56rem; letter-spacing:.05em; text-transform:uppercase;
+    cursor:pointer;
+  }
+  .callctrl svg{ width:18px; height:18px; }
+  .callctrl .mic-slash{ display:none; }
+  .callctrl[aria-pressed="true"] .mic-slash{ display:block; }
+  .callctrl[aria-pressed="true"]{ background:color-mix(in srgb, var(--dev-metal-2) 22%, transparent); color:var(--dev-highlight); border-color:color-mix(in srgb, var(--dev-metal-2) 40%, transparent); }
+  .callctrl--end{ background:#7a3630; color:#f6ece7; border-color:rgba(255,255,255,.12); }
+  .callctrl--end svg{ width:16px; height:auto; transform:rotate(135deg); }
+  .callctrl--end:hover{ background:#8f423b; }
+  .callctrl:focus-visible{ outline:2px solid #6cc2b3; outline-offset:2px; }
+
+  .hub-status{
+    position:relative; z-index:3;
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    padding:0 16px 10px;
+    text-align:center;
+    transition:opacity .2s ease;
+  }
+  .scene.is-room ~ .hub-status, .scene.is-active ~ .hub-status{
+    opacity:0; visibility:hidden; pointer-events:none;
+  }
+  .hub-status__caption{
+    font-family:'IBM Plex Mono','IBM Plex Sans Arabic', monospace;
+    font-size:.66rem; letter-spacing:.04em;
+    color:rgba(239,230,211,.7);
+  }
+  .room-mood{
+    display:none;
+    font-family:'IBM Plex Mono','IBM Plex Sans Arabic', monospace;
+    font-size:.58rem; letter-spacing:.06em;
+    padding:2px 8px; border-radius:999px;
+    color:rgba(239,230,211,.7);
+    background:rgba(255,255,255,.08);
+  }
+  .room-mood.show{ display:inline-block; }
+  .room-mood.mood-happy{ color:var(--dev-ink); background:var(--dev-highlight); }
+  .room-mood.mood-bored{ color:rgba(239,230,211,.55); background:rgba(255,255,255,.05); }
+  .room-keeper{ cursor:pointer; transform-box:fill-box; transform-origin:center; }
+  .room-keeper:focus-visible{ outline:2px solid #6cc2b3; outline-offset:2px; }
+  .room-prop{ display:none; }
+  .room-prop.show{ display:block; }
+  @media (prefers-reduced-motion: no-preference){
+    .room-keeper.bump{ animation:roomBump .4s ease; }
+  }
+  @keyframes roomBump{ 40%{ transform:scale(1.06); } }
+  .room-mouth{ display:none; }
+  .room-mouth--neutral{ display:block; }
+  .room-keeper.mood-happy .room-mouth--neutral{ display:none; }
+  .room-keeper.mood-happy .room-mouth--happy{ display:block; }
+  .room-keeper.mood-bored .room-mouth--neutral{ display:none; }
+  .room-keeper.mood-bored .room-mouth--bored{ display:block; }
+
+  .scene.is-room{ height:min(100vw,580px); min-height:500px; }
+  .scene.is-room .dial-wrap,
+  .scene.is-room .cradle,
+  .scene.is-room .handset-hit{ opacity:0; pointer-events:none; }
+
+  .keeper-room{
+    position:absolute; inset:0; z-index:5;
+    display:flex; flex-direction:column;
+    opacity:0; visibility:hidden; pointer-events:none;
+    transition:opacity .35s ease;
+  }
+  .keeper-room.show{ opacity:1; visibility:visible; pointer-events:auto; }
+  .keeper-room__head{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:12px 14px 4px;
+  }
+  .room-back{
+    display:flex; align-items:center; gap:5px;
+    background:none; border:none; cursor:pointer;
+    color:rgba(239,230,211,.75);
+    font-family:'IBM Plex Sans','IBM Plex Sans Arabic', sans-serif;
+    font-size:.68rem; font-weight:600;
+    padding:4px 6px;
+  }
+  .room-back svg{ width:14px; height:14px; }
+  [dir="rtl"] .room-back svg{ transform:rotate(180deg); }
+  .room-back:focus-visible{ outline:2px solid #6cc2b3; outline-offset:2px; }
+  .keeper-room__titles{ display:flex; flex-direction:column; align-items:flex-end; gap:3px; }
+  [dir="rtl"] .keeper-room__titles{ align-items:flex-start; }
+  .keeper-room__title{
+    font-family:'Big Shoulders Display','IBM Plex Sans Arabic', sans-serif;
+    font-weight:800; font-size:.95rem;
+    color:#f3ecdd;
+  }
+  .room-svg{ width:100%; flex:1; min-height:0; }
+  .keeper-room__caption{
+    margin:0; text-align:center;
+    padding:6px 16px 14px;
+    font-family:'IBM Plex Mono','IBM Plex Sans Arabic', monospace;
+    font-size:.68rem; letter-spacing:.04em;
+    color:rgba(239,230,211,.7);
+  }
+
+  .toast{
+    position:absolute; left:50%; bottom:70px; z-index:5;
+    transform:translate(-50%,8px);
+    background:#efe6d3;
+    color:#241e1a;
+    font-size:.74rem;
+    font-weight:500;
+    padding:8px 14px;
+    border-radius:999px;
+    opacity:0;
+    transition:opacity .25s ease, transform .25s ease;
+    pointer-events:none;
+    white-space:nowrap;
+  }
+  .toast.show{opacity:1; transform:translate(-50%,0);}
+
+  @media (prefers-reduced-motion: reduce){
+    .handset, .line-pill, .toast{transition:none;}
+  }
+</style>
+
+<div class="page" id="page">
+  <div class="brief">
+    <div>
+      <div class="brief-top">
+        <p class="eyebrow" id="txtEyebrow">Home screen &middot; prototype</p>
+        <div class="controls-cluster">
+          <div class="palette-picker__row" id="palettePicker" role="group" aria-label="Case colour">
+            <button class="palette-swatch" data-palette="oxblood" aria-pressed="true" aria-label="Oxblood"></button>
+            <button class="palette-swatch" data-palette="verdigris" aria-pressed="false" aria-label="Verdigris"></button>
+            <button class="palette-swatch" data-palette="ivory" aria-pressed="false" aria-label="Ivory"></button>
+            <button class="palette-swatch" data-palette="graphite" aria-pressed="false" aria-label="Graphite"></button>
+          </div>
+          <div class="lang-switch" role="group" aria-label="Interface language">
+            <button class="lang-btn" id="langEn" data-lang="en" aria-pressed="true">EN</button>
+            <button class="lang-btn" id="langAr" data-lang="ar" aria-pressed="false">عربي</button>
+          </div>
+        </div>
+      </div>
+      <h1 id="txtBrand">Ranah</h1>
+    </div>
+    <p class="lede" id="txtLede">A rotary line with a small keeper asleep in the hub. Dial a name and it wakes to listen &mdash; then goes back to sleep once you hang up.</p>
+    <div class="steps-tips" role="list" aria-label="How to use">
+      <span class="step-tip" tabindex="0" role="listitem">
+        <span class="step-tip__num">1</span>
+        <span class="step-tip__text" id="txtStep1">Pull any number clockwise toward the brass stop and let go. The dial spins back and clicks off the digit.</span>
+      </span>
+      <span class="step-tip" tabindex="0" role="listitem">
+        <span class="step-tip__num">2</span>
+        <span class="step-tip__text" id="txtStep2">Tap the handset to open the line. The keeper climbs up to listen; tap again to send it back down.</span>
+      </span>
+      <span class="step-tip" tabindex="0" role="listitem">
+        <span class="step-tip__num">3</span>
+        <span class="step-tip__text" id="txtStep3">Switch the sky along the top to see the hub react to the caller's weather.</span>
+      </span>
+    </div>
+    <p class="foot-note" id="txtFootnote">Contacts, Recents, Keeper, and Sounds open as their own screens in the next pass of this prototype.</p>
+
+    <div class="demo-control">
+      <button class="demo-trigger" id="simulateCall">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5c0-.6.4-1 1-1h2.2c.5 0 .9.3 1 .8l.8 3a1 1 0 0 1-.3 1L7 10.5a11 11 0 0 0 6.5 6.5l1.7-1.7a1 1 0 0 1 1-.3l3 .8c.5.1.8.5.8 1V19c0 .6-.4 1-1 1h-1C10.4 20 4 13.6 4 6V5z"/></svg>
+        <span id="txtDemoTrigger">Preview an incoming call</span>
+      </button>
+      <p class="demo-control__hint" id="txtDemoHint">Prototype control &mdash; not part of the in-app UI. Jumps Dial Hollow into a ringing state so you can see how the keeper reacts.</p>
+    </div>
+  </div>
+
+  <div class="stage">
+    <div class="device">
+      <div class="device__brow"></div>
+      <div class="screen">
+        <div class="dock">
+          <button class="dock-btn" data-key="contacts">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8.5" r="3.3"/><path d="M5.5 20c1-4 4-5.6 6.5-5.6S17.5 16 18.5 20"/></svg>
+            <span class="dock-btn__label">Contacts</span>
+          </button>
+          <button class="dock-btn" data-key="recents">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M12 7.5V12l3 2"/></svg>
+            <span class="dock-btn__label">Recents</span>
+          </button>
+          <button class="dock-btn" data-key="keeper">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12 12 5l8 7"/><path d="M6 10.5V19h12v-8.5"/><path d="M10 19v-5h4v5"/></svg>
+            <span class="dock-btn__label">Keeper</span>
+          </button>
+          <button class="dock-btn" data-key="sounds">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 17V6.5l9-2v11"/><circle cx="7" cy="17" r="2.2"/><circle cx="16" cy="15.5" r="2.2"/></svg>
+            <span class="dock-btn__label">Sounds</span>
+          </button>
+          <button class="dock-btn" data-key="settings">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 3v2.4M12 18.6V21M3 12h2.4M18.6 12H21M5.6 5.6l1.7 1.7M16.7 16.7l1.7 1.7M18.4 5.6l-1.7 1.7M7.3 16.7l-1.7 1.7"/></svg>
+            <span class="dock-btn__label">Settings</span>
+          </button>
+        </div>
+        <div class="statusbar">
+          <span class="clock" id="clock">--:--</span>
+          <div class="sky-picker">
+            <span class="sky-picker__label" id="skyLabel">Caller's sky</span>
+            <div class="sky-picker__row" id="skyPicker" role="group" aria-label="Caller's weather">
+              <button class="sky-btn" data-sky="clear" aria-pressed="true" aria-label="Clear">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.4M12 19.1v2.4M4.6 4.6l1.7 1.7M17.7 17.7l1.7 1.7M2.5 12h2.4M19.1 12h2.4M4.6 19.4l1.7-1.7M17.7 6.3l1.7-1.7"/></svg>
+              </button>
+              <button class="sky-btn" data-sky="rain" aria-pressed="false" aria-label="Rain">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 15a4.5 4.5 0 0 1 .8-8.9 5.5 5.5 0 0 1 10.6 1A4 4 0 0 1 18 15H7z"/><path d="M8 18.5l-1 2M12.5 18.5l-1 2M17 18.5l-1 2"/></svg>
+              </button>
+              <button class="sky-btn" data-sky="snow" aria-pressed="false" aria-label="Snow">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v18M4.5 7.5l15 9M19.5 7.5l-15 9"/></svg>
+              </button>
+              <button class="sky-btn" data-sky="storm" aria-pressed="false" aria-label="Storm">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 13.5a4.5 4.5 0 0 1 .8-8.9 5.5 5.5 0 0 1 10.6 1A4 4 0 0 1 18 13.5H7z"/><path d="M13 13.5l-2.6 4.2h3l-2 4"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="infobar" id="infobar">
+          <div class="readout">
+            <span class="readout__label" id="txtReadoutLabel">Last dialed</span>
+            <span class="readout__digits" id="digits">&mdash;</span>
+            <button class="readout__clear" id="clearDigits" aria-label="Clear dialed number">&times;</button>
+          </div>
+          <div class="line-pill"><span class="line-pill__dot"></span><span id="txtLinePill">Line open</span></div>
+        </div>
+
+        <div class="scene" id="scene" data-sky="clear">
+          <div class="sky" id="sky"></div>
+          <canvas class="weather-canvas" id="weatherCanvas"></canvas>
+
+          <div class="incoming" id="incoming">
+            <div class="incoming__top">
+              <p class="incoming__tag" id="txtIncomingTag">Incoming call</p>
+              <p class="incoming__name" id="callerName">&mdash;</p>
+              <p class="incoming__meta" id="callerMeta">&mdash;</p>
+              <button class="decline-btn" id="declineBtn">Decline</button>
+            </div>
+          </div>
+
+          <div class="cradle"><span></span><span></span></div>
+          <button class="handset-hit" id="handsetBtn" aria-pressed="false" aria-label="Lift handset to open the line">
+            <svg class="handset" viewBox="0 0 150 64">
+              <path d="M14 44 C 6 44 4 30 12 24 L 40 6 C 46 2 52 6 50 13 L 46 24 C 62 14 88 14 104 24 L 100 13 C 98 6 104 2 110 6 L 138 24 C 146 30 144 44 136 44 C 130 44 128 40 122 36 C 106 26 44 26 28 36 C 22 40 20 44 14 44 Z" style="fill:var(--dev-body-2); stroke:var(--dev-metal-2)" stroke-width="1.4"/>
+            </svg>
+          </button>
+
+          <div class="dial-wrap">
+            <svg class="dial-svg" id="dialSvg" viewBox="0 0 400 400">
+              <defs>
+                <radialGradient id="brassGrad" cx="35%" cy="30%" r="75%">
+                  <stop offset="0%" style="stop-color:var(--dev-metal-1)"/>
+                  <stop offset="55%" style="stop-color:var(--dev-metal-2)"/>
+                  <stop offset="100%" style="stop-color:var(--dev-metal-3)"/>
+                </radialGradient>
+                <radialGradient id="bodyGrad" cx="40%" cy="30%" r="75%">
+                  <stop offset="0%" style="stop-color:var(--dev-body-1)"/>
+                  <stop offset="100%" style="stop-color:var(--dev-body-2)"/>
+                </radialGradient>
+                <radialGradient id="hubGrad" cx="40%" cy="35%" r="70%">
+                  <stop offset="0%" style="stop-color:var(--dev-hub-1)"/>
+                  <stop offset="100%" style="stop-color:var(--dev-hub-2)"/>
+                </radialGradient>
+                <linearGradient id="windowGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" id="winStop0"/>
+                  <stop offset="55%" id="winStop1"/>
+                  <stop offset="100%" id="winStop2"/>
+                </linearGradient>
+              </defs>
+
+              <g class="dial-face">
+                <circle cx="200" cy="200" r="196" fill="url(#brassGrad)"/>
+                <circle cx="200" cy="200" r="180" fill="url(#bodyGrad)"/>
+                <circle cx="200" cy="200" r="176" fill="none" style="stroke:var(--dev-metal-1)" stroke-opacity=".25" stroke-width="1.5"/>
+
+                <g id="fingerStop"></g>
+                <g id="ring"></g>
+              </g>
+
+              <clipPath id="hubClip"><circle cx="200" cy="200" r="102"/></clipPath>
+              <g id="hubGroup">
+              <circle cx="200" cy="200" r="104" fill="url(#hubGrad)" style="stroke:var(--dev-metal-2)" stroke-width="2"/>
+              <g clip-path="url(#hubClip)">
+                <g transform="translate(200,200) scale(2.32) translate(-200,-200)">
+                  <rect x="188" y="164" width="24" height="15" rx="3" fill="url(#windowGrad)" style="stroke:var(--dev-metal-2)" stroke-width="1.2"/>
+                  <circle cx="200" cy="172" r="9" style="fill:var(--dev-highlight)" opacity=".18"/>
+                  <text x="200" y="157" text-anchor="middle" font-family="'IBM Plex Mono','IBM Plex Sans Arabic', monospace" font-size="4.6" style="fill:var(--dev-ink-muted)" id="txtWallNote">call someone soon</text>
+                </g>
+              </g>
+              <g id="avatar" class="room-keeper" clip-path="url(#hubClip)" tabindex="0" role="button" aria-label="Say hi to the keeper">
+                <circle cx="200" cy="200" r="102" fill="transparent"/>
+                <g transform="translate(200,200) scale(2.32) translate(-200,-200)">
+                <g class="avatar-zzz" id="zzz">
+                  <text x="222" y="168" font-family="IBM Plex Mono, monospace" font-size="9" fill="#efe6d3" opacity=".55">z</text>
+                  <text x="230" y="160" font-family="IBM Plex Mono, monospace" font-size="7" fill="#efe6d3" opacity=".4">z</text>
+                </g>
+                <g class="avatar-body">
+                  <ellipse cx="200" cy="214" rx="17" ry="9" style="fill:var(--dev-metal-2)" class="blanket"/>
+                  <circle cx="200" cy="197" r="12.5" fill="#e8b98c"/>
+                  <path d="M188 191 a12.5 12.5 0 0 1 24 0 c0 -6 -5 -9 -12 -9 s-12 3 -12 9 z" fill="#3a2a20"/>
+                  <g class="eyes-closed">
+                    <path d="M193.5 197.5 q2 2 4 0" stroke="#3a2a20" stroke-width="1.3" fill="none" stroke-linecap="round"/>
+                    <path d="M202.5 197.5 q2 2 4 0" stroke="#3a2a20" stroke-width="1.3" fill="none" stroke-linecap="round"/>
+                  </g>
+                  <g class="eyes-open">
+                    <circle cx="195.5" cy="197" r="1.6" fill="#241e1a"/>
+                    <circle cx="204.5" cy="197" r="1.6" fill="#241e1a"/>
+                  </g>
+                  <path class="mouth-sleep" d="M197.5 202.5 q2.5 1.6 5 0" stroke="#3a2a20" stroke-width="1.1" fill="none" stroke-linecap="round"/>
+                  <path class="mouth-awake" d="M196.5 202.5 q3.5 3 7 0" stroke="#3a2a20" stroke-width="1.1" fill="none" stroke-linecap="round"/>
+                  <path class="mouth-happy-hub" d="M193.5 201.5 q6.5 6.5 13 0" stroke="#3a2a20" stroke-width="1.1" fill="none" stroke-linecap="round"/>
+                  <path class="mouth-bored-hub" d="M196.5 204 q3.5 -2.5 7 0" stroke="#3a2a20" stroke-width="1.1" fill="none" stroke-linecap="round"/>
+                </g>
+                <g id="roomProps">
+                  <g class="room-prop" data-prop="book">
+                    <rect x="221" y="203" width="15" height="11" rx="1.5" transform="rotate(-8 228.5 208.5)" style="fill:var(--dev-metal-1); stroke:var(--dev-metal-3)" stroke-width="0.8"/>
+                  </g>
+                  <g class="room-prop" data-prop="music">
+                    <text x="220" y="213" font-family="'IBM Plex Mono','IBM Plex Sans Arabic', monospace" font-size="13" style="fill:var(--dev-highlight)">&#9834;</text>
+                  </g>
+                  <g class="room-prop" data-prop="chat">
+                    <rect x="218" y="195" width="21" height="14" rx="5.5" style="fill:var(--dev-face); stroke:var(--dev-metal-3)" stroke-width="0.8"/>
+                    <path d="M226 209 l-4 6 v-6 z" style="fill:var(--dev-face)"/>
+                    <circle cx="223.5" cy="202" r="1.1" style="fill:var(--dev-ink-muted)"/>
+                    <circle cx="228.5" cy="202" r="1.1" style="fill:var(--dev-ink-muted)"/>
+                    <circle cx="233.5" cy="202" r="1.1" style="fill:var(--dev-ink-muted)"/>
+                  </g>
+                </g>
+                </g>
+              </g>
+              <g id="hubRings" aria-hidden="true">
+                <circle class="hub-ring" cx="200" cy="200" r="106" fill="none" style="stroke:var(--dev-metal-1)" stroke-width="2"/>
+                <circle class="hub-ring hub-ring--2" cx="200" cy="200" r="106" fill="none" style="stroke:var(--dev-metal-1)" stroke-width="2"/>
+              </g>
+              </g>
+            </svg>
+          </div>
+
+          <div class="keeper-room" id="keeperRoom">
+            <div class="keeper-room__head">
+              <button class="room-back" id="roomBack">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+                <span id="txtRoomBack">Dial</span>
+              </button>
+              <div class="keeper-room__titles">
+                <span class="keeper-room__title" id="txtRoomTitle">Keeper's room</span>
+                <span class="room-mood" id="roomMoodBig"></span>
+              </div>
+            </div>
+
+            <svg class="room-svg" viewBox="0 0 400 300" preserveAspectRatio="xMidYMid meet">
+              <defs>
+                <radialGradient id="roomWallGrad" cx="50%" cy="28%" r="85%">
+                  <stop offset="0%" style="stop-color:var(--dev-hub-1)"/>
+                  <stop offset="100%" style="stop-color:var(--dev-hub-2)"/>
+                </radialGradient>
+              </defs>
+
+              <rect x="0" y="0" width="400" height="300" fill="url(#roomWallGrad)"/>
+              <ellipse cx="200" cy="270" rx="150" ry="20" style="fill:var(--dev-body-2)" opacity=".45"/>
+
+              <rect x="28" y="26" width="96" height="72" rx="8" fill="url(#windowGrad)" style="stroke:var(--dev-metal-2)" stroke-width="3"/>
+              <line x1="76" y1="26" x2="76" y2="98" style="stroke:var(--dev-metal-2)" stroke-width="2"/>
+              <line x1="28" y1="62" x2="124" y2="62" style="stroke:var(--dev-metal-2)" stroke-width="2"/>
+
+              <rect x="276" y="46" width="96" height="7" rx="2" style="fill:var(--dev-metal-2)"/>
+              <rect x="330" y="22" width="20" height="26" rx="2" transform="rotate(-6 340 35)" style="fill:var(--dev-metal-1); stroke:var(--dev-metal-3)" stroke-width="1"/>
+
+              <line x1="200" y1="0" x2="200" y2="34" style="stroke:var(--dev-metal-3)" stroke-width="2"/>
+              <circle cx="200" cy="44" r="20" style="fill:var(--dev-highlight)" opacity=".18"/>
+              <circle cx="200" cy="44" r="9" style="fill:var(--dev-highlight)" opacity=".85"/>
+
+              <rect x="26" y="186" width="92" height="48" rx="11" style="fill:var(--dev-metal-2)"/>
+              <ellipse cx="48" cy="194" rx="17" ry="11" style="fill:var(--dev-face)"/>
+
+              <text x="200" y="18" text-anchor="middle" font-family="'IBM Plex Mono','IBM Plex Sans Arabic', monospace" font-size="9" style="fill:var(--dev-ink-muted)" id="txtWallNoteRoom">call someone soon</text>
+
+              <g id="roomKeeper" class="room-keeper" tabindex="0" role="button" aria-label="Say hi to the keeper">
+                <g transform="translate(-240,-233.4) scale(2.2)">
+                  <ellipse cx="200" cy="214" rx="17" ry="9" style="fill:var(--dev-metal-2)"/>
+                  <circle cx="200" cy="197" r="12.5" fill="#e8b98c"/>
+                  <path d="M188 191 a12.5 12.5 0 0 1 24 0 c0 -6 -5 -9 -12 -9 s-12 3 -12 9 z" fill="#3a2a20"/>
+                  <circle cx="195.5" cy="197" r="1.6" fill="#241e1a"/>
+                  <circle cx="204.5" cy="197" r="1.6" fill="#241e1a"/>
+                  <path class="room-mouth room-mouth--neutral" d="M196.5 202.5 q3.5 3 7 0" stroke="#3a2a20" stroke-width="1.1" fill="none" stroke-linecap="round"/>
+                  <path class="room-mouth room-mouth--happy" d="M193.5 201.5 q6.5 6.5 13 0" stroke="#3a2a20" stroke-width="1.1" fill="none" stroke-linecap="round"/>
+                  <path class="room-mouth room-mouth--bored" d="M196.5 204 q3.5 -2.5 7 0" stroke="#3a2a20" stroke-width="1.1" fill="none" stroke-linecap="round"/>
+                </g>
+                <g class="room-prop" data-prop="book">
+                  <rect x="256" y="204" width="27" height="19" rx="2" transform="rotate(-10 269 213)" style="fill:var(--dev-metal-1); stroke:var(--dev-metal-3)" stroke-width="1"/>
+                </g>
+                <g class="room-prop" data-prop="music">
+                  <text x="256" y="222" font-family="'IBM Plex Mono','IBM Plex Sans Arabic', monospace" font-size="24" style="fill:var(--dev-highlight)">&#9834;</text>
+                </g>
+                <g class="room-prop" data-prop="chat">
+                  <rect x="252" y="196" width="34" height="22" rx="8" style="fill:var(--dev-face); stroke:var(--dev-metal-3)" stroke-width="1"/>
+                  <path d="M262 218 l-5 8 v-8 z" style="fill:var(--dev-face)"/>
+                  <circle cx="263" cy="207" r="2" style="fill:var(--dev-ink-muted)"/>
+                  <circle cx="269" cy="207" r="2" style="fill:var(--dev-ink-muted)"/>
+                  <circle cx="275" cy="207" r="2" style="fill:var(--dev-ink-muted)"/>
+                </g>
+              </g>
+            </svg>
+            <p class="keeper-room__caption" id="roomCaptionBig">Reading quietly</p>
+          </div>
+
+          <div class="call-screen" id="callScreen">
+            <div class="call-screen__head">
+              <div>
+                <span class="call-screen__name" id="activeName">&mdash;</span>
+                <span class="call-screen__meta" id="activeMeta">&mdash;</span>
+              </div>
+              <span class="call-screen__timer" id="callTimer">00:00</span>
+            </div>
+
+            <div class="call-screen__stage">
+              <svg class="keeper-big" id="keeperBig" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="11" style="fill:var(--dev-hub-1); stroke:var(--dev-metal-2)" stroke-width="1"/>
+                <circle cx="8.7" cy="11.6" r="1.3" style="fill:var(--dev-face)"/>
+                <circle cx="15.3" cy="11.6" r="1.3" style="fill:var(--dev-face)"/>
+                <path class="mouth-closed" d="M9 15.4c1 .9 4.4 .9 5.4 0" style="stroke:var(--dev-face)" stroke-width="1.1" fill="none" stroke-linecap="round"/>
+                <ellipse class="mouth-open" cx="12" cy="15.6" rx="2.3" ry="1.6" style="fill:var(--dev-ink)"/>
+              </svg>
+            </div>
+
+            <div class="call-screen__controls">
+              <button class="callctrl" id="muteBtn" aria-pressed="false" aria-label="Mute microphone">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5.5a3 3 0 0 1 6 0v6a3 3 0 0 1-6 0z"/><path d="M6 11a6 6 0 0 0 12 0M12 17v3"/><line class="mic-slash" x1="4" y1="4" x2="20" y2="20" stroke="#e6a49c"/></svg>
+                <span id="txtMute">Mute</span>
+              </button>
+              <button class="callctrl" id="clarityBtn" aria-pressed="false" aria-label="Clean up the caller's audio">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 14V10M9 17V7M13 15V9M17 13v-2M21 14v-4"/></svg>
+                <span id="txtClarity">Clarity</span>
+              </button>
+              <button class="callctrl callctrl--end" id="endCallBtn" aria-label="End call">
+                <svg viewBox="0 0 150 64"><path d="M14 44 C 6 44 4 30 12 24 L 40 6 C 46 2 52 6 50 13 L 46 24 C 62 14 88 14 104 24 L 100 13 C 98 6 104 2 110 6 L 138 24 C 146 30 144 44 136 44 C 130 44 128 40 122 36 C 106 26 44 26 28 36 C 22 40 20 44 14 44 Z" fill="currentColor"/></svg>
+                <span id="txtEnd">End</span>
+              </button>
+            </div>
+
+            <div class="call-screen__transcript is-noisy" id="transcript">
+              <p class="transcript__note" id="txtTranscriptNote">Example live translation</p>
+            </div>
+          </div>
+
+          <div class="toast" id="toast"></div>
+        </div>
+
+        <div class="hub-status" id="hubStatus">
+          <span class="room-mood" id="roomMood"></span>
+          <span class="hub-status__caption" id="roomCaption">Reading quietly</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  /* ---------------- language ---------------- */
+  var currentLang = 'en';
+  var LANG = {
+    en: {
+      dir:'ltr',
+      eyebrow:'Home screen · prototype',
+      lede:'A rotary line with a small keeper asleep in the hub. Dial a name and it wakes to listen — then goes back to sleep once you hang up.',
+      step1:'Pull any number clockwise toward the brass stop and let go. The dial spins back and clicks off the digit.',
+      step2:'Tap the handset to open the line. The keeper climbs up to listen; tap again to send it back down.',
+      step3:'Switch the sky along the top to see the hub react to the caller’s weather.',
+      footnote:'Contacts, Recents, Keeper, and Sounds open as their own screens in the next pass of this prototype.',
+      brand:'Ranah',
+      demoTrigger:'Preview an incoming call',
+      demoHint:'Prototype control — not part of the in-app UI. Jumps Ranah into a ringing state so you can see how the keeper reacts.',
+      skyPrefix:'Caller’s sky',
+      skyGroupAria:'Caller’s weather',
+      skyNames:{clear:'Clear', rain:'Rain', snow:'Snow', storm:'Storm'},
+      paletteLabel:'Case colour',
+      paletteNames:{oxblood:'Oxblood', verdigris:'Verdigris', ivory:'Ivory', graphite:'Graphite'},
+      readoutLabel:'Last dialed',
+      clearAria:'Clear dialed number',
+      linePill:'Line open',
+      handsetLift:'Lift handset to open the line',
+      handsetHangup:'Hang up the handset',
+      incomingTag:'Incoming call',
+      decline:'Decline',
+      mute:'Mute', muteAria:'Mute microphone',
+      clarity:'Clarity', clarityAria:'Clean up the caller’s audio',
+      end:'End', endAria:'End call',
+      translatedLabel:'Translated',
+      exampleNote:'Example live translation',
+      youLabel:'You',
+      dockNames:{contacts:'Contacts', recents:'Recents', keeper:'Keeper', sounds:'Sounds', settings:'Settings'},
+      toastTemplate:'NAME opens in the full build',
+      callers:[
+        {name:'Nadia', meta:'Driving · light rain · 9:42 PM their time', sky:'rain'},
+        {name:'Omar', meta:'At work · clear skies · 2:15 PM their time', sky:'clear'},
+        {name:'Mama', meta:'At home · snow falling · 11:05 PM their time', sky:'snow'}
+      ],
+      defaultCaller:{name:'Home line', meta:'Direct dial · Clear skies'},
+      roomTitle:'Keeper’s room',
+      roomBack:'Dial',
+      wallNote:'call someone soon',
+      wallNoteBored:'hasn’t rung in a while…',
+      wallNoteHappy:'so many calls today!',
+      moodBadge:{bored:'Bored', happy:'Excited'},
+      moments:['Reading quietly','Humming a tune','Waving hello']
+    },
+    ar: {
+      dir:'rtl',
+      eyebrow:'الشاشة الرئيسية · نموذج تجريبي',
+      lede:'خط قرص فيه حارس صغير نايم في نص العجلة. اطلبي رقم فيصحى يسمع — وبعدين يرجع ينام تاني لما تقفلي السكة.',
+      step1:'اسحبي أي رقم مع عقارب الساعة لحد سن التوقف النحاسي وسيبيه. العجلة بترجع لوحدها وبتـ«تك» على الرقم.',
+      step2:'دوسي على السماعة عشان تفتحي الخط. الحارس بيطلع فوق عشان يسمع؛ دوسي تاني عشان يرجع تحت.',
+      step3:'غيّري الجو من فوق عشان تشوفي قلب العجلة بيتفاعل مع طقس اللي بيتصل.',
+      footnote:'جهات الاتصال، الأخيرة، الحارس، والنغمات هيبقى ليهم شاشات مستقلة في نسخة تانية من النموذج ده.',
+      brand:'رنّة',
+      demoTrigger:'جرّبي مكالمة واردة',
+      demoHint:'أداة تجربة بس — مش جزء من واجهة التطبيق. بتنقل رنّة لحالة الرنين عشان تشوفي رد فعل الحارس.',
+      skyPrefix:'جو اللي بيتصل',
+      skyGroupAria:'جو اللي بيتصل',
+      skyNames:{clear:'صافي', rain:'مطر', snow:'تلج', storm:'عاصفة'},
+      paletteLabel:'لون الجسم',
+      paletteNames:{oxblood:'عنّابي', verdigris:'أخضر نحاسي', ivory:'عاجي', graphite:'غرافيت'},
+      readoutLabel:'آخر رقم',
+      clearAria:'امسحي الرقم',
+      linePill:'الخط مفتوح',
+      handsetLift:'ارفعي السماعة عشان تفتحي الخط',
+      handsetHangup:'اقفلي السماعة',
+      incomingTag:'مكالمة واردة',
+      decline:'رفض',
+      mute:'كتم', muteAria:'كتم الميكروفون',
+      clarity:'وضوح', clarityAria:'نضّفي صوت اللي بيتصل',
+      end:'إنهاء', endAria:'إنهاء المكالمة',
+      translatedLabel:'الترجمة',
+      exampleNote:'مثال لترجمة فورية',
+      youLabel:'أنا',
+      dockNames:{contacts:'جهات الاتصال', recents:'الأخيرة', keeper:'الحارس', sounds:'نغمات', settings:'الإعدادات'},
+      toastTemplate:'شاشة NAME هتفتح في النسخة الكاملة',
+      callers:[
+        {name:'نادية', meta:'بتسوق · مطر خفيف · 9:42 مساءً عندها', sky:'rain'},
+        {name:'عمر', meta:'في الشغل · جو صافي · 2:15 الضهر عنده', sky:'clear'},
+        {name:'ماما', meta:'في البيت · بينزل تلج · 11:05 بالليل عندها', sky:'snow'}
+      ],
+      defaultCaller:{name:'خط البيت', meta:'طلب مباشر · جو صافي'},
+      roomTitle:'أوضة الحارس',
+      roomBack:'القرص',
+      wallNote:'اتصل بحد قريب',
+      wallNoteBored:'السكة ساكتة من شوية…',
+      wallNoteHappy:'مكالمات كتير النهارده!',
+      moodBadge:{bored:'زهقان', happy:'مبسوط'},
+      moments:['بيقرا بهدوء','بيدندن لحن','بيسلم عليك']
+    }
+  };
+
+  /* ---------------- clock + sky ---------------- */
+  var clockEl = document.getElementById('clock');
+  var skyEl = document.getElementById('sky');
+  var winStop0 = document.getElementById('winStop0');
+  var winStop1 = document.getElementById('winStop1');
+  var winStop2 = document.getElementById('winStop2');
+
+  function paintSky(hour){
+    var stops;
+    if(hour>=5 && hour<7) stops = ['#2c2440','#6a4a53','#caa06a'];
+    else if(hour>=7 && hour<17) stops = ['#cfe3e2','#eee4c8','#e7d9ad'];
+    else if(hour>=17 && hour<20) stops = ['#3a2436','#8a4a52','#caa24b'];
+    else stops = ['#0c0f1a','#161018','#221a1e'];
+    skyEl.style.background = 'linear-gradient(180deg,' + stops[0] + ',' + stops[1] + ' 55%,' + stops[2] + ')';
+    winStop0.style.stopColor = stops[0];
+    winStop1.style.stopColor = stops[1];
+    winStop2.style.stopColor = stops[2];
+  }
+
+  function tickClock(){
+    var d = new Date();
+    var h = d.getHours(), m = d.getMinutes();
+    clockEl.textContent = String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
+    paintSky(h);
+  }
+  tickClock();
+  setInterval(tickClock, 15000);
+
+  /* ---------------- weather ---------------- */
+  var scene = document.getElementById('scene');
+  var canvas = document.getElementById('weatherCanvas');
+  var skyLabel = document.getElementById('skyLabel');
+  var ctx = canvas.getContext('2d');
+  var particles = [];
+  var currentWeather = 'clear';
+  var rafId = null;
+
+  function sizeCanvas(){
+    var r = scene.getBoundingClientRect();
+    canvas.width = r.width * (window.devicePixelRatio||1);
+    canvas.height = r.height * (window.devicePixelRatio||1);
+    canvas.style.width = r.width+'px';
+    canvas.style.height = r.height+'px';
+    ctx.setTransform(window.devicePixelRatio||1,0,0,window.devicePixelRatio||1,0,0);
+  }
+  window.addEventListener('resize', sizeCanvas);
+
+  function makeParticles(kind){
+    var r = scene.getBoundingClientRect();
+    var n = kind==='snow' ? 40 : 70;
+    var arr = [];
+    for(var i=0;i<n;i++){
+      arr.push({
+        x: Math.random()*r.width,
+        y: Math.random()*r.height,
+        len: kind==='snow' ? 2.5+Math.random()*2.5 : 10+Math.random()*10,
+        speed: kind==='snow' ? 0.4+Math.random()*0.6 : 4+Math.random()*4,
+        drift: kind==='snow' ? (Math.random()-.5)*0.6 : 0
+      });
+    }
+    return arr;
+  }
+
+  function drawFrame(){
+    var r = scene.getBoundingClientRect();
+    ctx.clearRect(0,0,r.width,r.height);
+    if(currentWeather==='rain' || currentWeather==='storm'){
+      ctx.strokeStyle = 'rgba(210,226,235,.5)';
+      ctx.lineWidth = 1.2;
+      particles.forEach(function(p){
+        ctx.beginPath();
+        ctx.moveTo(p.x,p.y);
+        ctx.lineTo(p.x-2,p.y+p.len);
+        ctx.stroke();
+        p.y += p.speed; p.x -= 0.6;
+        if(p.y>r.height){ p.y=-10; p.x=Math.random()*r.width; }
+      });
+    } else if(currentWeather==='snow'){
+      ctx.fillStyle = 'rgba(255,255,255,.85)';
+      particles.forEach(function(p){
+        ctx.beginPath();
+        ctx.arc(p.x,p.y,p.len/2,0,Math.PI*2);
+        ctx.fill();
+        p.y += p.speed; p.x += p.drift;
+        if(p.y>r.height){ p.y=-6; p.x=Math.random()*r.width; }
+      });
+    }
+    rafId = requestAnimationFrame(drawFrame);
+  }
+
+  var stormFlash = null;
+  function setWeather(kind){
+    currentWeather = kind;
+    scene.dataset.sky = kind;
+    skyLabel.textContent = LANG[currentLang].skyPrefix + ' · ' + LANG[currentLang].skyNames[kind];
+    if(stormFlash){ clearInterval(stormFlash); stormFlash=null; }
+    document.querySelectorAll('.sky-btn').forEach(function(b){
+      b.setAttribute('aria-pressed', b.dataset.sky===kind ? 'true':'false');
+    });
+
+    if(reduceMotion){
+      canvas.style.display='none';
+      return;
+    }
+
+    canvas.style.display='block';
+    if(kind==='clear'){
+      particles=[];
+      if(rafId){ cancelAnimationFrame(rafId); rafId=null; ctx.clearRect(0,0,canvas.width,canvas.height); }
+      return;
+    }
+    sizeCanvas();
+    particles = makeParticles(kind==='snow'?'snow':'rain');
+    if(!rafId) drawFrame();
+    if(kind==='storm'){
+      stormFlash = setInterval(function(){
+        skyEl.style.filter = 'brightness(1.6)';
+        setTimeout(function(){ skyEl.style.filter=''; }, 90);
+      }, 3200 + Math.random()*2600);
+    }
+  }
+
+  document.getElementById('skyPicker').addEventListener('click', function(e){
+    var btn = e.target.closest('.sky-btn');
+    if(!btn) return;
+    setWeather(btn.dataset.sky);
+  });
+  setWeather('clear');
+
+  /* ---------------- audio ---------------- */
+  var audioCtx = null;
+  function tone(freq, dur, type, gainPeak){
+    if(!audioCtx){ try{ audioCtx = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){ return; } }
+    var o = audioCtx.createOscillator();
+    var g = audioCtx.createGain();
+    o.type = type||'square';
+    o.frequency.value = freq;
+    g.gain.value = 0.0001;
+    o.connect(g); g.connect(audioCtx.destination);
+    var t = audioCtx.currentTime;
+    g.gain.exponentialRampToValueAtTime(gainPeak||0.06, t+0.005);
+    g.gain.exponentialRampToValueAtTime(0.0001, t+dur);
+    o.start(t); o.stop(t+dur+0.02);
+  }
+  function tick(){ tone(1400, .03, 'square', .05); }
+  function clunk(open){ tone(open?180:120, .16, 'sine', .09); }
+
+  /* ---------------- dial ---------------- */
+  var HOLES = [
+    {digit:'0', angle: 80, letters:'OPER'},
+    {digit:'9', angle:110, letters:'WXYZ'},
+    {digit:'8', angle:140, letters:'TUV'},
+    {digit:'7', angle:170, letters:'PQRS'},
+    {digit:'6', angle:200, letters:'MNO'},
+    {digit:'5', angle:230, letters:'JKL'},
+    {digit:'4', angle:260, letters:'GHI'},
+    {digit:'3', angle:290, letters:'DEF'},
+    {digit:'2', angle:320, letters:'ABC'},
+    {digit:'1', angle:350, letters:''}
+  ];
+  var STOP_ANGLE = 50;
+  var CX=200, CY=200, HOLE_R=130;
+  var svgns = 'http://www.w3.org/2000/svg';
+
+  function polar(angleDeg, radius){
+    var rad = angleDeg*Math.PI/180;
+    return { x: CX+radius*Math.cos(rad), y: CY+radius*Math.sin(rad) };
+  }
+
+  var ringEl = document.getElementById('ring');
+  var stopEl = document.getElementById('fingerStop');
+
+  var stopPt = polar(STOP_ANGLE, 178);
+  var stopInner = polar(STOP_ANGLE, 150);
+  var wedge = document.createElementNS(svgns,'path');
+  var perp = polar(STOP_ANGLE+90, 6);
+  var perpN = polar(STOP_ANGLE-90, 6);
+  wedge.setAttribute('d', 'M'+stopPt.x+' '+stopPt.y+' L'+(stopInner.x+(perp.x-CX))+' '+(stopInner.y+(perp.y-CY))+' L'+(stopInner.x+(perpN.x-CX))+' '+(stopInner.y+(perpN.y-CY))+' Z');
+  wedge.style.fill = 'var(--dev-metal-1)';
+  wedge.style.stroke = 'var(--dev-metal-3)';
+  wedge.setAttribute('stroke-width','1');
+  stopEl.appendChild(wedge);
+
+  HOLES.forEach(function(h){
+    var pt = polar(h.angle, HOLE_R);
+    var g = document.createElementNS(svgns,'g');
+    g.setAttribute('data-digit', h.digit);
+    g.style.cursor = 'grab';
+
+    var maxRot = (STOP_ANGLE - h.angle + 360) % 360;
+    g.dataset.home = h.angle;
+    g.dataset.max = maxRot;
+
+    var hole = document.createElementNS(svgns,'g');
+    hole.setAttribute('transform','translate('+pt.x+','+pt.y+')');
+
+    var c = document.createElementNS(svgns,'circle');
+    c.setAttribute('r','19');
+    c.style.fill = 'var(--dev-face)';
+    c.style.stroke = 'var(--dev-metal-3)';
+    c.setAttribute('stroke-width','1');
+    hole.appendChild(c);
+
+    var num = document.createElementNS(svgns,'text');
+    num.setAttribute('x','0'); num.setAttribute('y', h.letters ? '2':'6');
+    num.setAttribute('text-anchor','middle');
+    num.setAttribute('font-family','Big Shoulders Display, sans-serif');
+    num.setAttribute('font-weight','700');
+    num.setAttribute('font-size','17');
+    num.style.fill = 'var(--dev-ink)';
+    num.textContent = h.digit;
+    hole.appendChild(num);
+
+    if(h.letters){
+      var let_ = document.createElementNS(svgns,'text');
+      let_.setAttribute('x','0'); let_.setAttribute('y','13');
+      let_.setAttribute('text-anchor','middle');
+      let_.setAttribute('font-family','IBM Plex Mono, monospace');
+      let_.setAttribute('font-size','5.4');
+      let_.setAttribute('letter-spacing','.6');
+      let_.style.fill = 'var(--dev-ink-muted)';
+      let_.textContent = h.letters;
+      hole.appendChild(let_);
+    }
+
+    g.appendChild(hole);
+    ringEl.appendChild(g);
+  });
+
+  var rotation = 0;
+  var dragging = null;
+  var returning = false;
+
+  function applyRotation(){
+    ringEl.setAttribute('transform', 'rotate('+rotation+' '+CX+' '+CY+')');
+  }
+
+  function angleFromEvent(evt, svgEl){
+    var pt = svgEl.createSVGPoint();
+    pt.x = evt.clientX; pt.y = evt.clientY;
+    var loc = pt.matrixTransform(svgEl.getScreenCTM().inverse());
+    return Math.atan2(loc.y-CY, loc.x-CX) * 180/Math.PI;
+  }
+
+  var dialSvg = document.getElementById('dialSvg');
+  var lastPointerAngle = 0;
+
+  ringEl.addEventListener('pointerdown', function(e){
+    var g = e.target.closest('g[data-digit]');
+    if(!g || returning) return;
+    dragging = g;
+    dragging.setPointerCapture && dialSvg.setPointerCapture(e.pointerId);
+    lastPointerAngle = angleFromEvent(e, dialSvg);
+    g.style.cursor = 'grabbing';
+  });
+
+  dialSvg.addEventListener('pointermove', function(e){
+    if(!dragging) return;
+    var a = angleFromEvent(e, dialSvg);
+    var delta = a - lastPointerAngle;
+    if(delta > 180) delta -= 360;
+    if(delta < -180) delta += 360;
+    lastPointerAngle = a;
+    var max = parseFloat(dragging.dataset.max);
+    rotation = Math.max(0, Math.min(max, rotation + delta));
+    applyRotation();
+  });
+
+  function finishDrag(){
+    if(!dragging) return;
+    var digit = dragging.dataset.digit;
+    dragging.style.cursor = 'grab';
+    dragging = null;
+    if(rotation < 4){ rotation = 0; applyRotation(); return; }
+    returning = true;
+    var lastTickBucket = Math.floor(rotation/24);
+    function step(){
+      rotation *= 0.86;
+      if(rotation < 0.6) rotation = 0;
+      var bucket = Math.floor(rotation/24);
+      if(bucket !== lastTickBucket){ if(!reduceMotion) tick(); lastTickBucket = bucket; }
+      applyRotation();
+      if(rotation>0){ requestAnimationFrame(step); }
+      else{
+        returning = false;
+        appendDigit(digit);
+      }
+    }
+    if(reduceMotion){ rotation=0; applyRotation(); returning=false; appendDigit(digit); }
+    else requestAnimationFrame(step);
+  }
+  dialSvg.addEventListener('pointerup', finishDrag);
+  dialSvg.addEventListener('pointercancel', finishDrag);
+  dialSvg.addEventListener('pointerleave', function(){ if(dragging) finishDrag(); });
+
+  var digitsEl = document.getElementById('digits');
+  var dialedStr = '';
+  function appendDigit(d){
+    dialedStr = (dialedStr + d).slice(-12);
+    digitsEl.textContent = dialedStr;
+  }
+  document.getElementById('clearDigits').addEventListener('click', function(){
+    dialedStr=''; digitsEl.textContent = '—';
+  });
+
+  /* ---------------- handset / keeper / incoming call ---------------- */
+  var handsetBtn = document.getElementById('handsetBtn');
+  var avatar = document.getElementById('avatar');
+  var infobar = document.getElementById('infobar');
+  var incoming = document.getElementById('incoming');
+  var callerNameEl = document.getElementById('callerName');
+  var callerMetaEl = document.getElementById('callerMeta');
+  var simulateBtn = document.getElementById('simulateCall');
+  var declineBtn = document.getElementById('declineBtn');
+
+  var callState = 'idle';
+  var ringInterval = null;
+  var handsetActive = false;
+
+  function setActiveUI(active){
+    handsetActive = active;
+    handsetBtn.setAttribute('aria-pressed', String(active));
+    handsetBtn.setAttribute('aria-label', active ? LANG[currentLang].handsetHangup : LANG[currentLang].handsetLift);
+    scene.classList.toggle('is-open', active);
+    infobar.classList.toggle('is-open', active);
+    avatar.classList.toggle('awake', active);
+  }
+
+  function ringPulse(){
+    tone(1000, .18, 'sine', .06);
+    setTimeout(function(){ tone(820, .18, 'sine', .06); }, 220);
+  }
+
+  function startRinging(){
+    var callers = LANG[currentLang].callers;
+    var c = callers[Math.floor(Math.random()*callers.length)];
+    callerNameEl.textContent = c.name;
+    callerMetaEl.textContent = c.meta;
+    setWeather(c.sky);
+    callState = 'ringing';
+    scene.classList.add('is-ringing');
+    incoming.classList.add('show');
+    avatar.classList.add('awake','ringing');
+    simulateBtn.disabled = true;
+    ringPulse();
+    ringInterval = setInterval(ringPulse, 3400);
+  }
+
+  function stopRinging(){
+    if(ringInterval){ clearInterval(ringInterval); ringInterval = null; }
+    scene.classList.remove('is-ringing');
+    incoming.classList.remove('show');
+    simulateBtn.disabled = false;
+  }
+
+  function declineCall(){
+    stopRinging();
+    callState = 'idle';
+    avatar.classList.remove('awake','ringing');
+  }
+
+  simulateBtn.addEventListener('click', function(){
+    if(callState !== 'idle') return;
+    startRinging();
+  });
+  declineBtn.addEventListener('click', declineCall);
+
+  /* ---------------- call screen ---------------- */
+  var callScreen = document.getElementById('callScreen');
+  var activeNameEl = document.getElementById('activeName');
+  var activeMetaEl = document.getElementById('activeMeta');
+  var callTimerEl = document.getElementById('callTimer');
+  var keeperBig = document.getElementById('keeperBig');
+  var transcriptEl = document.getElementById('transcript');
+  var muteBtn = document.getElementById('muteBtn');
+  var clarityBtn = document.getElementById('clarityBtn');
+  var endCallBtn = document.getElementById('endCallBtn');
+
+  var SCRIPT = [
+    {who:'you',  original:'إزيّك؟ عامل إيه؟',                         originalDir:'rtl', translated:'How are you? How’s it going?', translatedDir:'ltr'},
+    {who:'them', original:'I’m good — just finishing up a report.', originalDir:'ltr', translated:'أنا كويس، بخلّص تقرير دلوقتي.',      translatedDir:'rtl'},
+    {who:'you',  original:'تمام، هعدّي عليك بعد شوية.',                originalDir:'rtl', translated:'Great, I’ll swing by in a bit.',        translatedDir:'ltr'},
+    {who:'them', original:'Sounds good, see you soon!',                originalDir:'ltr', translated:'تمام، أشوفك قريب!',                        translatedDir:'rtl'}
+  ];
+
+  var muted = false, clarityOn = false;
+  var callsCompleted = 0;
+  var lastCallEndTime = Date.now();
+  var scriptIndex = 0, scriptTimer = null, talkTimer = null;
+  var callSeconds = 0, callTimerInterval = null;
+
+  function addTranscriptRow(entry){
+    var row = document.createElement('div');
+    row.className = 'transcript__row is-' + entry.who;
+    var speaker = document.createElement('span');
+    speaker.className = 'transcript__speaker';
+    speaker.textContent = entry.who === 'you' ? LANG[currentLang].youLabel : activeNameEl.textContent;
+    var orig = document.createElement('p');
+    orig.className = 'transcript__original';
+    orig.dir = entry.originalDir;
+    orig.lang = entry.originalDir === 'rtl' ? 'ar' : 'en';
+    orig.textContent = entry.original;
+    var tag = document.createElement('span');
+    tag.className = 'transcript__tag';
+    tag.dir = entry.translatedDir;
+    tag.textContent = LANG[currentLang].translatedLabel;
+    var trans = document.createElement('p');
+    trans.className = 'transcript__translated';
+    trans.dir = entry.translatedDir;
+    trans.textContent = entry.translated;
+    row.appendChild(speaker); row.appendChild(orig); row.appendChild(tag); row.appendChild(trans);
+    transcriptEl.appendChild(row);
+    transcriptEl.scrollTop = transcriptEl.scrollHeight;
+    if(!reduceMotion){
+      keeperBig.classList.add('talking');
+      clearTimeout(talkTimer);
+      talkTimer = setTimeout(function(){ keeperBig.classList.remove('talking'); }, 1100);
+    }
+  }
+
+  function scheduleNextLine(){
+    scriptTimer = setTimeout(function(){
+      if(muted || callState !== 'active'){ scheduleNextLine(); return; }
+      if(scriptIndex < SCRIPT.length){
+        addTranscriptRow(SCRIPT[scriptIndex]);
+        scriptIndex++;
+      }
+      if(scriptIndex < SCRIPT.length) scheduleNextLine();
+    }, 2600);
+  }
+
+  function startCallTimer(){
+    callSeconds = 0;
+    callTimerEl.textContent = '00:00';
+    callTimerInterval = setInterval(function(){
+      callSeconds++;
+      var m = Math.floor(callSeconds/60), s = callSeconds%60;
+      callTimerEl.textContent = String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+    }, 1000);
+  }
+  function stopCallTimer(){
+    if(callTimerInterval){ clearInterval(callTimerInterval); callTimerInterval = null; }
+  }
+
+  function openCall(name, meta){
+    activeNameEl.textContent = name;
+    activeMetaEl.textContent = meta;
+    scene.classList.add('is-active');
+    callScreen.classList.add('show');
+    muted = false; clarityOn = false;
+    muteBtn.setAttribute('aria-pressed','false');
+    clarityBtn.setAttribute('aria-pressed','false');
+    transcriptEl.classList.add('is-noisy');
+    transcriptEl.innerHTML = '<p class="transcript__note" id="txtTranscriptNote">' + LANG[currentLang].exampleNote + '</p>';
+    scriptIndex = 0;
+    startCallTimer();
+    scheduleNextLine();
+  }
+
+  function closeCall(){
+    scene.classList.remove('is-active');
+    callScreen.classList.remove('show');
+    clearTimeout(scriptTimer); scriptTimer = null;
+    clearTimeout(talkTimer); talkTimer = null;
+    keeperBig.classList.remove('talking');
+    stopCallTimer();
+    callsCompleted++;
+    lastCallEndTime = Date.now();
+    updateMoodVisuals();
+  }
+
+  muteBtn.addEventListener('click', function(){
+    muted = !muted;
+    muteBtn.setAttribute('aria-pressed', String(muted));
+  });
+  clarityBtn.addEventListener('click', function(){
+    clarityOn = !clarityOn;
+    clarityBtn.setAttribute('aria-pressed', String(clarityOn));
+    transcriptEl.classList.toggle('is-noisy', !clarityOn);
+  });
+
+  function hangUp(){
+    callState = 'idle';
+    setActiveUI(false);
+    closeCall();
+    clunk(false);
+  }
+  endCallBtn.addEventListener('click', hangUp);
+
+  handsetBtn.addEventListener('click', function(){
+    if(callState === 'ringing'){
+      var name = callerNameEl.textContent, meta = callerMetaEl.textContent;
+      stopRinging();
+      callState = 'active';
+      avatar.classList.remove('ringing');
+      setActiveUI(true);
+      openCall(name, meta);
+      clunk(true);
+      return;
+    }
+    if(callState === 'active'){
+      hangUp();
+      return;
+    }
+    callState = 'active';
+    setActiveUI(true);
+    openCall(LANG[currentLang].defaultCaller.name, LANG[currentLang].defaultCaller.meta);
+    clunk(true);
+  });
+
+  /* ---------------- keeper mood + moments ---------------- */
+  var keeperRoom = document.getElementById('keeperRoom');
+  var roomBackBtn = document.getElementById('roomBack');
+  var roomKeeperEl = document.getElementById('roomKeeper');
+  var roomCaptionEl = document.getElementById('roomCaption');
+  var roomCaptionBigEl = document.getElementById('roomCaptionBig');
+  var roomMoodEl = document.getElementById('roomMood');
+  var roomMoodBigEl = document.getElementById('roomMoodBig');
+  var ROOM_PROPS = ['book','music','chat'];
+  var roomMomentIndex = 0;
+  var roomOpen = false;
+  var currentMood = 'neutral';
+  var BORED_MS = 30000;
+  var HAPPY_MS = 18000;
+
+  function computeMood(){
+    var dt = Date.now() - lastCallEndTime;
+    if(dt < HAPPY_MS && callsCompleted > 0) return 'happy';
+    if(dt > BORED_MS) return 'bored';
+    return 'neutral';
+  }
+
+  function applyMoodBadge(el, show){
+    if(!show){
+      el.classList.remove('show','mood-bored','mood-happy');
+      return;
+    }
+    el.textContent = LANG[currentLang].moodBadge[currentMood];
+    el.classList.add('show');
+    el.classList.toggle('mood-bored', currentMood==='bored');
+    el.classList.toggle('mood-happy', currentMood==='happy');
+  }
+
+  function refreshMoodText(){
+    var show = currentMood !== 'neutral';
+    applyMoodBadge(roomMoodEl, show);
+    applyMoodBadge(roomMoodBigEl, show);
+    var note = !show ? LANG[currentLang].wallNote :
+      (currentMood==='bored' ? LANG[currentLang].wallNoteBored : LANG[currentLang].wallNoteHappy);
+    document.getElementById('txtWallNote').textContent = note;
+    document.getElementById('txtWallNoteRoom').textContent = note;
+  }
+
+  function updateMoodVisuals(){
+    currentMood = computeMood();
+    [avatar, roomKeeperEl].forEach(function(el){
+      el.classList.remove('mood-bored','mood-happy');
+      if(currentMood!=='neutral') el.classList.add('mood-' + currentMood);
+    });
+    refreshMoodText();
+  }
+  setInterval(updateMoodVisuals, 4000);
+
+  function renderRoomMoment(){
+    var text = LANG[currentLang].moments[roomMomentIndex];
+    roomCaptionEl.textContent = text;
+    roomCaptionBigEl.textContent = text;
+    document.querySelectorAll('.room-prop').forEach(function(p){
+      p.classList.toggle('show', p.dataset.prop === ROOM_PROPS[roomMomentIndex]);
+    });
+  }
+  renderRoomMoment();
+
+  function bumpKeeper(el){
+    if(reduceMotion) return;
+    el.classList.remove('bump');
+    requestAnimationFrame(function(){
+      requestAnimationFrame(function(){ el.classList.add('bump'); });
+    });
+  }
+  function cycleRoomMoment(){
+    avatar.classList.remove('mood-bored','mood-happy');
+    roomKeeperEl.classList.remove('mood-bored','mood-happy');
+    roomMomentIndex = (roomMomentIndex + 1) % ROOM_PROPS.length;
+    renderRoomMoment();
+    bumpKeeper(avatar);
+    bumpKeeper(roomKeeperEl);
+  }
+  [avatar, roomKeeperEl].forEach(function(el){
+    el.addEventListener('click', cycleRoomMoment);
+    el.addEventListener('keydown', function(e){
+      if(e.key==='Enter' || e.key===' '){ e.preventDefault(); cycleRoomMoment(); }
+    });
+  });
+
+  function openRoom(){
+    if(callState !== 'idle') return;
+    roomOpen = true;
+    scene.classList.add('is-room');
+    keeperRoom.classList.add('show');
+    updateMoodVisuals();
+  }
+  function closeRoom(){
+    roomOpen = false;
+    scene.classList.remove('is-room');
+    keeperRoom.classList.remove('show');
+  }
+  roomBackBtn.addEventListener('click', closeRoom);
+
+  /* ---------------- dock toasts ---------------- */
+  var toast = document.getElementById('toast');
+  var toastTimer = null;
+  var dockBtns = document.querySelectorAll('.dock-btn');
+  dockBtns.forEach(function(btn){
+    btn.addEventListener('click', function(){
+      if(btn.dataset.key === 'keeper'){
+        if(roomOpen) closeRoom(); else openRoom();
+        return;
+      }
+      if(roomOpen) closeRoom();
+      var name = LANG[currentLang].dockNames[btn.dataset.key];
+      toast.textContent = LANG[currentLang].toastTemplate.replace('NAME', name);
+      toast.classList.add('show');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(function(){ toast.classList.remove('show'); }, 1700);
+    });
+  });
+
+  /* ---------------- palette ---------------- */
+  var palettePicker = document.getElementById('palettePicker');
+  var paletteSwatches = document.querySelectorAll('.palette-swatch');
+  palettePicker.addEventListener('click', function(e){
+    var btn = e.target.closest('.palette-swatch');
+    if(!btn) return;
+    var name = btn.dataset.palette;
+    pageEl.setAttribute('data-palette', name === 'oxblood' ? '' : name);
+    paletteSwatches.forEach(function(s){
+      s.setAttribute('aria-pressed', String(s===btn));
+    });
+  });
+
+  /* ---------------- language toggle ---------------- */
+  var pageEl = document.getElementById('page');
+  var langEnBtn = document.getElementById('langEn');
+  var langArBtn = document.getElementById('langAr');
+  var skyPickerEl = document.getElementById('skyPicker');
+
+  function applyLang(lang){
+    currentLang = lang;
+    var t = LANG[lang];
+    pageEl.setAttribute('dir', t.dir);
+    pageEl.setAttribute('lang', lang);
+    langEnBtn.setAttribute('aria-pressed', String(lang==='en'));
+    langArBtn.setAttribute('aria-pressed', String(lang==='ar'));
+
+    document.getElementById('txtBrand').textContent = t.brand;
+    document.getElementById('txtEyebrow').textContent = t.eyebrow;
+    document.getElementById('txtLede').textContent = t.lede;
+    document.getElementById('txtStep1').textContent = t.step1;
+    document.getElementById('txtStep2').textContent = t.step2;
+    document.getElementById('txtStep3').textContent = t.step3;
+    document.getElementById('txtFootnote').textContent = t.footnote;
+    document.getElementById('txtDemoTrigger').textContent = t.demoTrigger;
+    document.getElementById('txtDemoHint').textContent = t.demoHint;
+
+    skyLabel.textContent = t.skyPrefix + ' · ' + t.skyNames[currentWeather];
+    skyPickerEl.setAttribute('aria-label', t.skyGroupAria);
+    document.querySelectorAll('.sky-btn').forEach(function(b){
+      b.setAttribute('aria-label', t.skyNames[b.dataset.sky]);
+    });
+
+    document.getElementById('txtReadoutLabel').textContent = t.readoutLabel;
+    document.getElementById('clearDigits').setAttribute('aria-label', t.clearAria);
+    document.getElementById('txtLinePill').textContent = t.linePill;
+    handsetBtn.setAttribute('aria-label', handsetActive ? t.handsetHangup : t.handsetLift);
+
+    document.getElementById('txtIncomingTag').textContent = t.incomingTag;
+    declineBtn.textContent = t.decline;
+
+    document.getElementById('txtMute').textContent = t.mute;
+    muteBtn.setAttribute('aria-label', t.muteAria);
+    document.getElementById('txtClarity').textContent = t.clarity;
+    clarityBtn.setAttribute('aria-label', t.clarityAria);
+    document.getElementById('txtEnd').textContent = t.end;
+    endCallBtn.setAttribute('aria-label', t.endAria);
+
+    var note = document.getElementById('txtTranscriptNote');
+    if(note) note.textContent = t.exampleNote;
+
+    dockBtns.forEach(function(btn){
+      btn.querySelector('.dock-btn__label').textContent = t.dockNames[btn.dataset.key];
+    });
+
+    paletteSwatches.forEach(function(s){
+      s.setAttribute('aria-label', t.paletteNames[s.dataset.palette]);
+    });
+    palettePicker.setAttribute('aria-label', t.paletteLabel);
+
+    document.getElementById('txtRoomTitle').textContent = t.roomTitle;
+    document.getElementById('txtRoomBack').textContent = t.roomBack;
+    refreshMoodText();
+    renderRoomMoment();
+  }
+
+  langEnBtn.addEventListener('click', function(){ if(currentLang!=='en') applyLang('en'); });
+  langArBtn.addEventListener('click', function(){ if(currentLang!=='ar') applyLang('ar'); });
+  applyLang('en');
+})();
+</script>
+
+<style>
+  .avatar-body{ transform-origin:200px 210px; transition:transform .55s cubic-bezier(.34,1.4,.4,1); }
+  #avatar.awake .avatar-body{ transform:translateY(-9px); }
+  @media (prefers-reduced-motion: no-preference){
+    #avatar.ringing .avatar-body{ animation:keeperBounce .5s ease-in-out infinite; }
+  }
+  @keyframes keeperBounce{
+    0%,100%{ transform:translateY(-9px); }
+    50%{ transform:translateY(-13px); }
+  }
+  #avatar.awake .blanket{ transition:opacity .4s ease; opacity:0; }
+  .blanket{ transition:opacity .4s ease; }
+  .eyes-open{ display:none; }
+  #avatar.awake .eyes-open{ display:block; }
+  #avatar.awake .eyes-closed{ display:none; }
+  .mouth-awake, .mouth-happy-hub, .mouth-bored-hub{ display:none; }
+  #avatar.awake .mouth-sleep{ display:none; }
+  #avatar.awake .mouth-awake{ display:block; }
+  #avatar.awake.mood-happy .mouth-awake{ display:none; }
+  #avatar.awake.mood-happy .mouth-happy-hub{ display:block; }
+  #avatar.awake.mood-bored .mouth-awake{ display:none; }
+  #avatar.awake.mood-bored .mouth-bored-hub{ display:block; }
+  .avatar-zzz{ transition:opacity .3s ease; }
+  #avatar.awake .avatar-zzz{ opacity:0; }
+  @media (prefers-reduced-motion: no-preference){
+    .avatar-zzz text{ animation:zzzfloat 2.6s ease-in-out infinite; }
+    .avatar-zzz text:last-child{ animation-delay:.4s; }
+  }
+  @keyframes zzzfloat{ 0%,100%{ transform:translateY(0); opacity:.55; } 50%{ transform:translateY(-4px); opacity:.9; } }
+</style>
