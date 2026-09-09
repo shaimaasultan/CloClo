@@ -591,7 +591,7 @@
     text-align:center;
     transition:opacity .2s ease;
   }
-  .scene.is-room ~ .hub-status, .scene.is-active ~ .hub-status, .scene.is-contacts ~ .hub-status, .scene.is-recents ~ .hub-status, .scene.is-sounds ~ .hub-status, .scene.is-settings ~ .hub-status{
+  .scene.is-room ~ .hub-status, .scene.is-active ~ .hub-status, .scene.is-contacts ~ .hub-status, .scene.is-recents ~ .hub-status, .scene.is-sounds ~ .hub-status, .scene.is-settings ~ .hub-status, .scene.is-advanced ~ .hub-status{
     opacity:0; visibility:hidden; pointer-events:none;
   }
   .hub-status__caption{
@@ -625,10 +625,10 @@
   .room-keeper.mood-bored .room-mouth--neutral{ display:none; }
   .room-keeper.mood-bored .room-mouth--bored{ display:block; }
 
-  .scene.is-room, .scene.is-contacts, .scene.is-recents, .scene.is-sounds, .scene.is-settings{ height:min(100vw,580px); min-height:500px; }
-  .scene.is-room .dial-wrap, .scene.is-contacts .dial-wrap, .scene.is-recents .dial-wrap, .scene.is-sounds .dial-wrap, .scene.is-settings .dial-wrap,
-  .scene.is-room .cradle, .scene.is-contacts .cradle, .scene.is-recents .cradle, .scene.is-sounds .cradle, .scene.is-settings .cradle,
-  .scene.is-room .handset-hit, .scene.is-contacts .handset-hit, .scene.is-recents .handset-hit, .scene.is-sounds .handset-hit, .scene.is-settings .handset-hit{ opacity:0; pointer-events:none; }
+  .scene.is-room, .scene.is-contacts, .scene.is-recents, .scene.is-sounds, .scene.is-settings, .scene.is-advanced{ height:min(100vw,580px); min-height:500px; }
+  .scene.is-room .dial-wrap, .scene.is-contacts .dial-wrap, .scene.is-recents .dial-wrap, .scene.is-sounds .dial-wrap, .scene.is-settings .dial-wrap, .scene.is-advanced .dial-wrap,
+  .scene.is-room .cradle, .scene.is-contacts .cradle, .scene.is-recents .cradle, .scene.is-sounds .cradle, .scene.is-settings .cradle, .scene.is-advanced .cradle,
+  .scene.is-room .handset-hit, .scene.is-contacts .handset-hit, .scene.is-recents .handset-hit, .scene.is-sounds .handset-hit, .scene.is-settings .handset-hit, .scene.is-advanced .handset-hit{ opacity:0; pointer-events:none; }
 
   .contacts-screen{
     position:absolute; inset:0; z-index:5;
@@ -776,6 +776,42 @@
     font-size:.62rem; letter-spacing:.02em;
     color:rgba(239,230,211,.4);
   }
+  .setting-link{
+    display:flex; align-items:center; justify-content:space-between; gap:16px;
+    width:100%; text-align:start;
+    background:none; border:none; cursor:pointer;
+    padding:14px 4px; margin-top:10px;
+    border-top:1px solid rgba(255,255,255,.06);
+  }
+  .setting-link__chev{ width:16px; height:16px; flex-shrink:0; color:rgba(239,230,211,.4); }
+  [dir="rtl"] .setting-link__chev{ transform:rotate(180deg); }
+  .setting-link:focus-visible{ outline:2px solid #6cc2b3; outline-offset:2px; }
+
+  .adv-section{
+    display:flex; flex-direction:column; gap:12px;
+    padding:14px 4px;
+    border-bottom:1px solid rgba(255,255,255,.06);
+  }
+  .adv-section:last-child{ border-bottom:none; }
+  .adv-section__label{
+    font-family:'IBM Plex Sans','IBM Plex Sans Arabic', sans-serif;
+    font-weight:600; font-size:.8rem; color:#f3ecdd;
+  }
+  .adv-palette-row{ gap:10px; }
+  .adv-palette-row .palette-swatch{
+    width:32px; height:32px;
+    box-shadow:0 1px 3px rgba(0,0,0,.4);
+  }
+  .adv-palette-row .palette-swatch[aria-pressed="true"]{ border-color:var(--dev-highlight); }
+  .adv-palette-row .palette-swatch:focus-visible{ outline-color:var(--dev-highlight); }
+  .adv-lang-switch{
+    display:inline-flex; flex-shrink:0; width:fit-content;
+    border:1px solid rgba(255,255,255,.12);
+    border-radius:999px; padding:2px; gap:2px;
+  }
+  .adv-lang-switch .lang-btn{ color:rgba(239,230,211,.6); }
+  .adv-lang-switch .lang-btn[aria-pressed="true"]{ background:var(--dev-metal-2); color:var(--dev-ink); }
+  .adv-lang-switch .lang-btn:focus-visible{ outline-color:#6cc2b3; }
 
   .keeper-room{
     position:absolute; inset:0; z-index:5;
@@ -1162,7 +1198,41 @@
                   <span class="switch__thumb"></span>
                 </button>
               </div>
-              <p class="settings-note" id="txtSettingsNote">Language and case colour are up top ↑</p>
+              <button class="setting-link" id="advancedOpenBtn" type="button">
+                <span class="setting-row__text">
+                  <span class="setting-row__label" id="txtAdvancedLabel">Advanced settings</span>
+                  <span class="setting-row__hint" id="txtAdvancedHint">Language and case colour</span>
+                </span>
+                <svg class="setting-link__chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="contacts-screen" id="advancedScreen">
+            <div class="keeper-room__head">
+              <button class="room-back" id="advancedBack">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+                <span id="txtAdvancedBack">Settings</span>
+              </button>
+              <span class="keeper-room__title" id="txtAdvancedTitle">Advanced settings</span>
+            </div>
+            <div class="settings-list">
+              <div class="adv-section">
+                <span class="adv-section__label" id="txtAdvColourLabel">Case colour</span>
+                <div class="palette-picker__row adv-palette-row" id="advPalettePicker" role="group" aria-label="Case colour">
+                  <button class="palette-swatch" data-palette="oxblood" aria-pressed="true" aria-label="Oxblood"></button>
+                  <button class="palette-swatch" data-palette="verdigris" aria-pressed="false" aria-label="Verdigris"></button>
+                  <button class="palette-swatch" data-palette="ivory" aria-pressed="false" aria-label="Ivory"></button>
+                  <button class="palette-swatch" data-palette="graphite" aria-pressed="false" aria-label="Graphite"></button>
+                </div>
+              </div>
+              <div class="adv-section">
+                <span class="adv-section__label" id="txtAdvLangLabel">Language</span>
+                <div class="lang-switch adv-lang-switch" role="group" aria-label="Interface language">
+                  <button class="lang-btn" id="advLangEn" data-lang="en" aria-pressed="true">EN</button>
+                  <button class="lang-btn" id="advLangAr" data-lang="ar" aria-pressed="false">عربي</button>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -1264,7 +1334,9 @@
       privacyLabel:'Privacy mode',
       privacyHint:'Hides dialled numbers and recent calls',
       privacyHidden:'Hidden while Privacy mode is on',
-      settingsNote:'Language and case colour are up top ↑',
+      advancedTitle:'Advanced settings',
+      advancedHint:'Language and case colour',
+      languageLabel:'Language',
       recents:[
         {callerIdx:0, type:'incoming', time:'2m ago', meta:'Driving · light rain · 9:42 PM their time'},
         {callerIdx:1, type:'outgoing', time:'Yesterday', meta:'At the gym · clear skies · 6:30 PM their time'},
@@ -1327,7 +1399,9 @@
       privacyLabel:'وضع الخصوصية',
       privacyHint:'بيخفي الأرقام اللي اتطلبت والمكالمات الأخيرة',
       privacyHidden:'مخفية أثناء وضع الخصوصية',
-      settingsNote:'اللغة ولون الجسم فوق ↑',
+      advancedTitle:'إعدادات متقدمة',
+      advancedHint:'اللغة ولون الجسم',
+      languageLabel:'اللغة',
       recents:[
         {callerIdx:0, type:'incoming', time:'من دقيقتين', meta:'بتسوق · مطر خفيف · 9:42 مساءً عندها'},
         {callerIdx:1, type:'outgoing', time:'إمبارح', meta:'في الجيم · جو صافي · 6:30 المغرب عنده'},
@@ -2037,6 +2111,7 @@
     if(contactsOpen) closeContacts();
     if(recentsOpen) closeRecents();
     if(soundsOpen) closeSounds();
+    if(advancedOpen) closeAdvanced();
     if(settingsOpen) closeSettings();
   }
   function openContacts(){
@@ -2227,6 +2302,30 @@
     renderRecents();
   });
 
+  /* ---------------- advanced settings screen ---------------- */
+  var advancedScreen = document.getElementById('advancedScreen');
+  var advancedBackBtn = document.getElementById('advancedBack');
+  var advancedOpenBtn = document.getElementById('advancedOpenBtn');
+  var advancedOpen = false;
+
+  function openAdvanced(){
+    if(callState !== 'idle') return;
+    advancedOpen = true;
+    scene.classList.remove('is-settings');
+    scene.classList.add('is-advanced');
+    settingsScreen.classList.remove('show');
+    advancedScreen.classList.add('show');
+  }
+  function closeAdvanced(){
+    advancedOpen = false;
+    scene.classList.remove('is-advanced');
+    scene.classList.add('is-settings');
+    advancedScreen.classList.remove('show');
+    settingsScreen.classList.add('show');
+  }
+  advancedOpenBtn.addEventListener('click', openAdvanced);
+  advancedBackBtn.addEventListener('click', closeAdvanced);
+
   /* ---------------- dock navigation ---------------- */
   var dockBtns = document.querySelectorAll('.dock-btn');
   dockBtns.forEach(function(btn){
@@ -2248,6 +2347,7 @@
         return;
       }
       if(btn.dataset.key === 'settings'){
+        if(advancedOpen){ closeAdvanced(); closeSettings(); return; }
         if(settingsOpen){ closeSettings(); } else { openSettings(); }
         return;
       }
@@ -2256,21 +2356,23 @@
 
   /* ---------------- palette ---------------- */
   var palettePicker = document.getElementById('palettePicker');
+  var advPalettePicker = document.getElementById('advPalettePicker');
   var paletteSwatches = document.querySelectorAll('.palette-swatch');
-  palettePicker.addEventListener('click', function(e){
+  function handlePaletteClick(e){
     var btn = e.target.closest('.palette-swatch');
     if(!btn) return;
     var name = btn.dataset.palette;
     pageEl.setAttribute('data-palette', name === 'oxblood' ? '' : name);
     paletteSwatches.forEach(function(s){
-      s.setAttribute('aria-pressed', String(s===btn));
+      s.setAttribute('aria-pressed', String(s.dataset.palette === name));
     });
-  });
+  }
+  palettePicker.addEventListener('click', handlePaletteClick);
+  advPalettePicker.addEventListener('click', handlePaletteClick);
 
   /* ---------------- language toggle ---------------- */
   var pageEl = document.getElementById('page');
-  var langEnBtn = document.getElementById('langEn');
-  var langArBtn = document.getElementById('langAr');
+  var langBtns = document.querySelectorAll('.lang-btn');
   var skyPickerEl = document.getElementById('skyPicker');
 
   function applyLang(lang){
@@ -2278,8 +2380,9 @@
     var t = LANG[lang];
     pageEl.setAttribute('dir', t.dir);
     pageEl.setAttribute('lang', lang);
-    langEnBtn.setAttribute('aria-pressed', String(lang==='en'));
-    langArBtn.setAttribute('aria-pressed', String(lang==='ar'));
+    langBtns.forEach(function(btn){
+      btn.setAttribute('aria-pressed', String(btn.dataset.lang === lang));
+    });
 
     document.getElementById('txtBrand').textContent = t.brand;
     document.getElementById('txtEyebrow').textContent = t.eyebrow;
@@ -2348,11 +2451,19 @@
     document.getElementById('txtSoundHint').textContent = t.soundHint;
     document.getElementById('txtPrivacyLabel').textContent = t.privacyLabel;
     document.getElementById('txtPrivacyHint').textContent = t.privacyHint;
-    document.getElementById('txtSettingsNote').textContent = t.settingsNote;
+    document.getElementById('txtAdvancedLabel').textContent = t.advancedTitle;
+    document.getElementById('txtAdvancedHint').textContent = t.advancedHint;
+
+    document.getElementById('txtAdvancedTitle').textContent = t.advancedTitle;
+    document.getElementById('txtAdvancedBack').textContent = t.settingsTitle;
+    document.getElementById('txtAdvColourLabel').textContent = t.paletteLabel;
+    document.getElementById('txtAdvLangLabel').textContent = t.languageLabel;
+    advPalettePicker.setAttribute('aria-label', t.paletteLabel);
   }
 
-  langEnBtn.addEventListener('click', function(){ if(currentLang!=='en') applyLang('en'); });
-  langArBtn.addEventListener('click', function(){ if(currentLang!=='ar') applyLang('ar'); });
+  langBtns.forEach(function(btn){
+    btn.addEventListener('click', function(){ if(currentLang !== btn.dataset.lang) applyLang(btn.dataset.lang); });
+  });
   applyLang('en');
 })();
 </script>
