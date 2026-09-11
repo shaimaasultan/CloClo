@@ -1,0 +1,63 @@
+import { useRouter } from 'expo-router';
+import React from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useLang } from '../../state/LangContext';
+import { usePalette } from '../../state/PaletteContext';
+import { DockIcon, DockKey } from '../DockIcon/DockIcon';
+
+const DOCK_KEYS: DockKey[] = ['dial', 'contacts', 'recents', 'keeper', 'sounds', 'settings'];
+
+// Only Dial and Keeper have real screens so far — the rest render inert,
+// same as on the prototype's dock before their screens existed.
+const DOCK_ROUTES: Partial<Record<DockKey, string>> = {
+  dial: '/',
+  keeper: '/room',
+};
+
+interface DockProps {
+  active: DockKey;
+}
+
+export function Dock({ active }: DockProps) {
+  const router = useRouter();
+  const { t, isRtl } = useLang();
+  const { colours } = usePalette();
+  const rowDir = isRtl ? 'row-reverse' : 'row';
+
+  return (
+    <View style={[styles.dock, { flexDirection: rowDir }]}>
+      {DOCK_KEYS.map((key) => {
+        const isActive = key === active;
+        const iconColor = isActive ? colours.highlight : '#c9bfa9';
+        const content = (
+          <View style={[styles.dockBtn, isActive && styles.dockBtnActive]}>
+            <DockIcon name={key} color={iconColor} />
+            <Text style={[styles.dockLabel, isActive && { color: iconColor }]}>{t.dockNames[key]}</Text>
+          </View>
+        );
+        const route = DOCK_ROUTES[key];
+        if (route && !isActive) {
+          return (
+            <Pressable key={key} onPress={() => router.push(route as never)} accessibilityRole="button">
+              {content}
+            </Pressable>
+          );
+        }
+        return <View key={key}>{content}</View>;
+      })}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  dock: {
+    justifyContent: 'space-between',
+    paddingHorizontal: 10,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,.06)',
+  },
+  dockBtn: { alignItems: 'center', gap: 5, paddingVertical: 6, paddingHorizontal: 4, borderRadius: 12 },
+  dockBtnActive: { backgroundColor: 'rgba(201,162,75,.18)' },
+  dockLabel: { color: '#c9bfa9', fontSize: 9, letterSpacing: 0.5, textTransform: 'uppercase' },
+});

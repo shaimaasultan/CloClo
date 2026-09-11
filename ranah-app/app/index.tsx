@@ -1,29 +1,25 @@
+import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { DockIcon } from '../src/components/DockIcon/DockIcon';
+import { Dock } from '../src/components/Dock/Dock';
 import { KeeperAvatar } from '../src/components/KeeperAvatar/KeeperAvatar';
 import { PhoneHandset } from '../src/components/PhoneHandset/PhoneHandset';
 import { RotaryDial } from '../src/components/RotaryDial/RotaryDial';
-import { SkyIcon } from '../src/components/SkyIcon/SkyIcon';
-import { WeatherLayer, WeatherKind } from '../src/components/WeatherLayer/WeatherLayer';
+import { TopBar } from '../src/components/TopBar/TopBar';
+import { WeatherLayer } from '../src/components/WeatherLayer/WeatherLayer';
+import { useKeeperState } from '../src/state/KeeperStateContext';
 import { useLang } from '../src/state/LangContext';
 import { usePalette } from '../src/state/PaletteContext';
-import { PaletteName } from '../src/theme/tokens';
 
-const PALETTE_ORDER: PaletteName[] = ['oxblood', 'verdigris', 'ivory', 'graphite'];
-const DOCK_KEYS = ['dial', 'contacts', 'recents', 'keeper', 'sounds', 'settings'] as const;
-const SKY_ORDER: WeatherKind[] = ['clear', 'rain', 'snow', 'storm'];
 const CHROME_HEIGHT = 230; // rough budget for topBar + dock + readout row above the stage
 
-type CallState = 'idle' | 'ringing' | 'active';
-
 export default function DialScreen() {
-  const { t, lang, setLang, isRtl } = useLang();
-  const { paletteName, colours, setPalette } = usePalette();
+  const router = useRouter();
+  const { t, isRtl } = useLang();
+  const { colours } = usePalette();
   const [dialed, setDialed] = useState('');
-  const [callState, setCallState] = useState<CallState>('idle');
-  const [sky, setSky] = useState<WeatherKind>('clear');
+  const { callState, setCallState, sky, mood } = useKeeperState();
   const { width: winWidth, height: winHeight } = useWindowDimensions();
 
   const rowDir = isRtl ? 'row-reverse' : 'row';
@@ -46,53 +42,9 @@ export default function DialScreen() {
     <View style={[styles.root, { backgroundColor: colours.body2 }]}>
       <WeatherLayer width={winWidth} height={winHeight} kind={sky} topInset={CHROME_HEIGHT} />
       <SafeAreaView style={styles.safe}>
-        <View style={[styles.topBar, { flexDirection: rowDir }]}>
-          <View style={[styles.skyPicker, { flexDirection: rowDir }]}>
-            {SKY_ORDER.map((kind) => {
-              const active = sky === kind;
-              return (
-                <Pressable
-                  key={kind}
-                  onPress={() => setSky(kind)}
-                  accessibilityRole="button"
-                  accessibilityLabel={`${t.skyPrefix}: ${t.skyNames[kind]}`}
-                  style={[styles.skyBtn, active && { backgroundColor: 'rgba(243,215,139,.22)' }]}
-                >
-                  <SkyIcon kind={kind} size={15} color={active ? colours.highlight : '#c9bfa9'} />
-                </Pressable>
-              );
-            })}
-          </View>
-          {PALETTE_ORDER.map((name) => (
-            <Pressable
-              key={name}
-              onPress={() => setPalette(name)}
-              style={[
-                styles.swatch,
-                { backgroundColor: `#${paletteSwatchHex(name)}` },
-                paletteName === name && styles.swatchActive,
-              ]}
-            />
-          ))}
-          <View style={{ flex: 1 }} />
-          <Pressable onPress={() => setLang(lang === 'en' ? 'ar' : 'en')} style={styles.langToggle}>
-            <Text style={[styles.langLabel, lang === 'en' && styles.langLabelActive]}>EN</Text>
-            <Text style={[styles.langLabel, lang === 'ar' && styles.langLabelActive]}>عربي</Text>
-          </Pressable>
-        </View>
+        <TopBar />
 
-        <View style={[styles.dock, { flexDirection: rowDir }]}>
-          {DOCK_KEYS.map((key) => {
-            const active = key === 'dial';
-            const iconColor = active ? colours.highlight : '#c9bfa9';
-            return (
-              <View key={key} style={[styles.dockBtn, active && styles.dockBtnActive]}>
-                <DockIcon name={key} color={iconColor} />
-                <Text style={[styles.dockLabel, active && { color: iconColor }]}>{t.dockNames[key]}</Text>
-              </View>
-            );
-          })}
-        </View>
+        <Dock active="dial" />
 
         <View style={[styles.readoutRow, { flexDirection: rowDir }]}>
           <View style={styles.readout}>
@@ -138,7 +90,9 @@ export default function DialScreen() {
                     size={dialSize * 0.47}
                     colours={colours}
                     awake={awake}
+                    mood={mood}
                     showUmbrella={sky === 'rain' || sky === 'snow' || sky === 'storm'}
+                    onPress={() => router.push('/room')}
                   />
                 }
               />
@@ -150,64 +104,9 @@ export default function DialScreen() {
   );
 }
 
-function paletteSwatchHex(name: PaletteName) {
-  switch (name) {
-    case 'oxblood':
-      return '6b2b26';
-    case 'verdigris':
-      return '1f3d34';
-    case 'ivory':
-      return 'cbb994';
-    case 'graphite':
-      return '2b2b2e';
-  }
-}
-
 const styles = StyleSheet.create({
   root: { flex: 1 },
   safe: { flex: 1 },
-  topBar: {
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    gap: 8,
-  },
-  swatch: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: 'transparent',
-  },
-  swatchActive: { borderColor: '#f3d78b' },
-  skyPicker: { gap: 4, marginRight: 4 },
-  skyBtn: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  langToggle: {
-    flexDirection: 'row',
-    gap: 8,
-    backgroundColor: 'rgba(255,255,255,.08)',
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  langLabel: { color: 'rgba(239,230,211,.5)', fontSize: 12, fontWeight: '600' },
-  langLabelActive: { color: '#efe6d3' },
-  dock: {
-    justifyContent: 'space-between',
-    paddingHorizontal: 10,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,.06)',
-  },
-  dockBtn: { alignItems: 'center', gap: 5, paddingVertical: 6, paddingHorizontal: 4, borderRadius: 12 },
-  dockBtnActive: { backgroundColor: 'rgba(201,162,75,.18)' },
-  dockLabel: { color: '#c9bfa9', fontSize: 9, letterSpacing: 0.5, textTransform: 'uppercase' },
   readoutRow: { alignItems: 'center', paddingHorizontal: 16, paddingBottom: 10, gap: 8 },
   readout: {
     flexDirection: 'row',
