@@ -112,6 +112,20 @@
   }
   .lang-btn[aria-pressed="true"]{ background:var(--accent); color:var(--accent-ink); }
   .lang-btn:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+  .dial-home-btn{
+    display:flex; align-items:center; gap:4px; flex-shrink:0;
+    border:1px solid var(--rule); border-radius:999px;
+    background:none; cursor:pointer;
+    padding:5px 12px 5px 8px;
+    font-family:'IBM Plex Sans','IBM Plex Sans Arabic', sans-serif;
+    font-size:.72rem; font-weight:600;
+    color:var(--ink-muted);
+  }
+  .dial-home-btn svg{ width:14px; height:14px; }
+  [dir="rtl"] .dial-home-btn{ padding:5px 8px 5px 12px; }
+  [dir="rtl"] .dial-home-btn svg{ transform:rotate(180deg); }
+  .dial-home-btn:hover{ color:var(--ink); border-color:color-mix(in srgb, var(--ink) 30%, var(--rule)); }
+  .dial-home-btn:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
   .eyebrow{
     font-family:'IBM Plex Mono','IBM Plex Sans Arabic', ui-monospace, monospace;
     font-size:.64rem;
@@ -326,6 +340,11 @@
     gap:10px;
     padding:0 16px 10px;
   }
+  .infobar__group{
+    display:flex; align-items:center; gap:8px;
+    flex-wrap:wrap;
+    min-width:0;
+  }
   .readout{
     display:flex; align-items:center; gap:8px;
     background:rgba(11,10,8,.55);
@@ -333,6 +352,12 @@
     border-radius:999px;
     padding:5px 8px 5px 14px;
   }
+  .readout--calling{
+    padding:5px 14px;
+    opacity:0; visibility:hidden; pointer-events:none;
+    transition:opacity .3s ease;
+  }
+  .readout--calling.show{ opacity:1; visibility:visible; }
   .readout__label{
     font-family:'IBM Plex Mono','IBM Plex Sans Arabic', monospace;
     font-size:.58rem;
@@ -383,7 +408,7 @@
   @keyframes pulse{ 50%{opacity:.35;} }
 
   .handset-hit{
-    position:absolute; left:50%; top:8px; z-index:4;
+    position:absolute; left:50%; top:8px; z-index:7;
     transform:translateX(-50%);
     width:220px; height:94px;
     background:none; border:none; padding:0;
@@ -429,7 +454,7 @@
   }
 
   .incoming{
-    position:absolute; inset:0; z-index:3;
+    position:absolute; inset:0; z-index:7;
     opacity:0; visibility:hidden; pointer-events:none;
     transition:opacity .3s ease;
     text-align:center;
@@ -479,7 +504,7 @@
   .decline-btn:focus-visible{ outline:2px solid #6cc2b3; outline-offset:2px; }
 
   .cradle{
-    position:absolute; left:50%; top:48px; z-index:2;
+    position:absolute; left:50%; top:48px; z-index:7;
     transform:translateX(-50%);
     display:flex; gap:142px;
   }
@@ -522,6 +547,7 @@
 
   .call-screen{
     position:absolute; inset:0; z-index:5;
+    background:#0b0a08;
     display:flex; flex-direction:column;
     opacity:0; visibility:hidden; pointer-events:none;
     transition:opacity .35s ease;
@@ -617,7 +643,12 @@
   @media (prefers-reduced-motion: no-preference){
     .room-keeper.bump{ animation:roomBump .4s ease; }
   }
+  .room-keeper.ringing{ animation:roomKeeperRing .5s ease-in-out infinite; }
   @keyframes roomBump{ 40%{ transform:scale(1.06); } }
+  @keyframes roomKeeperRing{
+    0%,100%{ transform:scale(1) translateY(0); }
+    50%{ transform:scale(1.04) translateY(-4px); }
+  }
   .room-mouth{ display:none; }
   .room-mouth--neutral{ display:block; }
   .room-keeper.mood-happy .room-mouth--neutral{ display:none; }
@@ -629,6 +660,13 @@
   .scene.is-room .dial-wrap, .scene.is-contacts .dial-wrap, .scene.is-recents .dial-wrap, .scene.is-sounds .dial-wrap, .scene.is-settings .dial-wrap, .scene.is-advanced .dial-wrap,
   .scene.is-room .cradle, .scene.is-contacts .cradle, .scene.is-recents .cradle, .scene.is-sounds .cradle, .scene.is-settings .cradle, .scene.is-advanced .cradle,
   .scene.is-room .handset-hit, .scene.is-contacts .handset-hit, .scene.is-recents .handset-hit, .scene.is-sounds .handset-hit, .scene.is-settings .handset-hit, .scene.is-advanced .handset-hit{ opacity:0; pointer-events:none; }
+
+  .scene.is-ringing.is-room .cradle,
+  .scene.is-ringing.is-room .handset-hit{ opacity:1; pointer-events:auto; }
+  .scene.is-ringing.is-room .keeper-room__head,
+  .scene.is-ringing.is-room .keeper-room__caption{ opacity:0; pointer-events:none; }
+  #txtWallNoteRoom{ transition:opacity .3s ease; }
+  .scene.is-ringing.is-room #txtWallNoteRoom{ opacity:0; }
 
   .contacts-screen{
     position:absolute; inset:0; z-index:5;
@@ -823,6 +861,7 @@
   .keeper-room__head{
     display:flex; align-items:center; justify-content:space-between;
     padding:12px 14px 4px;
+    transition:opacity .3s ease;
   }
   .room-back{
     display:flex; align-items:center; gap:5px;
@@ -849,6 +888,7 @@
     font-family:'IBM Plex Mono','IBM Plex Sans Arabic', monospace;
     font-size:.68rem; letter-spacing:.04em;
     color:rgba(239,230,211,.7);
+    transition:opacity .3s ease;
   }
 
   @media (prefers-reduced-motion: reduce){
@@ -862,6 +902,10 @@
       <div class="brief-top">
         <p class="eyebrow" id="txtEyebrow">Home screen &middot; prototype</p>
         <div class="controls-cluster">
+          <button class="dial-home-btn" id="dialHomeBtn" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+            <span id="txtDialHomeBtn">Dial</span>
+          </button>
           <div class="palette-picker__row" id="palettePicker" role="group" aria-label="Case colour">
             <button class="palette-swatch" data-palette="oxblood" aria-pressed="true" aria-label="Oxblood"></button>
             <button class="palette-swatch" data-palette="verdigris" aria-pressed="false" aria-label="Verdigris"></button>
@@ -907,6 +951,10 @@
       <div class="device__brow"></div>
       <div class="screen">
         <div class="dock">
+          <button class="dock-btn" data-key="dial">
+            <svg viewBox="0 0 24 24" fill="currentColor"><circle cx="7" cy="6" r="1.5"/><circle cx="12" cy="6" r="1.5"/><circle cx="17" cy="6" r="1.5"/><circle cx="7" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="17" cy="12" r="1.5"/><circle cx="7" cy="18" r="1.5"/><circle cx="12" cy="18" r="1.5"/><circle cx="17" cy="18" r="1.5"/></svg>
+            <span class="dock-btn__label">Dial</span>
+          </button>
           <button class="dock-btn" data-key="contacts">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8.5" r="3.3"/><path d="M5.5 20c1-4 4-5.6 6.5-5.6S17.5 16 18.5 20"/></svg>
             <span class="dock-btn__label">Contacts</span>
@@ -950,10 +998,16 @@
         </div>
 
         <div class="infobar" id="infobar">
-          <div class="readout">
-            <span class="readout__label" id="txtReadoutLabel">Last dialed</span>
-            <span class="readout__digits" id="digits">&mdash;</span>
-            <button class="readout__clear" id="clearDigits" aria-label="Clear dialed number">&times;</button>
+          <div class="infobar__group">
+            <div class="readout">
+              <span class="readout__label" id="txtReadoutLabel">Last dialed</span>
+              <span class="readout__digits" id="digits">&mdash;</span>
+              <button class="readout__clear" id="clearDigits" aria-label="Clear dialed number">&times;</button>
+            </div>
+            <div class="readout readout--calling" id="callingReadout">
+              <span class="readout__label" id="txtCallingLabel">Number</span>
+              <span class="readout__digits" id="callingDigits">&mdash;</span>
+            </div>
           </div>
           <div class="line-pill"><span class="line-pill__dot"></span><span id="txtLinePill">Line open</span></div>
         </div>
@@ -1309,6 +1363,7 @@
       paletteLabel:'Case colour',
       paletteNames:{oxblood:'Oxblood', verdigris:'Verdigris', ivory:'Ivory', graphite:'Graphite'},
       readoutLabel:'Last dialed',
+      callingLabel:'Number',
       clearAria:'Clear dialed number',
       linePill:'Line open',
       handsetLift:'Lift handset to open the line',
@@ -1321,7 +1376,7 @@
       translatedLabel:'Translated',
       exampleNote:'Example live translation',
       youLabel:'You',
-      dockNames:{contacts:'Contacts', recents:'Recents', keeper:'Keeper', sounds:'Sounds', settings:'Settings'},
+      dockNames:{dial:'Dial', contacts:'Contacts', recents:'Recents', keeper:'Keeper', sounds:'Sounds', settings:'Settings'},
       contactsTitle:'Contacts',
       recentsTitle:'Recents',
       callTypeNames:{incoming:'Incoming', outgoing:'Outgoing', missed:'Missed'},
@@ -1344,11 +1399,11 @@
         {callerIdx:0, type:'outgoing', time:'Monday', meta:'At home · clear skies · 8:00 AM their time'}
       ],
       callers:[
-        {name:'Nadia', meta:'Driving · light rain · 9:42 PM their time', sky:'rain'},
-        {name:'Omar', meta:'At work · clear skies · 2:15 PM their time', sky:'clear'},
-        {name:'Mama', meta:'At home · snow falling · 11:05 PM their time', sky:'snow'}
+        {name:'Nadia', meta:'Driving · light rain · 9:42 PM their time', sky:'rain', number:'0100 214 7788'},
+        {name:'Omar', meta:'At work · clear skies · 2:15 PM their time', sky:'clear', number:'0122 356 4190'},
+        {name:'Mama', meta:'At home · snow falling · 11:05 PM their time', sky:'snow', number:'0111 908 2234'}
       ],
-      defaultCaller:{name:'Home line', meta:'Direct dial · Clear skies'},
+      defaultCaller:{name:'Home line', meta:'Direct dial · Clear skies', number:'0106 000 1122'},
       roomTitle:'Keeper’s room',
       roomBack:'Dial',
       wallNote:'call someone soon',
@@ -1374,6 +1429,7 @@
       paletteLabel:'لون الجسم',
       paletteNames:{oxblood:'عنّابي', verdigris:'أخضر نحاسي', ivory:'عاجي', graphite:'غرافيت'},
       readoutLabel:'آخر رقم',
+      callingLabel:'الرقم',
       clearAria:'امسحي الرقم',
       linePill:'الخط مفتوح',
       handsetLift:'ارفعي السماعة عشان تفتحي الخط',
@@ -1386,7 +1442,7 @@
       translatedLabel:'الترجمة',
       exampleNote:'مثال لترجمة فورية',
       youLabel:'أنا',
-      dockNames:{contacts:'جهات الاتصال', recents:'الأخيرة', keeper:'الحارس', sounds:'نغمات', settings:'الإعدادات'},
+      dockNames:{dial:'القرص', contacts:'جهات الاتصال', recents:'الأخيرة', keeper:'الحارس', sounds:'نغمات', settings:'الإعدادات'},
       contactsTitle:'جهات الاتصال',
       recentsTitle:'الأخيرة',
       callTypeNames:{incoming:'واردة', outgoing:'صادرة', missed:'فايتة'},
@@ -1409,11 +1465,11 @@
         {callerIdx:0, type:'outgoing', time:'الإتنين', meta:'في البيت · جو صافي · 8:00 الصبح عندها'}
       ],
       callers:[
-        {name:'نادية', meta:'بتسوق · مطر خفيف · 9:42 مساءً عندها', sky:'rain'},
-        {name:'عمر', meta:'في الشغل · جو صافي · 2:15 الضهر عنده', sky:'clear'},
-        {name:'ماما', meta:'في البيت · بينزل تلج · 11:05 بالليل عندها', sky:'snow'}
+        {name:'نادية', meta:'بتسوق · مطر خفيف · 9:42 مساءً عندها', sky:'rain', number:'0100 214 7788'},
+        {name:'عمر', meta:'في الشغل · جو صافي · 2:15 الضهر عنده', sky:'clear', number:'0122 356 4190'},
+        {name:'ماما', meta:'في البيت · بينزل تلج · 11:05 بالليل عندها', sky:'snow', number:'0111 908 2234'}
       ],
-      defaultCaller:{name:'خط البيت', meta:'طلب مباشر · جو صافي'},
+      defaultCaller:{name:'خط البيت', meta:'طلب مباشر · جو صافي', number:'0106 000 1122'},
       roomTitle:'أوضة الحارس',
       roomBack:'القرص',
       wallNote:'اتصل بحد قريب',
@@ -1770,10 +1826,20 @@
   var callerMetaEl = document.getElementById('callerMeta');
   var simulateBtn = document.getElementById('simulateCall');
   var declineBtn = document.getElementById('declineBtn');
+  var callingReadout = document.getElementById('callingReadout');
+  var callingDigitsEl = document.getElementById('callingDigits');
 
   var callState = 'idle';
   var ringInterval = null;
   var handsetActive = false;
+
+  function showCallingNumber(number){
+    callingDigitsEl.textContent = number;
+    callingReadout.classList.add('show');
+  }
+  function hideCallingNumber(){
+    callingReadout.classList.remove('show');
+  }
 
   function setActiveUI(active){
     handsetActive = active;
@@ -1797,10 +1863,14 @@
     callerNameEl.textContent = c.name;
     callerMetaEl.textContent = c.meta;
     setWeather(c.sky);
+    closeAllScreens();
+    openRoom();
     callState = 'ringing';
     scene.classList.add('is-ringing');
     incoming.classList.add('show');
     avatar.classList.add('awake','ringing');
+    roomKeeperEl.classList.add('ringing');
+    showCallingNumber(c.number);
     simulateBtn.disabled = true;
     ringPulse();
     ringInterval = setInterval(ringPulse, 3400);
@@ -1817,6 +1887,8 @@
     stopRinging();
     callState = 'idle';
     avatar.classList.remove('awake','ringing');
+    roomKeeperEl.classList.remove('ringing');
+    hideCallingNumber();
   }
 
   simulateBtn.addEventListener('click', function(){
@@ -1902,11 +1974,12 @@
     if(callTimerInterval){ clearInterval(callTimerInterval); callTimerInterval = null; }
   }
 
-  function openCall(name, meta){
+  function openCall(name, meta, number){
     activeNameEl.textContent = name;
     activeMetaEl.textContent = meta;
     scene.classList.add('is-active');
     callScreen.classList.add('show');
+    showCallingNumber(number);
     muted = false; clarityOn = false;
     muteBtn.setAttribute('aria-pressed','false');
     clarityBtn.setAttribute('aria-pressed','false');
@@ -1920,6 +1993,7 @@
   function closeCall(){
     scene.classList.remove('is-active');
     callScreen.classList.remove('show');
+    hideCallingNumber();
     clearTimeout(scriptTimer); scriptTimer = null;
     clearTimeout(talkTimer); talkTimer = null;
     keeperBig.classList.remove('talking');
@@ -1950,11 +2024,13 @@
   handsetBtn.addEventListener('click', function(){
     if(callState === 'ringing'){
       var name = callerNameEl.textContent, meta = callerMetaEl.textContent;
+      var number = LANG[currentLang].callers[currentRingerIdx].number;
       stopRinging();
       callState = 'active';
       avatar.classList.remove('ringing');
+      roomKeeperEl.classList.remove('ringing');
       setActiveUI(true);
-      openCall(name, meta);
+      openCall(name, meta, number);
       clunk(true);
       return;
     }
@@ -1964,7 +2040,7 @@
     }
     callState = 'active';
     setActiveUI(true);
-    openCall(LANG[currentLang].defaultCaller.name, LANG[currentLang].defaultCaller.meta);
+    openCall(LANG[currentLang].defaultCaller.name, LANG[currentLang].defaultCaller.meta, LANG[currentLang].defaultCaller.number);
     clunk(true);
   });
 
@@ -2133,7 +2209,7 @@
     setWeather(c.sky);
     callState = 'active';
     setActiveUI(true);
-    openCall(c.name, c.meta);
+    openCall(c.name, c.meta, c.number);
     clunk(true);
   }
   contactsBackBtn.addEventListener('click', closeContacts);
@@ -2330,6 +2406,10 @@
   var dockBtns = document.querySelectorAll('.dock-btn');
   dockBtns.forEach(function(btn){
     btn.addEventListener('click', function(){
+      if(btn.dataset.key === 'dial'){
+        goToDial();
+        return;
+      }
       if(btn.dataset.key === 'keeper'){
         if(roomOpen){ closeRoom(); } else { closeAllScreens(); openRoom(); }
         return;
@@ -2353,6 +2433,15 @@
       }
     });
   });
+
+  /* ---------------- dial home shortcut ---------------- */
+  var dialHomeBtn = document.getElementById('dialHomeBtn');
+  function goToDial(){
+    if(callState === 'ringing') declineCall();
+    else if(callState === 'active') hangUp();
+    closeAllScreens();
+  }
+  dialHomeBtn.addEventListener('click', goToDial);
 
   /* ---------------- palette ---------------- */
   var palettePicker = document.getElementById('palettePicker');
@@ -2385,6 +2474,7 @@
     });
 
     document.getElementById('txtBrand').textContent = t.brand;
+    document.getElementById('txtDialHomeBtn').textContent = t.roomBack;
     document.getElementById('txtEyebrow').textContent = t.eyebrow;
     document.getElementById('txtLede').textContent = t.lede;
     document.getElementById('txtStep1').textContent = t.step1;
@@ -2401,6 +2491,7 @@
     });
 
     document.getElementById('txtReadoutLabel').textContent = t.readoutLabel;
+    document.getElementById('txtCallingLabel').textContent = t.callingLabel;
     document.getElementById('clearDigits').setAttribute('aria-label', t.clearAria);
     document.getElementById('txtLinePill').textContent = t.linePill;
     handsetBtn.setAttribute('aria-label', handsetActive ? t.handsetHangup : t.handsetLift);
