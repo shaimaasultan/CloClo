@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 import { useKeeperState } from '../../state/KeeperStateContext';
 import { useLang } from '../../state/LangContext';
 import { usePalette } from '../../state/PaletteContext';
@@ -17,11 +17,11 @@ const PALETTE_SWATCH_HEX: Record<PaletteName, string> = {
   graphite: '2b2b2e',
 };
 
-// The caller's-sky and case-colour pickers sit above the phone's scene in the
-// prototype (statusbar + the doc-harness controls cluster), so they persist
-// across whichever screen is active — same here, one shared bar every route renders.
+// The caller's-sky and case-colour pickers sit right under the dock, so
+// they're reachable from every screen the dock renders on, same as the
+// prototype's statusbar sitting just below its own dock.
 export function TopBar() {
-  const { t, lang, setLang, isRtl } = useLang();
+  const { t, isRtl } = useLang();
   const { paletteName, colours, setPalette } = usePalette();
   const { sky, setSky } = useKeeperState();
   const rowDir = isRtl ? 'row-reverse' : 'row';
@@ -44,22 +44,19 @@ export function TopBar() {
           );
         })}
       </View>
-      {PALETTE_ORDER.map((name) => (
-        <Pressable
-          key={name}
-          onPress={() => setPalette(name)}
-          style={[
-            styles.swatch,
-            { backgroundColor: `#${PALETTE_SWATCH_HEX[name]}` },
-            paletteName === name && styles.swatchActive,
-          ]}
-        />
-      ))}
-      <View style={{ flex: 1 }} />
-      <Pressable onPress={() => setLang(lang === 'en' ? 'ar' : 'en')} style={styles.langToggle}>
-        <Text style={[styles.langLabel, lang === 'en' && styles.langLabelActive]}>EN</Text>
-        <Text style={[styles.langLabel, lang === 'ar' && styles.langLabelActive]}>عربي</Text>
-      </Pressable>
+      <View style={[styles.palettePicker, { flexDirection: rowDir }]}>
+        {PALETTE_ORDER.map((name) => (
+          <Pressable
+            key={name}
+            onPress={() => setPalette(name)}
+            style={[
+              styles.swatch,
+              { backgroundColor: `#${PALETTE_SWATCH_HEX[name]}` },
+              paletteName === name && styles.swatchActive,
+            ]}
+          />
+        ))}
+      </View>
     </View>
   );
 }
@@ -67,10 +64,22 @@ export function TopBar() {
 const styles = StyleSheet.create({
   topBar: {
     alignItems: 'center',
+    justifyContent: 'center',
     paddingHorizontal: 16,
-    paddingTop: 8,
-    gap: 8,
+    paddingVertical: 10,
+    gap: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,.06)',
   },
+  skyPicker: { gap: 4 },
+  skyBtn: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  palettePicker: { gap: 8 },
   swatch: {
     width: 20,
     height: 20,
@@ -79,22 +88,4 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
   },
   swatchActive: { borderColor: '#f3d78b' },
-  skyPicker: { gap: 4, marginRight: 4 },
-  skyBtn: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  langToggle: {
-    flexDirection: 'row',
-    gap: 8,
-    backgroundColor: 'rgba(255,255,255,.08)',
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  langLabel: { color: 'rgba(239,230,211,.5)', fontSize: 12, fontWeight: '600' },
-  langLabelActive: { color: '#efe6d3' },
 });

@@ -3,9 +3,13 @@
 
 export type Lang = 'en' | 'ar';
 
+// The wordmark stays Latin-script in every language — it's a name, not a
+// word, so it doesn't get translated or transliterated.
+export const APP_NAME = 'CloClo';
+
 export interface Dictionary {
   dir: 'ltr' | 'rtl';
-  brand: string;
+  slogan: string;
   dockNames: Record<'dial' | 'contacts' | 'recents' | 'keeper' | 'sounds' | 'settings', string>;
   readoutLabel: string;
   callingLabel: string;
@@ -27,7 +31,7 @@ export interface Dictionary {
 export const DICTIONARIES: Record<Lang, Dictionary> = {
   en: {
     dir: 'ltr',
-    brand: 'Ranah',
+    slogan: 'Hello from the other side.',
     dockNames: {
       dial: 'Dial',
       contacts: 'Contacts',
@@ -54,7 +58,7 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
   },
   ar: {
     dir: 'rtl',
-    brand: 'رنّة',
+    slogan: 'أهلاً من الطرف التاني.',
     dockNames: {
       dial: 'القرص',
       contacts: 'جهات الاتصال',

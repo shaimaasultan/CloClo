@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "Ranah",
-    "slug": "ranah-app",
-    "scheme": "ranah",
+    "name": "CloClo",
+    "slug": "cloclo-app",
+    "scheme": "cloclo",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",

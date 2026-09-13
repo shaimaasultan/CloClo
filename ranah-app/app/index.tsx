@@ -2,6 +2,7 @@ import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { BrandHeader } from '../src/components/BrandHeader/BrandHeader';
 import { Dock } from '../src/components/Dock/Dock';
 import { KeeperAvatar } from '../src/components/KeeperAvatar/KeeperAvatar';
 import { PhoneHandset } from '../src/components/PhoneHandset/PhoneHandset';
@@ -12,7 +13,7 @@ import { useKeeperState } from '../src/state/KeeperStateContext';
 import { useLang } from '../src/state/LangContext';
 import { usePalette } from '../src/state/PaletteContext';
 
-const CHROME_HEIGHT = 230; // rough budget for topBar + dock + readout row above the stage
+const CHROME_HEIGHT = 275; // rough budget for the brand header + topBar + dock + readout row above the stage
 
 export default function DialScreen() {
   const router = useRouter();
@@ -29,8 +30,11 @@ export default function DialScreen() {
   // plus a check against remaining vertical space so the handset (which
   // peeks above the dial) never gets pushed into the chrome above it.
   const dialSize = Math.max(220, Math.min(320, winWidth * 0.8, (winHeight - CHROME_HEIGHT) * 0.78));
-  const handsetWidth = dialSize * 0.7;
-  const handsetOverlap = handsetWidth * (94 / 220) * 0.55;
+  const handsetWidth = dialSize * 0.85;
+  // The handset-to-peg overlap now lives inside PhoneHandset itself (the
+  // pegs tuck up behind the handset's own bottom edge); this only needs to
+  // pull the ring up enough to meet the pegs' bottom tips, not swallow them.
+  const handsetOverlap = handsetWidth * 0.1045 * 0.2;
 
   const handleHandsetPress = () => {
     if (callState === 'ringing') setCallState('active'); // answer
@@ -42,9 +46,11 @@ export default function DialScreen() {
     <View style={[styles.root, { backgroundColor: colours.body2 }]}>
       <WeatherLayer width={winWidth} height={winHeight} kind={sky} topInset={CHROME_HEIGHT} />
       <SafeAreaView style={styles.safe}>
-        <TopBar />
+        <BrandHeader />
 
         <Dock active="dial" />
+
+        <TopBar />
 
         <View style={[styles.readoutRow, { flexDirection: rowDir }]}>
           <View style={styles.readout}>
@@ -92,7 +98,7 @@ export default function DialScreen() {
                     awake={awake}
                     mood={mood}
                     showUmbrella={sky === 'rain' || sky === 'snow' || sky === 'storm'}
-                    onPress={() => router.push('/room')}
+                    onPress={() => router.navigate('/room')}
                   />
                 }
               />

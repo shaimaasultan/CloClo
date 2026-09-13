@@ -1,7 +1,8 @@
 import { useRouter } from 'expo-router';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useId, useRef, useState } from 'react';
 import { Animated, LayoutChangeEvent, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { BrandHeader } from '../src/components/BrandHeader/BrandHeader';
 import { Dock } from '../src/components/Dock/Dock';
 import { KeeperAvatar } from '../src/components/KeeperAvatar/KeeperAvatar';
 import { TopBar } from '../src/components/TopBar/TopBar';
@@ -67,11 +68,11 @@ function useFlicker(active: boolean) {
   return value;
 }
 
-function WindowWeather({ sky }: { sky: 'clear' | 'rain' | 'snow' | 'storm' }) {
+function WindowWeather({ sky, clipId }: { sky: 'clear' | 'rain' | 'snow' | 'storm'; clipId: string }) {
   const flash = useFlicker(sky === 'storm');
   const highlight = '#f3d78b';
   return (
-    <G clipPath="url(#roomWinClip)">
+    <G clipPath={`url(#${clipId})`}>
       {sky === 'clear' && (
         <G opacity={0.85}>
           <Circle cx={76} cy={58} r={15} fill={highlight} />
@@ -128,9 +129,9 @@ function BackChevron({ color, mirrored }: { color: string; mirrored: boolean }) 
 
 const PROP_GLYPH: Record<'book' | 'music' | 'chat', string> = { book: '📖', music: '♫', chat: '💬' };
 
-// Rough budget for the topBar + head row + dock above the stage, so the
-// outdoor weather layer's sun doesn't render under that chrome.
-const CHROME_HEIGHT = 260;
+// Rough budget for the brand header + topBar + head row + dock above the
+// stage, so the outdoor weather layer's sun doesn't render under that chrome.
+const CHROME_HEIGHT = 310;
 
 export default function KeeperRoomScreen() {
   const router = useRouter();
@@ -139,6 +140,12 @@ export default function KeeperRoomScreen() {
   const { callState, sky, mood, roomProp, cycleMoment, momentIndex } = useKeeperState();
   const { width: winWidth, height: winHeight } = useWindowDimensions();
   const [stageSize, setStageSize] = useState({ width: 0, height: 0 });
+  // Unique per mount so a stale screen left in the navigation stack can never
+  // collide with this one's <Defs> ids (see the same note in RotaryDial).
+  const uid = useId();
+  const wallGradientId = `roomWallGrad-${uid}`;
+  const windowGradientId = `windowGrad-${uid}`;
+  const winClipId = `roomWinClip-${uid}`;
 
   const awake = callState !== 'idle';
   const rowDir = isRtl ? 'row-reverse' : 'row';
@@ -164,7 +171,7 @@ export default function KeeperRoomScreen() {
     <View style={[styles.root, { backgroundColor: colours.body2 }]}>
       <WeatherLayer width={winWidth} height={winHeight} kind={sky} topInset={CHROME_HEIGHT} />
       <SafeAreaView style={styles.safe}>
-        <TopBar />
+        <BrandHeader />
 
         <View style={[styles.head, { flexDirection: rowDir }]}>
           <Pressable onPress={() => router.back()} style={[styles.backBtn, { flexDirection: rowDir }]} accessibilityRole="button">
@@ -183,6 +190,8 @@ export default function KeeperRoomScreen() {
 
         <Dock active="keeper" />
 
+        <TopBar />
+
         <Pressable
           onPress={cycleMoment}
           style={styles.stage}
@@ -194,25 +203,25 @@ export default function KeeperRoomScreen() {
             <View style={{ width: boxW, height: boxH, position: 'relative' }}>
               <Svg width="100%" height="100%" viewBox={`0 0 ${VB_W} ${VB_H}`} preserveAspectRatio="xMidYMid meet">
                 <Defs>
-                  <RadialGradient id="roomWallGrad" cx="50%" cy="28%" r="85%">
+                  <RadialGradient id={wallGradientId} cx="50%" cy="28%" r="85%">
                     <Stop offset="0%" stopColor={colours.hub1} />
                     <Stop offset="100%" stopColor={colours.hub2} />
                   </RadialGradient>
-                  <LinearGradient id="windowGrad" x1="0" y1="0" x2="0" y2="1">
+                  <LinearGradient id={windowGradientId} x1="0" y1="0" x2="0" y2="1">
                     <Stop offset="0%" stopColor={WINDOW_SKY[0]} />
                     <Stop offset="55%" stopColor={WINDOW_SKY[1]} />
                     <Stop offset="100%" stopColor={WINDOW_SKY[2]} />
                   </LinearGradient>
-                  <ClipPath id="roomWinClip">
+                  <ClipPath id={winClipId}>
                     <Rect x={28} y={26} width={96} height={72} rx={8} />
                   </ClipPath>
                 </Defs>
 
-                <Rect x={0} y={0} width={VB_W} height={VB_H} fill="url(#roomWallGrad)" />
+                <Rect x={0} y={0} width={VB_W} height={VB_H} fill={`url(#${wallGradientId})`} />
                 <Ellipse cx={200} cy={270} rx={150} ry={20} fill={colours.body2} opacity={0.45} />
 
-                <Rect x={28} y={26} width={96} height={72} rx={8} fill="url(#windowGrad)" stroke={colours.metal2} strokeWidth={3} />
-                <WindowWeather sky={sky} />
+                <Rect x={28} y={26} width={96} height={72} rx={8} fill={`url(#${windowGradientId})`} stroke={colours.metal2} strokeWidth={3} />
+                <WindowWeather sky={sky} clipId={winClipId} />
                 <Line x1={76} y1={26} x2={76} y2={98} stroke={colours.metal2} strokeWidth={2} />
                 <Line x1={28} y1={62} x2={124} y2={62} stroke={colours.metal2} strokeWidth={2} />
 

@@ -38,7 +38,11 @@ export function Dock({ active }: DockProps) {
         const route = DOCK_ROUTES[key];
         if (route && !isActive) {
           return (
-            <Pressable key={key} onPress={() => router.push(route as never)} accessibilityRole="button">
+            // navigate (not push): if the target screen is already sitting
+            // in the stack, this pops back to that instance instead of
+            // stacking a duplicate — two mounted copies of the same screen
+            // would double up on that screen's <Defs> element ids.
+            <Pressable key={key} onPress={() => router.navigate(route as never)} accessibilityRole="button">
               {content}
             </Pressable>
           );

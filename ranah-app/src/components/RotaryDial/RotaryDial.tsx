@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useId, useMemo, useRef, useState } from 'react';
 import { View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Svg, { Circle, Defs, G, Path, RadialGradient, Stop, Text as SvgText } from 'react-native-svg';
@@ -32,6 +32,13 @@ function easeOutCubic(t: number) {
 }
 
 export function RotaryDial({ size, colours, onDigit, onDragStateChange, centerContent }: RotaryDialProps) {
+  // react-native-svg's <Defs> ids are real DOM ids on web — if two RotaryDial
+  // instances are ever mounted at once (e.g. a stale screen still in the
+  // navigation stack), a shared literal id makes url(#brass) resolve
+  // unpredictably and the gradient fill can vanish on the visible one.
+  const uid = useId();
+  const brassGradientId = `brass-${uid}`;
+  const bodyGradientId = `body-${uid}`;
   const containerRef = useRef<View>(null);
   const centerScreen = useRef({ x: 0, y: 0 });
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
@@ -160,19 +167,19 @@ export function RotaryDial({ size, colours, onDigit, onDragStateChange, centerCo
     <View ref={containerRef} onLayout={measureCenter} style={{ width: size, height: size }}>
       <Svg width={size} height={size} viewBox={`0 0 ${VB} ${VB}`}>
         <Defs>
-          <RadialGradient id="brass" cx="35%" cy="30%" r="75%">
+          <RadialGradient id={brassGradientId} cx="35%" cy="30%" r="75%">
             <Stop offset="0%" stopColor={colours.metal1} />
             <Stop offset="55%" stopColor={colours.metal2} />
             <Stop offset="100%" stopColor={colours.metal3} />
           </RadialGradient>
-          <RadialGradient id="body" cx="40%" cy="30%" r="75%">
+          <RadialGradient id={bodyGradientId} cx="40%" cy="30%" r="75%">
             <Stop offset="0%" stopColor={colours.body1} />
             <Stop offset="100%" stopColor={colours.body2} />
           </RadialGradient>
         </Defs>
 
-        <Circle cx={CENTER} cy={CENTER} r={DIAL_R} fill="url(#brass)" />
-        <Circle cx={CENTER} cy={CENTER} r={FACE_R} fill="url(#body)" />
+        <Circle cx={CENTER} cy={CENTER} r={DIAL_R} fill={`url(#${brassGradientId})`} />
+        <Circle cx={CENTER} cy={CENTER} r={FACE_R} fill={`url(#${bodyGradientId})`} />
 
         <Path
           d={`M${stopEnd.x1} ${stopEnd.y1} L${stopEnd.x2} ${stopEnd.y2} L${stopEnd.x3} ${stopEnd.y3} Z`}
