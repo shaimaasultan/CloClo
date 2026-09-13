@@ -123,9 +123,9 @@ This repository holds two things:
 
 ### Look and language
 
-- **Header controls** – one pill beside the logo holds the clock, the sky
-  picker, the case colour (Oxblood, Verdigris, Ivory, Graphite), and the
-  language switch.
+- **Header controls** – one pill beside the logo holds the clock with today's
+  date underneath (in English or Arabic), the sky picker, the case colour
+  (Oxblood, Verdigris, Ivory, Graphite), and the language switch.
 - **Case colour** – repaints the phone, the keeper's sweater, and a wash over
   the room's wall.
 - **Caller's sky** – clear, rain, snow, or storm weather drifts behind every

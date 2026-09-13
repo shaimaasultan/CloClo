@@ -21,13 +21,14 @@ function formatTime(d: Date) {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
+// The current moment, refreshed often enough for both the time and the date.
 function useClock() {
-  const [time, setTime] = useState(() => formatTime(new Date()));
+  const [now, setNow] = useState(() => new Date());
   useEffect(() => {
-    const id = setInterval(() => setTime(formatTime(new Date())), CLOCK_REFRESH_MS);
+    const id = setInterval(() => setNow(new Date()), CLOCK_REFRESH_MS);
     return () => clearInterval(id);
   }, []);
-  return time;
+  return now;
 }
 
 interface SettingsBarProps {
@@ -43,20 +44,29 @@ export function SettingsBar({ compact = false }: SettingsBarProps) {
   const { t, lang, setLang, isRtl } = useLang();
   const { paletteName, colours, setPalette } = usePalette();
   const { sky, setSky } = useKeeperState();
-  const time = useClock();
+  const now = useClock();
+  const time = formatTime(now);
+  // Today's date in the app's language: "Sun 13 Sept" / "الأحد ١٣ سبتمبر".
+  const locale = lang === 'ar' ? 'ar-EG' : 'en-GB';
+  const date = now.toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'short' });
+  const fullDate = now.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
   const rowDir = isRtl ? 'row-reverse' : 'row';
 
   const size = compact
-    ? { gap: 6, padX: 8, clock: 12, skyBtn: 22, skyIcon: 14, swatch: 14, swatchGap: 3, swatchBorder: 1.5, langFont: 10, langPadX: 5 }
-    : { gap: 8, padX: 12, clock: 14, skyBtn: 26, skyIcon: 15, swatch: 18, swatchGap: 6, swatchBorder: 2, langFont: 12, langPadX: 8 };
+    ? { gap: 6, padX: 8, clock: 12, date: 8, skyBtn: 22, skyIcon: 14, swatch: 14, swatchGap: 3, swatchBorder: 1.5, langFont: 10, langPadX: 5 }
+    : { gap: 8, padX: 12, clock: 14, date: 9, skyBtn: 26, skyIcon: 15, swatch: 18, swatchGap: 6, swatchBorder: 2, langFont: 12, langPadX: 8 };
 
   const divider = <View style={styles.divider} />;
 
   return (
     <View style={[styles.pill, { flexDirection: rowDir, gap: size.gap, paddingHorizontal: size.padX }]}>
-      <Text style={[styles.clock, { fontSize: size.clock }]} accessibilityLabel={time}>
-        {time}
-      </Text>
+      {/* The date sits in small type under the time, so the pill stays the same width. */}
+      <View style={styles.clockBlock} accessible accessibilityLabel={`${fullDate}, ${time}`}>
+        <Text style={[styles.clock, { fontSize: size.clock, lineHeight: size.clock + 2 }]}>{time}</Text>
+        <Text style={[styles.date, { fontSize: size.date, lineHeight: size.date + 2 }]} numberOfLines={1}>
+          {date}
+        </Text>
+      </View>
 
       {divider}
 
@@ -152,6 +162,8 @@ const styles = StyleSheet.create({
     fontFamily: 'monospace',
     fontVariant: ['tabular-nums'],
   },
+  clockBlock: { alignItems: 'center' },
+  date: { color: 'rgba(239,230,211,.6)', fontWeight: '600', letterSpacing: 0.2 },
   divider: { width: 1, height: 16, backgroundColor: 'rgba(255,255,255,.12)' },
   group: { alignItems: 'center' },
   skyBtn: { alignItems: 'center', justifyContent: 'center' },
