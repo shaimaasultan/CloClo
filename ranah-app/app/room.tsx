@@ -9,7 +9,7 @@ import { CallInfoBar } from '../src/components/CallInfoBar/CallInfoBar';
 import { DeclineButton } from '../src/components/DeclineButton/DeclineButton';
 import { MuteButton } from '../src/components/MuteButton/MuteButton';
 import { Dock } from '../src/components/Dock/Dock';
-import { KeeperAvatar, KeeperReaction, KeeperSpot } from '../src/components/KeeperAvatar/KeeperAvatar';
+import { KeeperAvatar, keeperPose, KeeperReaction, KeeperSpot } from '../src/components/KeeperAvatar/KeeperAvatar';
 import { PhoneHandset } from '../src/components/PhoneHandset/PhoneHandset';
 import { RoomDecorations } from '../src/components/RoomDecorations/RoomDecorations';
 import { WeatherKind, WeatherLayer } from '../src/components/WeatherLayer/WeatherLayer';
@@ -528,23 +528,29 @@ function OpenDoor({
 
 // A sticky note pinned to the door with the missed caller's initial, and a
 // count badge when several calls were missed.
-function MissedNote({ initials, count }: { initials: string; count: number }) {
+// `mirrored` (Arabic) un-flips the note's text inside the mirrored room.
+function MissedNote({ initials, count, mirrored }: { initials: string; count: number; mirrored: boolean }) {
+  const unflip = (x: number) => (mirrored ? `translate(${2 * x} 0) scale(-1 1)` : undefined);
   return (
     <G>
       <G transform="rotate(-6 355 152)">
         <Rect x={340} y={138} width={30} height={28} rx={2} fill="#f1dc72" />
         <Path d="M362 166 L370 158 L370 166 Z" fill="#d6bf55" />
         <Circle cx={355} cy={140} r={2.6} fill="#c0463c" />
-        <SvgText x={355} y={159} textAnchor="middle" fontSize={initials.length > 1 ? 10 : 13} fontWeight="800" fill="#5a3a1a">
-          {initials}
-        </SvgText>
+        <G transform={unflip(355)}>
+          <SvgText x={355} y={159} textAnchor="middle" fontSize={initials.length > 1 ? 10 : 13} fontWeight="800" fill="#5a3a1a">
+            {initials}
+          </SvgText>
+        </G>
       </G>
       {count > 1 && (
         <G>
           <Circle cx={371} cy={135} r={7} fill="#c0463c" />
-          <SvgText x={371} y={138.5} textAnchor="middle" fontSize={9} fontWeight="800" fill="#ffffff">
-            {count}
-          </SvgText>
+          <G transform={unflip(371)}>
+            <SvgText x={371} y={138.5} textAnchor="middle" fontSize={9} fontWeight="800" fill="#ffffff">
+              {count}
+            </SvgText>
+          </G>
         </G>
       )}
     </G>
@@ -570,6 +576,7 @@ export default function KeeperRoomScreen() {
     ringerIdx,
     missedNotes,
     connectedCallCount,
+    muted,
   } = useKeeperState();
   const { clunk, sfx, soundEnabled, decorChoice } = useSettings();
   const callContact = useCallContact();
@@ -635,6 +642,7 @@ export default function KeeperRoomScreen() {
   const windowGradientId = `windowGrad-${uid}`;
   const winClipId = `roomWinClip-${uid}`;
   const doorClipId = `roomDoorClip-${uid}`;
+  const wallWashId = `roomWallWash-${uid}`;
 
   const idle = callState === 'idle';
   const ringing = callState === 'ringing';
@@ -748,7 +756,8 @@ export default function KeeperRoomScreen() {
   const dragging = useRef(false);
 
   const spotOffset = (s: KeeperSpot) => ({
-    x: px(SPOTS[s].x - SPOTS.center.x),
+    // In the mirrored (Arabic) room, spots to the left are on the right.
+    x: (isRtl ? -1 : 1) * px(SPOTS[s].x - SPOTS.center.x),
     y: py(SPOTS[s].ground - SPOTS.center.ground),
   });
   const glideTo = (s: KeeperSpot) => {
@@ -763,7 +772,7 @@ export default function KeeperRoomScreen() {
     if (!dragging.current) glideTo(spot);
     // glideTo only reads layout values, which are dependencies here.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [spot, boxW, boxH]);
+  }, [spot, boxW, boxH, isRtl]);
 
   const moveKeeper = (next: KeeperSpot) => {
     if (next === keeperSpot) {
@@ -824,7 +833,9 @@ export default function KeeperRoomScreen() {
     .onFinalize(() => {
       if (dragging.current) {
         dragging.current = false;
-        const feetX = ((keeperLeft + offset.current.x + keeperW / 2) * VB_W) / boxW;
+        const screenFeetX = ((keeperLeft + offset.current.x + keeperW / 2) * VB_W) / boxW;
+        // Back into room units, undoing the Arabic mirror.
+        const feetX = isRtl ? VB_W - screenFeetX : screenFeetX;
         const feetY = ((keeperTop + offset.current.y + keeperH * (133 / 140)) * VB_H) / boxH;
         // Lifted high on the left lands on the window seat; low on the left is the bed.
         moveKeeper(feetX < 140 && feetY < 170 ? 'seat' : feetX < 125 ? 'bed' : feetX > 282 ? 'door' : 'center');
@@ -870,6 +881,9 @@ export default function KeeperRoomScreen() {
     .map((name) => name.charAt(0))
     .join('');
 
+  // A speech bubble while the keeper waves hello.
+  const waving = idle && !reaction && keeperPose('room', callState, mood, roomProp, spot) === 'wave';
+
   const spotCaption =
     spot === 'bed'
       ? t.napCaption
@@ -885,7 +899,14 @@ export default function KeeperRoomScreen() {
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={label}
-      style={{ position: 'absolute', left: px(slot.x), top: py(slot.y), width: px(slot.w), height: py(slot.h) }}
+      style={{
+        position: 'absolute',
+        // Mirrored with the room in Arabic.
+        left: isRtl ? px(VB_W - slot.x - slot.w) : px(slot.x),
+        top: py(slot.y),
+        width: px(slot.w),
+        height: py(slot.h),
+      }}
     />
   );
 
@@ -933,6 +954,11 @@ export default function KeeperRoomScreen() {
                     <Stop offset="55%" stopColor={windowSky[1]} />
                     <Stop offset="100%" stopColor={windowSky[2]} />
                   </LinearGradient>
+                  {/* A soft wash of the case colour over the wall, strongest up top. */}
+                  <LinearGradient id={wallWashId} x1="0" y1="0" x2="0" y2="1">
+                    <Stop offset="0%" stopColor={colours.wallpaper} stopOpacity={0.55} />
+                    <Stop offset="100%" stopColor={colours.wallpaper} stopOpacity={0.15} />
+                  </LinearGradient>
                   <ClipPath id={winClipId}>
                     <Rect x={28} y={26} width={96} height={72} rx={8} />
                   </ClipPath>
@@ -941,7 +967,12 @@ export default function KeeperRoomScreen() {
                   </ClipPath>
                 </Defs>
 
+                {/* In Arabic the whole room mirrors: window and bed on the
+                    right, door on the left. Text inside is flipped back. */}
+                <G transform={isRtl ? `translate(${VB_W} 0) scale(-1 1)` : undefined}>
                 <Rect x={0} y={0} width={VB_W} height={VB_H} fill={`url(#${wallGradientId})`} />
+                {/* The wall takes on the phone's case colour as a smooth wash. */}
+                <Rect x={0} y={0} width={VB_W} height={VB_H} fill={`url(#${wallWashId})`} />
                 <Ellipse cx={200} cy={270} rx={150} ry={20} fill={colours.body2} opacity={0.45} />
 
                 <Rect x={28} y={26} width={96} height={72} rx={8} fill={`url(#${windowGradientId})`} stroke={colours.metal2} strokeWidth={3} />
@@ -997,7 +1028,7 @@ export default function KeeperRoomScreen() {
                   </G>
                 )}
                 <Rect x={318} y={262} width={72} height={7} rx={3} fill={colours.metal3} opacity={0.75} />
-                {!doorOpen && missedNames.length > 0 && <MissedNote initials={noteInitials} count={missedNames.length} />}
+                {!doorOpen && missedNames.length > 0 && <MissedNote initials={noteInitials} count={missedNames.length} mirrored={isRtl} />}
 
                 <RoomWeather colours={colours} sky={sky} phase={phase} />
 
@@ -1018,6 +1049,7 @@ export default function KeeperRoomScreen() {
 
                 {!ringing && (
                   // On a holiday the wall note becomes a greeting.
+                  <G transform={isRtl ? `translate(${VB_W} 0) scale(-1 1)` : undefined}>
                   <SvgText
                     x={200}
                     y={18}
@@ -1028,6 +1060,7 @@ export default function KeeperRoomScreen() {
                   >
                     {greeting ?? wallNote}
                   </SvgText>
+                  </G>
                 )}
 
                 {tint && <Rect x={0} y={0} width={VB_W} height={VB_H} fill={tint} />}
@@ -1045,6 +1078,7 @@ export default function KeeperRoomScreen() {
                   doorOpen={doorOpen}
                   night={phase === 'night' || phase === 'dusk'}
                 />
+                </G>
               </Svg>
 
               {/* Tap areas sit under the keeper, so the keeper wins where they overlap. */}
@@ -1098,7 +1132,15 @@ export default function KeeperRoomScreen() {
                     reaction={reaction}
                     lookUp={lookUp}
                     shiverStrength={windowOpen && sky === 'storm' ? 2.2 : 1}
+                    muted={muted}
                   />
+                  {waving && (
+                    // "Hello!" / "أهلاً" beside their waving hand.
+                    <View style={[pointer.none, styles.helloBubble, { left: keeperW * 0.66, top: -keeperH * 0.04 }]}>
+                      <Text style={styles.helloText}>{t.helloBubble}</Text>
+                      <View style={styles.helloTail} />
+                    </View>
+                  )}
                 </Animated.View>
               </GestureDetector>
 
@@ -1195,6 +1237,23 @@ const styles = StyleSheet.create({
   },
   // Extra room above so the button's pulsing halo doesn't crowd the meta line.
   declineWrap: { marginTop: 6 },
+  helloBubble: {
+    position: 'absolute',
+    backgroundColor: '#f5f0e4',
+    borderRadius: 12,
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+  },
+  helloText: { color: '#3a2a20', fontSize: 12, fontWeight: '700' },
+  helloTail: {
+    position: 'absolute',
+    left: 6,
+    bottom: -3,
+    width: 8,
+    height: 8,
+    backgroundColor: '#f5f0e4',
+    transform: [{ rotate: '45deg' }],
+  },
   captionRow: {
     alignItems: 'center',
     justifyContent: 'center',

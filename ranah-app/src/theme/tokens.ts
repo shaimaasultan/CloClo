@@ -14,6 +14,10 @@ export interface CaseColours {
   hub1: string;
   hub2: string;
   highlight: string;
+  // The case colour carried into the keeper's world: their sweater (bright
+  // enough to read on the dark dial hub) and the wash of colour on the room's wall.
+  sweater: string;
+  wallpaper: string;
 }
 
 export const PALETTES: Record<PaletteName, CaseColours> = {
@@ -29,6 +33,8 @@ export const PALETTES: Record<PaletteName, CaseColours> = {
     hub1: '#3a2e22',
     hub2: '#1c1712',
     highlight: '#f3d78b',
+    sweater: '#b0483d',
+    wallpaper: '#6b2b26',
   },
   verdigris: {
     body1: '#1f3d34',
@@ -42,6 +48,8 @@ export const PALETTES: Record<PaletteName, CaseColours> = {
     hub1: '#1f322b',
     hub2: '#0e1815',
     highlight: '#bdeedd',
+    sweater: '#3f8f73',
+    wallpaper: '#1f3d34',
   },
   ivory: {
     body1: '#cbb994',
@@ -55,6 +63,8 @@ export const PALETTES: Record<PaletteName, CaseColours> = {
     hub1: '#6b5a3c',
     hub2: '#3c3020',
     highlight: '#f6dfa0',
+    sweater: '#e3cf9f',
+    wallpaper: '#9c8a63',
   },
   graphite: {
     body1: '#2b2b2e',
@@ -68,6 +78,8 @@ export const PALETTES: Record<PaletteName, CaseColours> = {
     hub1: '#232326',
     hub2: '#101012',
     highlight: '#9fc2ff',
+    sweater: '#7b7b85',
+    wallpaper: '#3a3a40',
   },
 };
 

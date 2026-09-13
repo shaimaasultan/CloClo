@@ -25,7 +25,7 @@ export default function DialScreen() {
   const router = useRouter();
   const { t, isRtl } = useLang();
   const { colours } = usePalette();
-  const { callState, setCallState, sky, mood, appendDigit, ringerIdx, missedNotes } = useKeeperState();
+  const { callState, setCallState, sky, mood, appendDigit, ringerIdx, missedNotes, muted } = useKeeperState();
   const { tick, clunk } = useSettings();
   const startIncomingCall = useIncomingCall();
   const { width: winWidth, height: winHeight } = useWindowDimensions();
@@ -109,6 +109,7 @@ export default function DialScreen() {
                     mood={mood}
                     sky={sky}
                     variant="hub"
+                    muted={muted}
                     callerActivity={ringerIdx !== null ? t.callers[ringerIdx].activity : undefined}
                     accessibilityLabel={t.roomTitle}
                     onPress={() => router.dismissTo('/room')}

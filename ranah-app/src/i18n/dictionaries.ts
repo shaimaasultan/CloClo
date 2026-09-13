@@ -84,6 +84,8 @@ export interface Dictionary {
   bookCaption: string;
   plantCaption: string;
   giggleCaption: string;
+  // The keeper's speech bubble when they wave.
+  helloBubble: string;
   grumpyCaption: string;
   napCaption: string;
   peekCaption: (weather: string) => string;
@@ -220,6 +222,7 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
     bookCaption: 'The keeper’s favourite book',
     plantCaption: 'The plant perks up',
     giggleCaption: 'Hehe!',
+    helloBubble: 'Hello!',
     grumpyCaption: 'Hmph! Enough poking.',
     napCaption: 'Napping on the bed',
     peekCaption: (weather) => `Peeking outside · ${weather}`,
@@ -338,6 +341,7 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
     bookCaption: 'الكتاب المفضل للحارس',
     plantCaption: 'النبتة فرحانة',
     giggleCaption: 'هيهي!',
+    helloBubble: 'أهلاً',
     grumpyCaption: 'هممف! كفاية زغزغة.',
     napCaption: 'نايم على السرير',
     peekCaption: (weather) => `بيبص برا · ${weather}`,

@@ -3,6 +3,7 @@ import { Animated, Easing, Pressable, View } from 'react-native';
 import Svg, { Circle, Ellipse, G, Line, Path, Rect, Text as SvgText } from 'react-native-svg';
 import type { CallerActivity } from '../../i18n/dictionaries';
 import type { CallState, KeeperMood, RoomProp } from '../../state/KeeperStateContext';
+import { useLang } from '../../state/LangContext';
 import { useReducedMotion } from '../../state/useReducedMotion';
 import { USE_NATIVE_DRIVER } from '../../theme/animation';
 import { pointer } from '../../theme/pointer';
@@ -96,6 +97,9 @@ interface KeeperAvatarProps {
   reaction?: KeeperReaction | null;
   lookUp?: boolean;
   shiverStrength?: number;
+  // On a live call with your microphone muted, the keeper hushes: finger to
+  // their lips, handset still at their ear.
+  muted?: boolean;
   onPress?: () => void;
   accessibilityLabel?: string;
 }
@@ -118,10 +122,12 @@ export function KeeperAvatar({
   reaction = null,
   lookUp = false,
   shiverStrength = 1,
+  muted = false,
   onPress,
   accessibilityLabel,
 }: KeeperAvatarProps) {
   const reduceMotion = useReducedMotion();
+  const { isRtl } = useLang();
   const pose = keeperPose(variant, callState, mood, activity, spot);
   const width = (size * VB_W) / VB_H;
 
@@ -243,11 +249,15 @@ export function KeeperAvatar({
   const hopY = hop.interpolate({ inputRange: [0, 1], outputRange: [0, -size * 0.05] });
   const waveRotate = wave.interpolate({ inputRange: [0, 1], outputRange: ['rotate(-20)', 'rotate(16)'] });
 
-  const clothing = sky === 'rain' ? RAINCOAT : isStorm ? colours.body1 : colours.metal2;
+  // The sweater follows the phone's case colour (raincoat and storm blanket
+  // take over in that weather).
+  const clothing = sky === 'rain' ? RAINCOAT : isStorm ? colours.body1 : colours.sweater;
   // Driving callers put a steering wheel in the keeper's free hand, which
   // then can't also hold the umbrella (it leans beside them instead).
-  const drivingWheel = callerActivity === 'driving' && pose === 'onCall';
-  const umbrellaHeld = sky === 'rain' && (pose === 'sleep' || (pose === 'onCall' && !drivingWheel));
+  // Hushing on a muted call uses that same free hand, so it wins over both.
+  const hushing = pose === 'onCall' && muted;
+  const drivingWheel = callerActivity === 'driving' && pose === 'onCall' && !hushing;
+  const umbrellaHeld = sky === 'rain' && (pose === 'sleep' || (pose === 'onCall' && !drivingWheel && !hushing));
   const shoeFill = callerActivity === 'home' ? SLIPPER : SHOES;
   const shoeRx = callerActivity === 'home' ? 7.5 : 6.5;
   const umbrellaLeaning = sky === 'rain' && !umbrellaHeld;
@@ -390,6 +400,8 @@ export function KeeperAvatar({
     const stroke = { stroke: HAIR, strokeWidth: 1.3, fill: 'none', strokeLinecap: 'round' as const };
     if (reaction?.kind === 'giggle') return <Path d="M43 60 q7 8 14 0 Z" fill={INK} />;
     if (reaction?.kind === 'grumpy') return <Path d="M45.5 65 q4.5 -3.5 9 0" {...stroke} />;
+    // Hushing: lips pressed shut behind the finger, no chatter.
+    if (hushing) return <Path d="M47.5 63 h5" {...stroke} />;
     switch (pose) {
       case 'sleep':
         return <Path d="M47 62 q3 2 6 0" {...stroke} />;
@@ -458,7 +470,7 @@ export function KeeperAvatar({
         </G>
       ) : (
         <G>
-          <Path d="M31 106 Q29 78 50 73 Q71 78 69 106 Z" fill={colours.metal2} />
+          <Path d="M31 106 Q29 78 50 73 Q71 78 69 106 Z" fill={colours.sweater} />
           <Path d="M43 74 q7 6 14 0" stroke={colours.metal3} strokeWidth={1.2} fill="none" strokeLinecap="round" />
           {callerActivity === 'work' && !isStorm && (
             // Dressed for the office, like the caller.
@@ -503,6 +515,14 @@ export function KeeperAvatar({
             <Line x1={50} y1={84} x2={50} y2={102} stroke={colours.metal3} strokeWidth={0.8} />
             <Line x1={40} y1={89} x2={47} y2={89} stroke={colours.metal3} strokeWidth={0.6} strokeOpacity={0.6} />
             <Line x1={53} y1={89} x2={60} y2={89} stroke={colours.metal3} strokeWidth={0.6} strokeOpacity={0.6} />
+            {/* The book is written in the app's language: Arabic reads from
+                the right-hand page, English from the left. */}
+            <SvgText x={43} y={99} fontSize={7} fontWeight="700" fill={colours.metal3} textAnchor="middle">
+              {isRtl ? 'ب' : 'A'}
+            </SvgText>
+            <SvgText x={57} y={99} fontSize={7} fontWeight="700" fill={colours.metal3} textAnchor="middle">
+              {isRtl ? 'أ' : 'b'}
+            </SvgText>
             {arm('M35 80 Q31 95 39 98', [39, 97])}
             {arm('M65 80 Q69 95 61 98', [61, 97])}
           </G>
@@ -539,7 +559,17 @@ export function KeeperAvatar({
                 <Line x1={60} y1={101} x2={60} y2={113} stroke={WHEEL} strokeWidth={2} />
               </G>
             )}
-            {restRight()}
+            {hushing ? (
+              // Finger to the lips: "shh".
+              <G>
+                <Path d="M65 80 Q71 72 55 67" stroke={clothing} strokeWidth={7} strokeLinecap="round" fill="none" />
+                <Circle cx={53} cy={66.5} r={4} fill={SKIN} />
+                <Line x1={51.2} y1={65} x2={50.2} y2={56} stroke={SKIN} strokeWidth={2.8} strokeLinecap="round" />
+                <Line x1={52.4} y1={64.5} x2={51.5} y2={56.5} stroke="#c98f68" strokeWidth={0.5} strokeLinecap="round" />
+              </G>
+            ) : (
+              restRight()
+            )}
           </G>
         );
       case 'gaze':
@@ -685,6 +715,11 @@ export function KeeperAvatar({
                   z
                 </SvgText>
               </G>
+            )}
+            {hushing && (
+              <SvgText x={74} y={44} fontSize={9} fontWeight="700" fontStyle="italic" fill={colours.face} opacity={0.8}>
+                shh
+              </SvgText>
             )}
             {reaction?.kind === 'grumpy' && (
               // A little cross-shaped "vein" — the cartoon sign for annoyed.

@@ -167,6 +167,7 @@ export default function CallScreen() {
             variant="room"
             talking={talking}
             callerActivity={caller.activity}
+            muted={muted}
           />
         </View>
 
