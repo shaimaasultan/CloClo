@@ -7,6 +7,14 @@ living in its hub. You pull numbers round a brass dial, the keeper wakes up
 when a call comes in, and every call carries a little of the caller's world
 with it: their weather, their local time, and what they're up to.
 
+## Demo
+
+<video src="docs/demo.mp4" controls width="360"></video>
+
+**[▶ Watch the demo (1:39)](docs/demo.mp4)** – dialling, a birthday call
+with the keeper's party hat, the keeper's room, adding a contact, and the
+Arabic layout.
+
 This repository holds two things:
 
 - **`dial-hollow.html`** – the original single-file HTML prototype.
