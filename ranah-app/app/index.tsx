@@ -1,8 +1,9 @@
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React from 'react';
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BrandHeader } from '../src/components/BrandHeader/BrandHeader';
+import { CallInfoBar } from '../src/components/CallInfoBar/CallInfoBar';
 import { Dock } from '../src/components/Dock/Dock';
 import { KeeperAvatar } from '../src/components/KeeperAvatar/KeeperAvatar';
 import { PhoneHandset } from '../src/components/PhoneHandset/PhoneHandset';
@@ -13,6 +14,7 @@ import { useKeeperState } from '../src/state/KeeperStateContext';
 import { useLang } from '../src/state/LangContext';
 import { usePalette } from '../src/state/PaletteContext';
 import { useSettings } from '../src/state/SettingsContext';
+import { useIncomingCall } from '../src/state/useIncomingCall';
 
 const CHROME_HEIGHT = 275; // rough budget for the brand header + topBar + dock + readout row above the stage
 
@@ -20,9 +22,9 @@ export default function DialScreen() {
   const router = useRouter();
   const { t, isRtl } = useLang();
   const { colours } = usePalette();
-  const [dialed, setDialed] = useState('');
-  const { callState, setCallState, sky, mood } = useKeeperState();
-  const { privacyMode, tick, clunk } = useSettings();
+  const { callState, setCallState, sky, mood, appendDigit } = useKeeperState();
+  const { tick, clunk } = useSettings();
+  const startIncomingCall = useIncomingCall();
   const { width: winWidth, height: winHeight } = useWindowDimensions();
 
   const rowDir = isRtl ? 'row-reverse' : 'row';
@@ -47,11 +49,8 @@ export default function DialScreen() {
 
   const handleDigit = (digit: string) => {
     tick();
-    setDialed((prev) => (prev + digit).slice(0, 15));
+    appendDigit(digit);
   };
-
-  // Privacy mode masks the readout digit-for-digit, as the prototype does.
-  const readout = dialed ? (privacyMode ? '•'.repeat(dialed.length) : dialed) : '—';
 
   return (
     <View style={[styles.root, { backgroundColor: colours.body2 }]}>
@@ -64,26 +63,16 @@ export default function DialScreen() {
         <TopBar />
 
         <View style={[styles.readoutRow, { flexDirection: rowDir }]}>
-          <View style={styles.readout}>
-            <Text style={styles.readoutLabel}>{t.readoutLabel}</Text>
-            <Text style={[styles.readoutDigits, { color: colours.highlight }]}>
-              {readout}
-            </Text>
-            {dialed.length > 0 && (
-              <Pressable onPress={() => setDialed('')} style={styles.clearBtn}>
-                <Text style={styles.clearBtnLabel}>×</Text>
-              </Pressable>
-            )}
-          </View>
+          <CallInfoBar />
           <View style={{ flex: 1 }} />
           {callState === 'idle' && (
-            <Pressable onPress={() => setCallState('ringing')} style={styles.demoBtn}>
+            <Pressable onPress={startIncomingCall} style={styles.demoBtn}>
               <Text style={styles.demoBtnLabel}>Preview an incoming call</Text>
             </Pressable>
           )}
           {callState === 'ringing' && (
             <Pressable onPress={() => setCallState('idle')} style={styles.demoBtn}>
-              <Text style={styles.demoBtnLabel}>Decline</Text>
+              <Text style={styles.demoBtnLabel}>{t.decline}</Text>
             </Pressable>
           )}
         </View>
@@ -129,28 +118,7 @@ export default function DialScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1 },
   safe: { flex: 1 },
-  readoutRow: { alignItems: 'center', paddingHorizontal: 16, paddingBottom: 10, gap: 8 },
-  readout: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    alignSelf: 'flex-start',
-    backgroundColor: 'rgba(11,10,8,.55)',
-    borderRadius: 999,
-    paddingVertical: 6,
-    paddingHorizontal: 14,
-  },
-  readoutLabel: { color: 'rgba(239,230,211,.5)', fontSize: 10, letterSpacing: 1 },
-  readoutDigits: { fontSize: 16, letterSpacing: 2, fontWeight: '600' },
-  clearBtn: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: 'rgba(239,230,211,.12)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  clearBtnLabel: { color: '#efe6d3', fontSize: 12, lineHeight: 14 },
+  readoutRow: { alignItems: 'center', flexWrap: 'wrap', paddingHorizontal: 16, paddingBottom: 10, gap: 8 },
   demoBtn: {
     backgroundColor: 'rgba(239,230,211,.1)',
     borderRadius: 999,

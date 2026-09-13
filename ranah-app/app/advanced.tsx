@@ -24,9 +24,7 @@ export default function AdvancedSettingsScreen() {
   return (
     <ScreenShell
       active="settings"
-      title={t.advancedTitle}
-      backLabel={t.settingsTitle}
-      onBack={() => router.navigate('/settings')}
+      back={{ label: t.settingsTitle, title: t.advancedTitle, onPress: () => router.navigate('/settings') }}
     >
       <ScrollView contentContainerStyle={styles.list}>
         <View style={[styles.section, align]}>

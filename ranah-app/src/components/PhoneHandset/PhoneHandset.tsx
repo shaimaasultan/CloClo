@@ -9,6 +9,11 @@ interface PhoneHandsetProps {
   isRinging: boolean;
   isOpen: boolean;
   onPress?: () => void;
+  // On the dial, only the hump above the ring is tappable (see hitHeight).
+  // Where nothing sits under the horns — the Keeper's room — the whole
+  // handset should answer.
+  fullHitArea?: boolean;
+  accessibilityLabel?: string;
 }
 
 // Ported from the .cradle / .handset markup in dial-hollow.html — same path
@@ -20,7 +25,15 @@ interface PhoneHandsetProps {
 // of hiding behind it), and a soft glow breathes behind the handset while
 // it's ringing (the original used a CSS drop-shadow filter for this, which
 // react-native-svg has no equivalent for).
-export function PhoneHandset({ width, colours, isRinging, isOpen, onPress }: PhoneHandsetProps) {
+export function PhoneHandset({
+  width,
+  colours,
+  isRinging,
+  isOpen,
+  onPress,
+  fullHitArea = false,
+  accessibilityLabel = 'Lift handset',
+}: PhoneHandsetProps) {
   const uid = useId();
   const pegGradientId = `handset-peg-${uid}`;
   const glowId = `handset-glow-${uid}`;
@@ -80,7 +93,7 @@ export function PhoneHandset({ width, colours, isRinging, isOpen, onPress }: Pho
   const handsetHeight = 94 * u;
   // Only the hump above the dial is tappable — the horns hang down over the
   // top finger holes, and a full-size hit box would swallow drags on 3/4/5.
-  const hitHeight = 36 * u;
+  const hitHeight = fullHitArea ? 94 * u : 36 * u;
   const glowWidth = width * 1.5;
   const glowHeight = handsetHeight * 2.8;
 
@@ -155,7 +168,7 @@ export function PhoneHandset({ width, colours, isRinging, isOpen, onPress }: Pho
       <Pressable
         onPress={onPress}
         accessibilityRole="button"
-        accessibilityLabel="Lift handset"
+        accessibilityLabel={accessibilityLabel}
         style={{ position: 'absolute', top: 0, left: 0, width, height: hitHeight }}
       />
     </View>

@@ -11,23 +11,28 @@ import { ChevronIcon } from '../Icons/Icons';
 import { TopBar } from '../TopBar/TopBar';
 import { WeatherLayer } from '../WeatherLayer/WeatherLayer';
 
-// Same chrome budget the Keeper's room uses, so the weather's sun never
-// lands under the header rows.
-const CHROME_HEIGHT = 310;
+// Brand header + dock + top bar budget, so the weather's sun never lands
+// under the chrome.
+const CHROME_HEIGHT = 270;
+
+interface BackLink {
+  label: string;
+  title: string;
+  onPress: () => void;
+}
 
 interface ScreenShellProps {
   active: DockKey;
-  title: string;
-  backLabel: string;
-  onBack: () => void;
+  // Only for screens the dock can't reach on its own (e.g. Advanced
+  // settings, a level below Settings). Dock screens don't get a back row —
+  // the dock already shows where you are and gets you anywhere.
+  back?: BackLink;
   children: React.ReactNode;
 }
 
-// Shared frame for the prototype's list screens (.contacts-screen): the
-// .keeper-room__head back/title row sits between the brand header and the
-// dock, matching the Keeper's room layout, with the caller's sky still
-// drifting behind the list.
-export function ScreenShell({ active, title, backLabel, onBack, children }: ScreenShellProps) {
+// Shared frame for the prototype's list screens (.contacts-screen), with the
+// caller's sky still drifting behind the list.
+export function ScreenShell({ active, back, children }: ScreenShellProps) {
   const { isRtl } = useLang();
   const { colours } = usePalette();
   const { sky } = useKeeperState();
@@ -40,19 +45,21 @@ export function ScreenShell({ active, title, backLabel, onBack, children }: Scre
       <SafeAreaView style={styles.safe}>
         <BrandHeader />
 
-        <View style={[styles.head, { flexDirection: rowDir }]}>
-          <Pressable onPress={onBack} style={[styles.backBtn, { flexDirection: rowDir }]} accessibilityRole="button">
-            <ChevronIcon color="rgba(239,230,211,.75)" direction="back" isRtl={isRtl} />
-            <Text style={styles.backLabel}>{backLabel}</Text>
-          </Pressable>
-          <Text style={styles.title} accessibilityRole="header">
-            {title}
-          </Text>
-        </View>
-
         <Dock active={active} />
 
         <TopBar />
+
+        {back && (
+          <View style={[styles.head, { flexDirection: rowDir }]}>
+            <Pressable onPress={back.onPress} style={[styles.backBtn, { flexDirection: rowDir }]} accessibilityRole="button">
+              <ChevronIcon color="rgba(239,230,211,.75)" direction="back" isRtl={isRtl} />
+              <Text style={styles.backLabel}>{back.label}</Text>
+            </Pressable>
+            <Text style={styles.title} accessibilityRole="header">
+              {back.title}
+            </Text>
+          </View>
+        )}
 
         <View style={styles.body}>{children}</View>
       </SafeAreaView>
@@ -62,13 +69,17 @@ export function ScreenShell({ active, title, backLabel, onBack, children }: Scre
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  safe: { flex: 1 },
+  // The weather layer is absolutely positioned, and on web a positioned
+  // element paints above unpositioned siblings regardless of DOM order —
+  // so without its own stacking level the sun would sit on top of the
+  // list rows. This keeps the sky drifting *behind* the content.
+  safe: { flex: 1, position: 'relative', zIndex: 1 },
   head: {
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 14,
-    paddingTop: 12,
-    paddingBottom: 4,
+    paddingTop: 10,
+    paddingBottom: 2,
   },
   backBtn: { alignItems: 'center', gap: 5, paddingVertical: 4, paddingHorizontal: 6 },
   backLabel: { color: 'rgba(239,230,211,.75)', fontSize: 11, fontWeight: '600' },

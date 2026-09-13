@@ -11,7 +11,7 @@ import { useSettings } from './SettingsContext';
 export function useCallContact() {
   const router = useRouter();
   const { t } = useLang();
-  const { callState, setCallState, setSky } = useKeeperState();
+  const { callState, startCall, setSky } = useKeeperState();
   const { clunk } = useSettings();
 
   return useCallback(
@@ -20,10 +20,10 @@ export function useCallContact() {
       const caller = t.callers[idx];
       if (!caller) return;
       setSky(caller.sky);
-      setCallState('active');
+      startCall(idx);
       clunk(true);
       router.navigate('/');
     },
-    [callState, t, setSky, setCallState, clunk, router]
+    [callState, t, setSky, startCall, clunk, router]
   );
 }

@@ -1,4 +1,3 @@
-import { useRouter } from 'expo-router';
 import React from 'react';
 import { ScrollView, StyleSheet, Text } from 'react-native';
 import { ContactRow } from '../src/components/ContactRow/ContactRow';
@@ -8,13 +7,12 @@ import { useSettings } from '../src/state/SettingsContext';
 import { useCallContact } from '../src/state/useCallContact';
 
 export default function RecentsScreen() {
-  const router = useRouter();
   const { t } = useLang();
   const { privacyMode } = useSettings();
   const callContact = useCallContact();
 
   return (
-    <ScreenShell active="recents" title={t.recentsTitle} backLabel={t.roomBack} onBack={() => router.navigate('/')}>
+    <ScreenShell active="recents">
       <ScrollView contentContainerStyle={styles.list}>
         {privacyMode ? (
           <Text style={styles.hint}>{t.privacyHidden}</Text>

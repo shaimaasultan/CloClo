@@ -16,7 +16,7 @@ export default function SettingsScreen() {
   const textAlign = isRtl ? ('right' as const) : ('left' as const);
 
   return (
-    <ScreenShell active="settings" title={t.settingsTitle} backLabel={t.roomBack} onBack={() => router.navigate('/')}>
+    <ScreenShell active="settings">
       <ScrollView contentContainerStyle={styles.list}>
         <View style={[styles.row, { flexDirection: rowDir }]}>
           <View style={[styles.text, textCol]}>

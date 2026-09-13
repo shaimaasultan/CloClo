@@ -1,4 +1,3 @@
-import { useRouter } from 'expo-router';
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { TONE_IDS } from '../src/audio/tones';
@@ -11,14 +10,13 @@ import { useSettings } from '../src/state/SettingsContext';
 // Ported from the prototype's sounds screen: one block per caller with a
 // wrap-around row of ringtone chips; picking one previews it.
 export default function SoundsScreen() {
-  const router = useRouter();
   const { t, isRtl } = useLang();
   const { colours } = usePalette();
   const { toneForContact, setContactTone } = useSettings();
   const rowDir = isRtl ? 'row-reverse' : 'row';
 
   return (
-    <ScreenShell active="sounds" title={t.soundsTitle} backLabel={t.roomBack} onBack={() => router.navigate('/')}>
+    <ScreenShell active="sounds">
       <Text style={styles.hint}>{t.soundsHint}</Text>
       <ScrollView contentContainerStyle={styles.list}>
         {t.callers.map((caller, idx) => {

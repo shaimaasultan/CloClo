@@ -17,6 +17,8 @@ export interface Dictionary {
   linePill: string;
   handsetLift: string;
   handsetHangup: string;
+  incomingTag: string;
+  decline: string;
   roomTitle: string;
   roomBack: string;
   wallNote: string;
@@ -82,6 +84,8 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
     linePill: 'Line open',
     handsetLift: 'Lift handset to open the line',
     handsetHangup: 'Hang up',
+    incomingTag: 'Incoming call',
+    decline: 'Decline',
     roomTitle: "Keeper's room",
     roomBack: 'Dial',
     wallNote: 'call someone soon',
@@ -137,6 +141,8 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
     linePill: 'الخط مفتوح',
     handsetLift: 'دوسي على السماعة عشان تفتحي الخط',
     handsetHangup: 'اقفلي السماعة',
+    incomingTag: 'مكالمة واردة',
+    decline: 'رفض',
     roomTitle: 'أوضة الحارس',
     roomBack: 'القرص',
     wallNote: 'اتصل بحد قريب',
