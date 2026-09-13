@@ -40,9 +40,11 @@ export function KeeperAvatar({
   const PAD = 16;
   const drawSize = (size * (48 + PAD * 2)) / 48;
   const drawOffset = (-size * PAD) / 48;
-  // With the umbrella up, the zzz drift out on the left instead of
-  // colliding with the canopy on the right.
-  const zzzX = showUmbrella ? [172, 164] : [222, 230];
+  // Tucked in beside the head so they stay inside the dial's hub circle
+  // (radius ~45 units here) instead of floating out over the finger holes.
+  // With the umbrella up they sit on the left, clear of the canopy.
+  const zzzX = showUmbrella ? [184, 177] : [211, 218];
+  const zzzY = [181, 173];
 
   const content = (
     <View pointerEvents="none" style={{ width: size, height: size, overflow: 'visible' }}>
@@ -54,10 +56,10 @@ export function KeeperAvatar({
     >
       {!awake && (
         <G opacity={0.55}>
-          <SvgText x={zzzX[0]} y={172} fontSize={9} fill={colours.face} opacity={0.55}>
+          <SvgText x={zzzX[0]} y={zzzY[0]} fontSize={9} fill={colours.face} opacity={0.55}>
             z
           </SvgText>
-          <SvgText x={zzzX[1]} y={164} fontSize={7} fill={colours.face} opacity={0.4}>
+          <SvgText x={zzzX[1]} y={zzzY[1]} fontSize={7} fill={colours.face} opacity={0.4}>
             z
           </SvgText>
         </G>
