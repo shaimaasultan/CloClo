@@ -28,8 +28,6 @@ export default function DialScreen() {
   const { width: winWidth, height: winHeight } = useWindowDimensions();
 
   const rowDir = isRtl ? 'row-reverse' : 'row';
-  const awake = callState !== 'idle';
-
   // Same responsive intent as the prototype's min(80vw,400px) dial sizing,
   // plus a check against remaining vertical space so the handset (which
   // peeks above the dial) never gets pushed into the chrome above it.
@@ -84,12 +82,15 @@ export default function DialScreen() {
                 onDigit={handleDigit}
                 centerContent={
                   <KeeperAvatar
-                    // 48-unit avatar at the prototype's 2.32x hub scale
-                    size={dialSize * ((48 * 2.32) / 400)}
+                    // Full-body keeper sized to stand inside the hub circle
+                    // (radius 104 of the dial's 400-unit face).
+                    size={dialSize * 0.42}
                     colours={colours}
-                    awake={awake}
+                    callState={callState}
                     mood={mood}
-                    showUmbrella={sky === 'rain' || sky === 'snow' || sky === 'storm'}
+                    sky={sky}
+                    variant="hub"
+                    accessibilityLabel={t.roomTitle}
                     onPress={() => router.navigate('/room')}
                   />
                 }

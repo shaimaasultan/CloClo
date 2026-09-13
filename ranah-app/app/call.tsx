@@ -2,9 +2,10 @@ import { Redirect } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextStyle, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import Svg, { Circle, Ellipse, Line, Path } from 'react-native-svg';
+import Svg, { Line, Path } from 'react-native-svg';
 import { BrandHeader } from '../src/components/BrandHeader/BrandHeader';
 import { CallInfoBar } from '../src/components/CallInfoBar/CallInfoBar';
+import { KeeperAvatar } from '../src/components/KeeperAvatar/KeeperAvatar';
 import { CALL_SCRIPT, ScriptLine, TextDir } from '../src/data/callScript';
 import { useKeeperState } from '../src/state/KeeperStateContext';
 import { useLang } from '../src/state/LangContext';
@@ -74,7 +75,7 @@ function CallControl({ label, accessibilityLabel, onPress, checked, variant, chi
 export default function CallScreen() {
   const { t, isRtl } = useLang();
   const { colours } = usePalette();
-  const { callState, setCallState, ringerIdx } = useKeeperState();
+  const { callState, setCallState, ringerIdx, mood, sky } = useKeeperState();
   const { clunk } = useSettings();
 
   const [seconds, setSeconds] = useState(0);
@@ -152,17 +153,18 @@ export default function CallScreen() {
           </Text>
         </View>
 
+        {/* The keeper on the line: handset to their ear, dressed for the
+            caller's weather, mouth moving as each transcript line lands. */}
         <View style={styles.stage}>
-          <Svg width={56} height={56} viewBox="0 0 24 24">
-            <Circle cx={12} cy={12} r={11} fill={colours.hub1} stroke={colours.metal2} strokeWidth={1} />
-            <Circle cx={8.7} cy={11.6} r={1.3} fill={colours.face} />
-            <Circle cx={15.3} cy={11.6} r={1.3} fill={colours.face} />
-            {talking ? (
-              <Ellipse cx={12} cy={15.6} rx={2.3} ry={1.6} fill={colours.ink} />
-            ) : (
-              <Path d="M9 15.4c1 .9 4.4 .9 5.4 0" stroke={colours.face} strokeWidth={1.1} fill="none" strokeLinecap="round" />
-            )}
-          </Svg>
+          <KeeperAvatar
+            size={104}
+            colours={colours}
+            callState="active"
+            mood={mood}
+            sky={sky}
+            variant="room"
+            talking={talking}
+          />
         </View>
 
         <View style={[styles.controls, { flexDirection: rowDir }]}>

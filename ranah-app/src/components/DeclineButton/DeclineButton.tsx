@@ -1,7 +1,8 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { AccessibilityInfo, Animated, Easing, Pressable, StyleSheet, Text } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { Animated, Easing, Pressable, StyleSheet, Text } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { useLang } from '../../state/LangContext';
+import { useReducedMotion } from '../../state/useReducedMotion';
 
 const HANDSET_PATH =
   'M14 44 C 6 44 4 30 12 24 L 40 6 C 46 2 52 6 50 13 L 46 24 C 62 14 88 14 104 24 L 100 13 C 98 6 104 2 110 6 L 138 24 C 146 30 144 44 136 44 C 130 44 128 40 122 36 C 106 26 44 26 28 36 C 22 40 20 44 14 44 Z';
@@ -25,15 +26,7 @@ export function DeclineButton({ label, onPress }: DeclineButtonProps) {
   const { isRtl } = useLang();
   const glow = useRef(new Animated.Value(0)).current;
   const buzz = useRef(new Animated.Value(0)).current;
-  const [reduceMotion, setReduceMotion] = useState(false);
-
-  useEffect(() => {
-    AccessibilityInfo.isReduceMotionEnabled()
-      .then(setReduceMotion)
-      .catch(() => {});
-    const sub = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduceMotion);
-    return () => sub.remove();
-  }, []);
+  const reduceMotion = useReducedMotion();
 
   useEffect(() => {
     if (reduceMotion) {

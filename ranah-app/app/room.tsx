@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router';
 import React, { useEffect, useId, useRef, useState } from 'react';
-import { Animated, LayoutChangeEvent, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Animated, Easing, LayoutChangeEvent, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BrandHeader } from '../src/components/BrandHeader/BrandHeader';
 import { CallInfoBar } from '../src/components/CallInfoBar/CallInfoBar';
@@ -8,7 +8,7 @@ import { DeclineButton } from '../src/components/DeclineButton/DeclineButton';
 import { Dock } from '../src/components/Dock/Dock';
 import { KeeperAvatar } from '../src/components/KeeperAvatar/KeeperAvatar';
 import { PhoneHandset } from '../src/components/PhoneHandset/PhoneHandset';
-import { WeatherLayer } from '../src/components/WeatherLayer/WeatherLayer';
+import { WeatherKind, WeatherLayer } from '../src/components/WeatherLayer/WeatherLayer';
 import Svg, {
   Circle,
   ClipPath,
@@ -17,6 +17,7 @@ import Svg, {
   G,
   Line,
   LinearGradient,
+  Path,
   RadialGradient,
   Rect,
   Stop,
@@ -26,6 +27,8 @@ import { useKeeperState } from '../src/state/KeeperStateContext';
 import { useLang } from '../src/state/LangContext';
 import { usePalette } from '../src/state/PaletteContext';
 import { useSettings } from '../src/state/SettingsContext';
+import { useReducedMotion } from '../src/state/useReducedMotion';
+import { CaseColours } from '../src/theme/tokens';
 
 const VB_W = 400;
 const VB_H = 300;
@@ -33,6 +36,16 @@ const VB_H = 300;
 // (dawn/day/dusk/night); that time-of-day system doesn't exist yet here,
 // so the window shows a fixed daytime gradient regardless of hour.
 const WINDOW_SKY = ['#cfe3e2', '#eee4c8', '#e7d9ad'];
+
+const WATER = '#8fb4cc';
+const WATER_LIGHT = '#d6e8f2';
+const SNOW = '#f5f0e4';
+
+// The keeper's feet rest on the rug at this height in the 400x300 room.
+const FLOOR_Y = 268;
+// Keeper height as a share of the room; small enough that the incoming-call
+// card at the top of the room never covers their head, even arms-up.
+const KEEPER_SHARE = 0.48;
 
 // react-native-svg's Animated wrapper injects `collapsable={false}` (a perf
 // hint meant for RN Views); on web it leaks straight to the DOM as a
@@ -44,6 +57,8 @@ function stripCollapsable<P extends object>(Comp: React.ComponentType<P>) {
   });
 }
 const AnimatedRect = Animated.createAnimatedComponent(stripCollapsable(Rect));
+const AnimatedCircle = Animated.createAnimatedComponent(stripCollapsable(Circle));
+const AnimatedG = Animated.createAnimatedComponent(stripCollapsable(G));
 
 function useFlicker(active: boolean) {
   const value = useRef(new Animated.Value(0)).current;
@@ -70,7 +85,22 @@ function useFlicker(active: boolean) {
   return value;
 }
 
-function WindowWeather({ sky, clipId }: { sky: 'clear' | 'rain' | 'snow' | 'storm'; clipId: string }) {
+// A 0→1 loop, held at 0 when inactive.
+function useLoop(active: boolean, duration: number) {
+  const value = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (!active) {
+      value.setValue(0);
+      return;
+    }
+    const loop = Animated.loop(Animated.timing(value, { toValue: 1, duration, easing: Easing.out(Easing.quad), useNativeDriver: false }));
+    loop.start();
+    return () => loop.stop();
+  }, [active, duration, value]);
+  return value;
+}
+
+function WindowWeather({ sky, clipId }: { sky: WeatherKind; clipId: string }) {
   const flash = useFlicker(sky === 'storm');
   const highlight = '#f3d78b';
   return (
@@ -121,7 +151,85 @@ function WindowWeather({ sky, clipId }: { sky: 'clear' | 'rain' | 'snow' | 'stor
   );
 }
 
-const PROP_GLYPH: Record<'book' | 'music' | 'chat', string> = { book: '📖', music: '♫', chat: '💬' };
+// The ceiling lamp; it stutters with each lightning strike in a storm.
+function CeilingLamp({ colours, storm }: { colours: CaseColours; storm: boolean }) {
+  const flicker = useFlicker(storm);
+  return (
+    <G>
+      <Line x1={200} y1={0} x2={200} y2={34} stroke={colours.metal3} strokeWidth={2} />
+      <AnimatedCircle
+        cx={200}
+        cy={44}
+        r={20}
+        fill={colours.highlight}
+        opacity={flicker.interpolate({ inputRange: [0, 0.5], outputRange: [0.18, 0.03] })}
+      />
+      <AnimatedCircle
+        cx={200}
+        cy={44}
+        r={9}
+        fill={colours.highlight}
+        opacity={flicker.interpolate({ inputRange: [0, 0.5], outputRange: [0.85, 0.25] })}
+      />
+    </G>
+  );
+}
+
+// What the weather brings indoors: a sunbeam, a rain puddle by the door with
+// a dripping umbrella, or snow blown in over the step with boots left out.
+function RoomWeather({ colours, sky }: { colours: CaseColours; sky: WeatherKind }) {
+  const reduceMotion = useReducedMotion();
+  const wet = sky === 'rain' || sky === 'storm';
+  const ripple = useLoop(wet && !reduceMotion, 1800);
+  const drip = useLoop(wet && !reduceMotion, 1400);
+
+  return (
+    <G>
+      {sky === 'clear' && <Path d="M32 98 L120 98 L232 284 L70 284 Z" fill={colours.highlight} opacity={0.07} />}
+
+      {wet && (
+        <G>
+          <Ellipse cx={342} cy={276} rx={38} ry={6} fill={WATER} opacity={0.42} />
+          <G transform="translate(342 276)">
+            <AnimatedG
+              transform={ripple.interpolate({ inputRange: [0, 1], outputRange: ['scale(0.2)', 'scale(1)'] })}
+              opacity={ripple.interpolate({ inputRange: [0, 1], outputRange: [0.8, 0] })}
+            >
+              <Ellipse cx={0} cy={0} rx={30} ry={5} fill="none" stroke={WATER_LIGHT} strokeWidth={1.4} />
+            </AnimatedG>
+          </G>
+
+          {/* Umbrella stand beside the door, still dripping. */}
+          <Rect x={290} y={238} width={20} height={26} rx={3} fill={colours.metal3} />
+          <Path d="M300 196 L294 234 L306 234 Z" fill={colours.body1} stroke={colours.metal3} strokeWidth={0.8} />
+          <Line x1={300} y1={190} x2={300} y2={197} stroke={colours.metal3} strokeWidth={1.4} strokeLinecap="round" />
+          <G transform="translate(300 266)">
+            <AnimatedG
+              transform={drip.interpolate({ inputRange: [0, 1], outputRange: ['translate(0, 0)', 'translate(0, 10)'] })}
+              opacity={drip.interpolate({ inputRange: [0, 0.8, 1], outputRange: [0.9, 0.9, 0] })}
+            >
+              <Circle cx={0} cy={0} r={1.8} fill={WATER} />
+            </AnimatedG>
+          </G>
+        </G>
+      )}
+
+      {sky === 'snow' && (
+        <G>
+          <Path d="M314 268 Q324 250 338 258 Q350 244 364 255 Q378 250 390 268 Z" fill={SNOW} />
+          <Circle cx={330} cy={262} r={3} fill="#ffffff" opacity={0.8} />
+          {/* Snowy boots kicked off by the door. */}
+          <G fill="#5a4636">
+            <Path d="M282 266 v-16 q0 -4 4 -4 h7 q4 0 4 4 v9 h6 q3 0 3 3 v4 Z" />
+            <Path d="M306 266 v-16 q0 -4 4 -4 h7 q4 0 4 4 v9 h6 q3 0 3 3 v4 Z" />
+          </G>
+          <Rect x={282} y={245} width={15} height={4} rx={2} fill={SNOW} />
+          <Rect x={306} y={245} width={15} height={4} rx={2} fill={SNOW} />
+        </G>
+      )}
+    </G>
+  );
+}
 
 // Rough budget for the header (logo + settings pill) + dock + info row above
 // the stage, so the outdoor weather layer's sun doesn't render under that chrome.
@@ -142,7 +250,6 @@ export default function KeeperRoomScreen() {
   const windowGradientId = `windowGrad-${uid}`;
   const winClipId = `roomWinClip-${uid}`;
 
-  const awake = callState !== 'idle';
   const ringing = callState === 'ringing';
   const ringer = ringerIdx !== null ? t.callers[ringerIdx] : null;
 
@@ -170,8 +277,10 @@ export default function KeeperRoomScreen() {
   // that box — nothing gets cut off, any leftover space just letterboxes.
   const boxW = stageSize.width > 0 && stageSize.height > 0 ? Math.min(stageSize.width, (stageSize.height * VB_W) / VB_H) : 0;
   const boxH = (boxW * VB_H) / VB_W;
-  const keeperSize = boxW > 0 ? Math.max(90, Math.min(210, boxW * 0.42, boxH * 0.5)) : 0;
-  const propBadgeSize = Math.max(22, keeperSize * 0.18);
+  const keeperH = boxH * KEEPER_SHARE;
+  const keeperW = (keeperH * 100) / 140;
+  // The drawing's feet sit at y≈133 of its 140-unit height.
+  const keeperTop = (boxH * FLOOR_Y) / VB_H - keeperH * (133 / 140);
   // While ringing, the handset hangs over the room's top edge (half in the
   // sky above, half over the wall) like the prototype's cradle over
   // .keeper-room, leaving the top of the room itself for the caller card.
@@ -238,13 +347,16 @@ export default function KeeperRoomScreen() {
                 <Rect x={276} y={46} width={96} height={7} rx={2} fill={colours.metal2} />
                 <Rect x={330} y={22} width={20} height={26} rx={2} transform="rotate(-6 340 35)" fill={colours.metal1} stroke={colours.metal3} strokeWidth={1} />
 
-                {!ringing && (
-                  <G>
-                    <Line x1={200} y1={0} x2={200} y2={34} stroke={colours.metal3} strokeWidth={2} />
-                    <Circle cx={200} cy={44} r={20} fill={colours.highlight} opacity={0.18} />
-                    <Circle cx={200} cy={44} r={9} fill={colours.highlight} opacity={0.85} />
-                  </G>
-                )}
+                {/* Front door and mat, where the weather gets in. */}
+                <Rect x={326} y={120} width={56} height={142} rx={4} fill={colours.body1} stroke={colours.metal2} strokeWidth={3} />
+                <Rect x={336} y={132} width={36} height={44} rx={3} fill="none" stroke={colours.metal3} strokeOpacity={0.6} strokeWidth={1.2} />
+                <Rect x={336} y={190} width={36} height={58} rx={3} fill="none" stroke={colours.metal3} strokeOpacity={0.6} strokeWidth={1.2} />
+                <Circle cx={371} cy={196} r={3.2} fill={colours.metal1} />
+                <Rect x={318} y={262} width={72} height={7} rx={3} fill={colours.metal3} opacity={0.75} />
+
+                {!ringing && <CeilingLamp colours={colours} storm={sky === 'storm'} />}
+
+                <RoomWeather colours={colours} sky={sky} />
 
                 <Rect x={26} y={186} width={92} height={48} rx={11} fill={colours.metal2} />
                 <Ellipse cx={48} cy={194} rx={17} ry={11} fill={colours.face} />
@@ -256,17 +368,19 @@ export default function KeeperRoomScreen() {
                 )}
               </Svg>
 
-              <View style={styles.keeperDock} pointerEvents="none">
-                <KeeperAvatar size={keeperSize} colours={colours} awake={awake} mood={mood} showUmbrella={sky !== 'clear'} />
-                <View
-                  key={momentIndex}
-                  style={[
-                    styles.propBadge,
-                    { width: propBadgeSize, height: propBadgeSize, borderRadius: propBadgeSize / 2 },
-                  ]}
-                >
-                  <Text style={[styles.propGlyph, { fontSize: propBadgeSize * 0.5 }]}>{PROP_GLYPH[roomProp]}</Text>
-                </View>
+              <View
+                pointerEvents="none"
+                style={{ position: 'absolute', top: keeperTop, left: (boxW - keeperW) / 2 }}
+              >
+                <KeeperAvatar
+                  size={keeperH}
+                  colours={colours}
+                  callState={callState}
+                  mood={mood}
+                  sky={sky}
+                  activity={roomProp}
+                  variant="room"
+                />
               </View>
 
               {/* Incoming call card, ported from the prototype's .incoming:
@@ -331,25 +445,6 @@ const styles = StyleSheet.create({
   moodBored: { backgroundColor: 'rgba(255,255,255,.08)' },
   moodBadgeText: { fontSize: 10, fontWeight: '700', color: 'rgba(239,230,211,.7)' },
   stage: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  keeperDock: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    top: 0,
-    bottom: 0,
-    alignItems: 'center',
-    justifyContent: 'flex-end',
-    paddingBottom: '14%',
-  },
-  propBadge: {
-    position: 'absolute',
-    top: 4,
-    right: -6,
-    backgroundColor: 'rgba(11,10,8,.55)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  propGlyph: { fontSize: 15, color: '#f3ecdd' },
   infoRow: { paddingHorizontal: 16, paddingTop: 10 },
   ringingHandset: { position: 'absolute' },
   incomingCard: { position: 'absolute', left: 0, right: 0, alignItems: 'center', paddingHorizontal: 12 },
