@@ -700,6 +700,10 @@ export default function KeeperRoomScreen() {
   };
 
   const declineCall = () => setCallState('idle');
+  const hangUp = () => {
+    clunk(false);
+    setCallState('idle');
+  };
   const rowDir = isRtl ? 'row-reverse' : 'row';
   const showMoodBadge = mood !== 'neutral';
   const wallNote = !showMoodBadge ? t.wallNote : mood === 'bored' ? t.wallNoteBored : t.wallNoteHappy;
@@ -892,8 +896,9 @@ export default function KeeperRoomScreen() {
 
         <Dock active="keeper" />
 
-        <View style={styles.infoRow}>
+        <View style={[styles.infoRow, { flexDirection: rowDir }]}>
           <CallInfoBar />
+          {callState === 'active' && <DeclineButton calm label={t.handsetHangup} onPress={hangUp} />}
         </View>
 
         <View style={styles.stage} onLayout={handleStageLayout}>
@@ -1156,7 +1161,14 @@ const styles = StyleSheet.create({
   moodBored: { backgroundColor: 'rgba(255,255,255,.08)' },
   moodBadgeText: { fontSize: 10, fontWeight: '700', color: 'rgba(239,230,211,.7)' },
   stage: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  infoRow: { paddingHorizontal: 16, paddingTop: 10 },
+  infoRow: {
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
   ringingHandset: { position: 'absolute' },
   incomingCard: { position: 'absolute', left: 0, right: 0, alignItems: 'center', paddingHorizontal: 12 },
   incomingBackdrop: {

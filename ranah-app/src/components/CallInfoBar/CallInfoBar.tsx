@@ -6,8 +6,8 @@ import { usePalette } from '../../state/PaletteContext';
 import { useSettings } from '../../state/SettingsContext';
 
 // Ported from the prototype's .infobar__group: the "Last dialed" readout
-// (with its clear button) and, while a call is ringing or open, a second
-// "Number" readout showing the caller's number.
+// (with its clear button), a "Number" readout with the caller's number while
+// a call rings or is open, and a "Line in use" pill while the call is live.
 export function CallInfoBar() {
   const { t, isRtl } = useLang();
   const { colours } = usePalette();
@@ -38,6 +38,13 @@ export function CallInfoBar() {
           <Text style={[styles.digits, { color: colours.highlight }]}>{caller.number}</Text>
         </View>
       )}
+
+      {callState === 'active' && (
+        <View style={[styles.pill, styles.linePill, { flexDirection: rowDir }]} accessibilityRole="text">
+          <View style={styles.lineDot} />
+          <Text style={styles.lineLabel}>{t.lineInUse}</Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -65,4 +72,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   clearBtnLabel: { color: '#efe6d3', fontSize: 12, lineHeight: 14 },
+  // Same pill as the readouts, in the green of an open line.
+  linePill: { borderColor: 'rgba(127,214,180,.55)', paddingVertical: 7 },
+  lineDot: { width: 7, height: 7, borderRadius: 3.5, backgroundColor: '#7fd6b4' },
+  lineLabel: { color: '#bdf0dc', fontSize: 9, letterSpacing: 1, fontWeight: '600', fontFamily: 'monospace' },
 });

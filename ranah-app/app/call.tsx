@@ -142,11 +142,8 @@ export default function CallScreen() {
         <BrandHeader />
 
         <View style={[styles.infoRow, { flexDirection: rowDir }]}>
+          {/* Includes the "Line in use" pill while the call is live. */}
           <CallInfoBar />
-          <View style={[styles.linePill, { flexDirection: rowDir }]}>
-            <View style={styles.linePillDot} />
-            <Text style={styles.linePillText}>{t.linePill}</Text>
-          </View>
         </View>
 
         <View style={[styles.head, { flexDirection: rowDir }]}>
@@ -245,16 +242,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 12,
   },
-  linePill: {
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: 'rgba(53,109,100,.9)',
-    borderRadius: 999,
-    paddingVertical: 5,
-    paddingHorizontal: 9,
-  },
-  linePillDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#bdf0dc' },
-  linePillText: { color: '#f2f8f5', fontSize: 10, letterSpacing: 1, fontFamily: 'monospace' },
   head: {
     alignItems: 'flex-start',
     justifyContent: 'space-between',

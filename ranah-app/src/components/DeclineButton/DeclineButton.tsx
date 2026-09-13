@@ -19,20 +19,23 @@ const BUZZ_DISTANCE = 2.5;
 interface DeclineButtonProps {
   label: string;
   onPress: () => void;
+  // For hanging up a live call: the same red button without the urgent
+  // glow and buzz, which are meant for a phone that's still ringing.
+  calm?: boolean;
 }
 
 // A loud, can't-miss Decline for a ringing call: solid red pill with a
 // hang-up handset, a pulsing red halo, and a periodic buzz. Motion is
 // dropped (halo held steady) when the OS asks for reduced motion.
-export function DeclineButton({ label, onPress }: DeclineButtonProps) {
+export function DeclineButton({ label, onPress, calm = false }: DeclineButtonProps) {
   const { isRtl } = useLang();
   const glow = useRef(new Animated.Value(0)).current;
   const buzz = useRef(new Animated.Value(0)).current;
   const reduceMotion = useReducedMotion();
 
   useEffect(() => {
-    if (reduceMotion) {
-      glow.setValue(0.5);
+    if (reduceMotion || calm) {
+      glow.setValue(calm ? 0 : 0.5);
       buzz.setValue(0);
       return;
     }
@@ -52,7 +55,7 @@ export function DeclineButton({ label, onPress }: DeclineButtonProps) {
       glowLoop.stop();
       buzzLoop.stop();
     };
-  }, [reduceMotion, glow, buzz]);
+  }, [reduceMotion, calm, glow, buzz]);
 
   const translateX = buzz.interpolate({ inputRange: [-1, 1], outputRange: [-BUZZ_DISTANCE, BUZZ_DISTANCE] });
   const haloOpacity = glow.interpolate({ inputRange: [0, 1], outputRange: [0.25, 0.75] });

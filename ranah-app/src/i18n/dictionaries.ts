@@ -17,6 +17,8 @@ export interface Dictionary {
   callingLabel: string;
   clearAria: string;
   linePill: string;
+  // Shown beside "Last dialed" / "Number" while a call is live.
+  lineInUse: string;
   handsetLift: string;
   handsetHangup: string;
   incomingTag: string;
@@ -141,6 +143,7 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
     callingLabel: 'Number',
     clearAria: 'Clear dialed number',
     linePill: 'Line open',
+    lineInUse: 'Line in use',
     handsetLift: 'Lift handset to open the line',
     handsetHangup: 'Hang up',
     incomingTag: 'Incoming call',
@@ -251,6 +254,7 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
     callingLabel: 'الرقم',
     clearAria: 'امسحي الرقم',
     linePill: 'الخط مفتوح',
+    lineInUse: 'الخط شغّال',
     handsetLift: 'دوسي على السماعة عشان تفتحي الخط',
     handsetHangup: 'اقفلي السماعة',
     incomingTag: 'مكالمة واردة',

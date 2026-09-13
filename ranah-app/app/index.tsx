@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { BrandHeader } from '../src/components/BrandHeader/BrandHeader';
 import { CallInfoBar } from '../src/components/CallInfoBar/CallInfoBar';
 import { DeclineButton } from '../src/components/DeclineButton/DeclineButton';
+import { MissedCallNote } from '../src/components/MissedCallNote/MissedCallNote';
 import { Dock } from '../src/components/Dock/Dock';
 import { KeeperAvatar } from '../src/components/KeeperAvatar/KeeperAvatar';
 import { PhoneHandset } from '../src/components/PhoneHandset/PhoneHandset';
@@ -23,7 +24,7 @@ export default function DialScreen() {
   const router = useRouter();
   const { t, isRtl } = useLang();
   const { colours } = usePalette();
-  const { callState, setCallState, sky, mood, appendDigit, ringerIdx } = useKeeperState();
+  const { callState, setCallState, sky, mood, appendDigit, ringerIdx, missedNotes } = useKeeperState();
   const { tick, clunk } = useSettings();
   const startIncomingCall = useIncomingCall();
   const { width: winWidth, height: winHeight } = useWindowDimensions();
@@ -55,6 +56,14 @@ export default function DialScreen() {
     appendDigit(digit);
   };
 
+  const hangUp = () => {
+    clunk(false);
+    setCallState('idle');
+  };
+
+  // The same unseen missed calls the keeper pins to the room's door.
+  const missedNames = missedNotes.map((idx) => t.callers[idx]?.name).filter((name): name is string => !!name);
+
   return (
     <View style={[styles.root, { backgroundColor: colours.body2 }]}>
       <WeatherLayer width={winWidth} height={winHeight} kind={sky} topInset={CHROME_HEIGHT} />
@@ -72,9 +81,16 @@ export default function DialScreen() {
             </Pressable>
           )}
           {callState === 'ringing' && <DeclineButton label={t.decline} onPress={() => setCallState('idle')} />}
+          {callState === 'active' && <DeclineButton calm label={t.handsetHangup} onPress={hangUp} />}
         </View>
 
         <View style={styles.stage}>
+          {/* The keeper's missed-call note, pinned in the corner beside the dial. */}
+          {missedNames.length > 0 && (
+            <View style={[styles.missedNote, isRtl ? { right: 16 } : { left: 16 }]}>
+              <MissedCallNote names={missedNames} onPress={() => router.dismissTo('/recents')} />
+            </View>
+          )}
           <View style={{ width: dialSize, height: dialSize + handsetRise }}>
             <View style={{ position: 'absolute', top: handsetRise, left: 0 }}>
               <RotaryDial
@@ -128,4 +144,5 @@ const styles = StyleSheet.create({
   },
   demoBtnLabel: { color: 'rgba(239,230,211,.8)', fontSize: 10, fontWeight: '600' },
   stage: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  missedNote: { position: 'absolute', top: 8, zIndex: 2 },
 });
