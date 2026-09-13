@@ -1,6 +1,8 @@
 // Ported from the LANG.en / LANG.ar objects in dial-hollow.html — app-facing strings only
 // (the prototype's dev-harness copy like eyebrow/lede/steps is dropped; it was never app UI).
 
+import type { DecorChoice } from '../state/decorations';
+
 export type Lang = 'en' | 'ar';
 
 // The wordmark stays Latin-script in every language — it's a name, not a
@@ -80,6 +82,14 @@ export interface Dictionary {
   grumpyCaption: string;
   napCaption: string;
   peekCaption: (weather: string) => string;
+  // Seasonal and holiday room decorations.
+  decorLabel: string;
+  decorNames: Record<DecorChoice, string>;
+  ramadanGreeting: string;
+  eidGreeting: string;
+  newYearGreeting: string;
+  birthdayGreeting: (name: string) => string;
+  birthdayCakeLabel: (name: string) => string;
 }
 
 // The little object each caller leaves on the keeper's shelf.
@@ -100,6 +110,8 @@ export interface Caller {
   // time" in `meta`, and drives the keeper's props and the room's lighting.
   activity: CallerActivity;
   localHour: number;
+  // "MM-DD"; on the day, the Keeper's room throws them a little party.
+  birthday: string;
 }
 
 export interface RecentCall {
@@ -167,9 +179,9 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
     paletteLabel: 'Case colour',
     paletteNames: { oxblood: 'Oxblood', verdigris: 'Verdigris', ivory: 'Ivory', graphite: 'Graphite' },
     callers: [
-      { name: 'Nadia', meta: 'Driving · light rain · 9:42 PM their time', sky: 'rain', number: '0100 214 7788', keepsake: 'postcard', activity: 'driving', localHour: 21 },
-      { name: 'Omar', meta: 'At work · clear skies · 2:15 PM their time', sky: 'clear', number: '0122 356 4190', keepsake: 'mug', activity: 'work', localHour: 14 },
-      { name: 'Mama', meta: 'At home · snow falling · 11:05 PM their time', sky: 'snow', number: '0111 908 2234', keepsake: 'snowGlobe', activity: 'home', localHour: 23 },
+      { name: 'Nadia', meta: 'Driving · light rain · 9:42 PM their time', sky: 'rain', number: '0100 214 7788', keepsake: 'postcard', activity: 'driving', localHour: 21, birthday: '03-21' },
+      { name: 'Omar', meta: 'At work · clear skies · 2:15 PM their time', sky: 'clear', number: '0122 356 4190', keepsake: 'mug', activity: 'work', localHour: 14, birthday: '07-02' },
+      { name: 'Mama', meta: 'At home · snow falling · 11:05 PM their time', sky: 'snow', number: '0111 908 2234', keepsake: 'snowGlobe', activity: 'home', localHour: 23, birthday: '11-05' },
     ],
     recents: [
       { callerIdx: 0, type: 'incoming', time: '2m ago', meta: 'Driving · light rain · 9:42 PM their time', durationSec: 252 },
@@ -201,6 +213,24 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
     grumpyCaption: 'Hmph! Enough poking.',
     napCaption: 'Napping on the bed',
     peekCaption: (weather) => `Peeking outside · ${weather}`,
+    decorLabel: 'Room decorations',
+    decorNames: {
+      auto: 'Auto (by date)',
+      none: 'None',
+      spring: 'Spring',
+      summer: 'Summer',
+      autumn: 'Autumn',
+      winter: 'Winter',
+      ramadan: 'Ramadan',
+      eid: 'Eid',
+      newYear: 'New Year',
+      birthday: 'Birthday',
+    },
+    ramadanGreeting: 'Ramadan Kareem',
+    eidGreeting: 'Eid Mubarak',
+    newYearGreeting: 'Happy New Year!',
+    birthdayGreeting: (name) => `Happy birthday, ${name}!`,
+    birthdayCakeLabel: (name) => `Call ${name} to say happy birthday`,
   },
   ar: {
     dir: 'rtl',
@@ -262,9 +292,9 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
     paletteLabel: 'لون الجسم',
     paletteNames: { oxblood: 'عنّابي', verdigris: 'أخضر نحاسي', ivory: 'عاجي', graphite: 'غرافيت' },
     callers: [
-      { name: 'نادية', meta: 'بتسوق · مطر خفيف · 9:42 مساءً عندها', sky: 'rain', number: '0100 214 7788', keepsake: 'postcard', activity: 'driving', localHour: 21 },
-      { name: 'عمر', meta: 'في الشغل · جو صافي · 2:15 الضهر عنده', sky: 'clear', number: '0122 356 4190', keepsake: 'mug', activity: 'work', localHour: 14 },
-      { name: 'ماما', meta: 'في البيت · بينزل تلج · 11:05 بالليل عندها', sky: 'snow', number: '0111 908 2234', keepsake: 'snowGlobe', activity: 'home', localHour: 23 },
+      { name: 'نادية', meta: 'بتسوق · مطر خفيف · 9:42 مساءً عندها', sky: 'rain', number: '0100 214 7788', keepsake: 'postcard', activity: 'driving', localHour: 21, birthday: '03-21' },
+      { name: 'عمر', meta: 'في الشغل · جو صافي · 2:15 الضهر عنده', sky: 'clear', number: '0122 356 4190', keepsake: 'mug', activity: 'work', localHour: 14, birthday: '07-02' },
+      { name: 'ماما', meta: 'في البيت · بينزل تلج · 11:05 بالليل عندها', sky: 'snow', number: '0111 908 2234', keepsake: 'snowGlobe', activity: 'home', localHour: 23, birthday: '11-05' },
     ],
     recents: [
       { callerIdx: 0, type: 'incoming', time: 'من دقيقتين', meta: 'بتسوق · مطر خفيف · 9:42 مساءً عندها', durationSec: 252 },
@@ -296,5 +326,23 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
     grumpyCaption: 'هممف! كفاية زغزغة.',
     napCaption: 'نايم على السرير',
     peekCaption: (weather) => `بيبص برا · ${weather}`,
+    decorLabel: 'زينة الأوضة',
+    decorNames: {
+      auto: 'تلقائي (حسب التاريخ)',
+      none: 'من غير',
+      spring: 'ربيع',
+      summer: 'صيف',
+      autumn: 'خريف',
+      winter: 'شتا',
+      ramadan: 'رمضان',
+      eid: 'العيد',
+      newYear: 'رأس السنة',
+      birthday: 'عيد ميلاد',
+    },
+    ramadanGreeting: 'رمضان كريم',
+    eidGreeting: 'عيد مبارك',
+    newYearGreeting: 'سنة سعيدة!',
+    birthdayGreeting: (name) => `عيد ميلاد سعيد يا ${name}!`,
+    birthdayCakeLabel: (name) => `اتصلي بـ${name} وقولي عيد ميلاد سعيد`,
   },
 };

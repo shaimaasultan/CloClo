@@ -1,5 +1,5 @@
 import { useFocusEffect, useRouter } from 'expo-router';
-import React, { useCallback, useEffect, useId, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Animated, Easing, LayoutChangeEvent, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -10,6 +10,7 @@ import { DeclineButton } from '../src/components/DeclineButton/DeclineButton';
 import { Dock } from '../src/components/Dock/Dock';
 import { KeeperAvatar, KeeperReaction, KeeperSpot } from '../src/components/KeeperAvatar/KeeperAvatar';
 import { PhoneHandset } from '../src/components/PhoneHandset/PhoneHandset';
+import { RoomDecorations } from '../src/components/RoomDecorations/RoomDecorations';
 import { WeatherKind, WeatherLayer } from '../src/components/WeatherLayer/WeatherLayer';
 import Svg, {
   Circle,
@@ -30,6 +31,8 @@ import { useLang } from '../src/state/LangContext';
 import { usePalette } from '../src/state/PaletteContext';
 import { useSettings } from '../src/state/SettingsContext';
 import { useReducedMotion } from '../src/state/useReducedMotion';
+import { resolveDecor } from '../src/state/decorations';
+import { useCallContact } from '../src/state/useCallContact';
 import type { KeepsakeKind } from '../src/i18n/dictionaries';
 import { USE_NATIVE_DRIVER } from '../src/theme/animation';
 import { pointer } from '../src/theme/pointer';
@@ -109,6 +112,7 @@ const BED_SLOT: Slot = { x: 24, y: 182, w: 96, h: 54 };
 const DOOR_SLOT: Slot = { x: 322, y: 116, w: 64, h: 150 };
 const BOOK_SLOT: Slot = { x: 327, y: 18, w: 26, h: 30 };
 const PLANT_SLOT: Slot = { x: 122, y: 200, w: 34, h: 70 };
+const CAKE_SLOT: Slot = { x: 40, y: 224, w: 42, h: 46 };
 // Tap areas for each keepsake on the shelf, around the book.
 const SHELF_SLOTS: Record<KeepsakeKind, Slot> = {
   mug: { x: 279, y: 18, w: 25, h: 30 },
@@ -563,7 +567,8 @@ export default function KeeperRoomScreen() {
     missedNotes,
     connectedCallCount,
   } = useKeeperState();
-  const { clunk, sfx, soundEnabled } = useSettings();
+  const { clunk, sfx, soundEnabled, decorChoice } = useSettings();
+  const callContact = useCallContact();
 
   // Briefly replaces the moment caption after something in the room is tapped.
   const [shelfCaption, setShelfCaption] = useState<string | null>(null);
@@ -635,6 +640,25 @@ export default function KeeperRoomScreen() {
   const windowSky = WINDOW_SKIES[phase];
   const tint = ROOM_TINT[phase];
   const wet = sky === 'rain' || sky === 'storm';
+
+  // Seasonal and holiday decorations from today's date — or whatever is
+  // being previewed in Advanced settings. Rechecked as the hour changes.
+  const birthdayKey = t.callers.map((c) => c.birthday).join();
+  const decor = useMemo(
+    () => resolveDecor(decorChoice, new Date(), birthdayKey.split(',')),
+    [decorChoice, deviceHour, birthdayKey]
+  );
+  const birthdayName = decor.birthdayIdx !== null ? t.callers[decor.birthdayIdx]?.name ?? null : null;
+  const greeting =
+    decor.holiday === 'ramadan'
+      ? t.ramadanGreeting
+      : decor.holiday === 'eid'
+        ? t.eidGreeting
+        : decor.holiday === 'newYear'
+          ? t.newYearGreeting
+          : decor.holiday === 'birthday' && birthdayName
+            ? t.birthdayGreeting(birthdayName)
+            : null;
 
   // A call always brings the keeper back to the middle of the room.
   const spot: KeeperSpot = idle ? keeperSpot : 'center';
@@ -957,9 +981,25 @@ export default function KeeperRoomScreen() {
                   <Plant growth={plantGrowth} />
                 </Wobble>
 
+                <RoomDecorations
+                  decor={decor}
+                  colours={colours}
+                  layer="room"
+                  doorOpen={doorOpen}
+                  night={phase === 'night' || phase === 'dusk'}
+                />
+
                 {!ringing && (
-                  <SvgText x={200} y={18} textAnchor="middle" fontSize={9} fill={colours.inkMuted}>
-                    {wallNote}
+                  // On a holiday the wall note becomes a greeting.
+                  <SvgText
+                    x={200}
+                    y={18}
+                    textAnchor="middle"
+                    fontSize={greeting ? 10 : 9}
+                    fontWeight={greeting ? '700' : undefined}
+                    fill={greeting ? colours.highlight : colours.inkMuted}
+                  >
+                    {greeting ?? wallNote}
                   </SvgText>
                 )}
 
@@ -971,6 +1011,13 @@ export default function KeeperRoomScreen() {
                 {!ringing && (
                   <CeilingLamp colours={colours} storm={sky === 'storm'} lit={phase === 'night' || phase === 'dusk'} on={lampOn} />
                 )}
+                <RoomDecorations
+                  decor={decor}
+                  colours={colours}
+                  layer="lights"
+                  doorOpen={doorOpen}
+                  night={phase === 'night' || phase === 'dusk'}
+                />
               </Svg>
 
               {/* Tap areas sit under the keeper, so the keeper wins where they overlap. */}
@@ -984,6 +1031,12 @@ export default function KeeperRoomScreen() {
               })}
               {idle && hotspot('bed', BED_SLOT, t.napLabel, () => moveKeeper(keeperSpot === 'bed' ? 'center' : 'bed'))}
               {idle && hotspot('door', DOOR_SLOT, t.peekLabel, () => moveKeeper(keeperSpot === 'door' ? 'center' : 'door'))}
+              {/* On someone's birthday, tap the cake to call them. */}
+              {idle &&
+                decor.holiday === 'birthday' &&
+                decor.birthdayIdx !== null &&
+                birthdayName &&
+                hotspot('cake', CAKE_SLOT, t.birthdayCakeLabel(birthdayName), () => callContact(decor.birthdayIdx as number))}
               {!doorOpen && missedNames.length > 0 &&
                 hotspot('missed-note', NOTE_SLOT, t.missedNoteLabel(missedNames.join(', ')), () => router.navigate('/recents'))}
 

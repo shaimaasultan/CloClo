@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
 import { playClunk, playRingtone, playSfx, playTick, Sfx } from '../audio/tones';
+import type { DecorChoice } from './decorations';
 import { ToneId } from '../i18n/dictionaries';
 
 // Mirrors the prototype's soundEnabled / privacyMode flags and its
@@ -17,6 +18,9 @@ interface SettingsValue {
   clunk: (open: boolean) => void;
   // Room interaction sounds (giggles, lamp clicks, …), silent when sound is off.
   sfx: (name: Sfx) => void;
+  // Keeper's room decorations: follow the date, or preview a season/holiday.
+  decorChoice: DecorChoice;
+  setDecorChoice: (choice: DecorChoice) => void;
 }
 
 const SettingsContext = createContext<SettingsValue | null>(null);
@@ -25,6 +29,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [privacyMode, setPrivacyMode] = useState(false);
   const [contactTones, setContactTones] = useState(DEFAULT_CONTACT_TONES);
+  const [decorChoice, setDecorChoice] = useState<DecorChoice>('auto');
 
   const toggleSound = useCallback(() => {
     setSoundEnabled((prev) => {
@@ -65,8 +70,20 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   );
 
   const value = useMemo<SettingsValue>(
-    () => ({ soundEnabled, toggleSound, privacyMode, togglePrivacy, toneForContact, setContactTone, tick, clunk, sfx }),
-    [soundEnabled, toggleSound, privacyMode, togglePrivacy, toneForContact, setContactTone, tick, clunk, sfx]
+    () => ({
+      soundEnabled,
+      toggleSound,
+      privacyMode,
+      togglePrivacy,
+      toneForContact,
+      setContactTone,
+      tick,
+      clunk,
+      sfx,
+      decorChoice,
+      setDecorChoice,
+    }),
+    [soundEnabled, toggleSound, privacyMode, togglePrivacy, toneForContact, setContactTone, tick, clunk, sfx, decorChoice]
   );
 
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;

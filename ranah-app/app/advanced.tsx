@@ -5,6 +5,8 @@ import { ScreenShell } from '../src/components/ScreenShell/ScreenShell';
 import { Lang } from '../src/i18n/dictionaries';
 import { useLang } from '../src/state/LangContext';
 import { usePalette } from '../src/state/PaletteContext';
+import { DECOR_CHOICES } from '../src/state/decorations';
+import { useSettings } from '../src/state/SettingsContext';
 import { PALETTE_ORDER, PALETTE_SWATCH_HEX } from '../src/theme/tokens';
 
 const LANG_OPTIONS: { lang: Lang; label: string }[] = [
@@ -18,6 +20,7 @@ export default function AdvancedSettingsScreen() {
   const router = useRouter();
   const { t, lang, setLang, isRtl } = useLang();
   const { paletteName, colours, setPalette } = usePalette();
+  const { decorChoice, setDecorChoice } = useSettings();
   const rowDir = isRtl ? 'row-reverse' : 'row';
   const align = { alignItems: isRtl ? ('flex-end' as const) : ('flex-start' as const) };
 
@@ -45,6 +48,32 @@ export default function AdvancedSettingsScreen() {
                     active && { borderColor: colours.highlight },
                   ]}
                 />
+              );
+            })}
+          </View>
+        </View>
+
+        {/* Decorations follow the date, or preview any season or holiday. */}
+        <View style={[styles.section, align]}>
+          <Text style={styles.label}>{t.decorLabel}</Text>
+          <View style={[styles.chipRow, { flexDirection: rowDir }]} role="radiogroup" aria-label={t.decorLabel}>
+            {DECOR_CHOICES.map((choice) => {
+              const active = decorChoice === choice;
+              return (
+                <Pressable
+                  key={choice}
+                  onPress={() => setDecorChoice(choice)}
+                  role="radio"
+                  aria-checked={active}
+                  style={[
+                    styles.chip,
+                    active && { backgroundColor: `${colours.metal2}47`, borderColor: `${colours.metal2}8c` },
+                  ]}
+                >
+                  <Text style={[styles.chipLabel, { color: active ? colours.highlight : 'rgba(239,230,211,.75)' }]}>
+                    {t.decorNames[choice]}
+                  </Text>
+                </Pressable>
               );
             })}
           </View>
@@ -96,6 +125,16 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
     boxShadow: '0 1px 3px rgba(0,0,0,0.4)',
   },
+  chipRow: { flexWrap: 'wrap', gap: 6 },
+  chip: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,.08)',
+    backgroundColor: 'rgba(255,255,255,.05)',
+  },
+  chipLabel: { fontSize: 11, fontWeight: '600' },
   langSwitch: {
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,.12)',
