@@ -75,6 +75,14 @@ This repository holds two things:
   scheduled with the system, so they arrive even when CloClo is closed; tap
   one to open Reminders. While the app is open, a banner slides in with
   **Call**, **Done**, and dismiss. The Reminders tab asks for permission.
+- **Snooze (once)** – the banner's **Snooze** button asks how long (5, 10,
+  15, or 30 minutes, or an hour). The reminder alerts once more when the
+  snooze is up – without a Snooze button – and is marked done then (even if
+  the app was closed). Tapping **Done** instead marks it done straight away.
+- **Snoozed sticker** – while any reminder is snoozed, a blue sticky note
+  beside the dial shows when the next one comes back (with a count if there
+  are several), the Reminders tab shows a badge, and the reminder's row
+  carries a ⏰ tag with its return time.
 - **Today's reminders on the dial** – a 🔔 button shows how many are left
   today (or *All done for today*) and opens the Reminders tab.
 
