@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable } from 'react-native';
+import { Pressable, View } from 'react-native';
 import Svg, { Circle, Ellipse, G, Line, Path, Text as SvgText } from 'react-native-svg';
 import { CaseColours } from '../../theme/tokens';
 
@@ -33,14 +33,31 @@ export function KeeperAvatar({
         ? 'M196.5 204 q3.5 -2.5 7 0'
         : 'M196.5 202.5 q3.5 3 7 0';
 
+  // `size` is still the footprint of the 48-unit character box (176..224),
+  // but the drawing spills PAD units past it on every side so the umbrella
+  // canopy and the zzz — which reach up to y=153 and out to x=232 — are no
+  // longer sliced off by the viewBox edge.
+  const PAD = 16;
+  const drawSize = (size * (48 + PAD * 2)) / 48;
+  const drawOffset = (-size * PAD) / 48;
+  // With the umbrella up, the zzz drift out on the left instead of
+  // colliding with the canopy on the right.
+  const zzzX = showUmbrella ? [172, 164] : [222, 230];
+
   const content = (
-    <Svg width={size} height={size} viewBox="176 176 48 48">
+    <View pointerEvents="none" style={{ width: size, height: size, overflow: 'visible' }}>
+    <Svg
+      width={drawSize}
+      height={drawSize}
+      viewBox={`${176 - PAD} ${176 - PAD} ${48 + PAD * 2} ${48 + PAD * 2}`}
+      style={{ position: 'absolute', left: drawOffset, top: drawOffset }}
+    >
       {!awake && (
         <G opacity={0.55}>
-          <SvgText x={222} y={168} fontSize={9} fill={colours.face} opacity={0.55}>
+          <SvgText x={zzzX[0]} y={172} fontSize={9} fill={colours.face} opacity={0.55}>
             z
           </SvgText>
-          <SvgText x={230} y={160} fontSize={7} fill={colours.face} opacity={0.4}>
+          <SvgText x={zzzX[1]} y={164} fontSize={7} fill={colours.face} opacity={0.4}>
             z
           </SvgText>
         </G>
@@ -70,15 +87,8 @@ export function KeeperAvatar({
             {/* Canopy: the same round dome as before, closed by a scalloped
                 hem (four small arcs dipping below the rim) instead of a flat
                 line, so it reads as ribbed fabric rather than a half-moon. */}
-            <Path
-              d="M203 181 A14 14 0 0 1 231 181 A3.5 3.5 0 0 0 224 181 A3.5 3.5 0 0 0 217 181 A3.5 3.5 0 0 0 210 181 A3.5 3.5 0 0 0 203 181 Z"
-              fill={colours.metal2}
-              stroke={colours.metal3}
-              strokeWidth={0.6}
-              strokeLinejoin="round"
-            />
-            <Line x1={217} y1={167} x2={217} y2={162} stroke={colours.metal3} strokeWidth={1} strokeLinecap="round" />
-            <Line x1={217} y1={181} x2={223} y2={205} stroke={colours.metal3} strokeWidth={1.3} strokeLinecap="round" />
+            {/* Shaft first so the canopy sits over its top end. */}
+            <Line x1={217} y1={172} x2={223} y2={205} stroke={colours.metal3} strokeWidth={1.3} strokeLinecap="round" />
             <Path
               d="M223 205 q3 3.5 6.5 1.5"
               stroke={colours.metal3}
@@ -86,10 +96,32 @@ export function KeeperAvatar({
               fill="none"
               strokeLinecap="round"
             />
+            <Path
+              d="M203 181 A14 14 0 0 1 231 181 A3.5 3.5 0 0 0 224 181 A3.5 3.5 0 0 0 217 181 A3.5 3.5 0 0 0 210 181 A3.5 3.5 0 0 0 203 181 Z"
+              fill={colours.metal2}
+              stroke={colours.metal3}
+              strokeWidth={0.6}
+              strokeLinejoin="round"
+            />
+            {/* Ribs fanning from the crown to each scallop point, plus a soft
+                sheen on the left panel, so the canopy reads as stretched
+                fabric over spokes. */}
+            <Path
+              d="M217 167 Q211 172 210 181 M217 167 L217 181 M217 167 Q223 172 224 181"
+              stroke={colours.metal3}
+              strokeWidth={0.5}
+              strokeOpacity={0.8}
+              fill="none"
+              strokeLinecap="round"
+            />
+            <Path d="M206.5 178 Q208 171 213.5 168.5" stroke={colours.metal1} strokeWidth={1} strokeOpacity={0.7} fill="none" strokeLinecap="round" />
+            <Line x1={217} y1={167} x2={217} y2={163} stroke={colours.metal3} strokeWidth={1} strokeLinecap="round" />
+            <Circle cx={217} cy={162.6} r={0.9} fill={colours.metal1} />
           </G>
         )}
       </G>
     </Svg>
+    </View>
   );
 
   if (!onPress) return content;

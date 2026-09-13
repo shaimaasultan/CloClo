@@ -29,13 +29,12 @@ export default function DialScreen() {
   // Same responsive intent as the prototype's min(80vw,400px) dial sizing,
   // plus a check against remaining vertical space so the handset (which
   // peeks above the dial) never gets pushed into the chrome above it.
-  const dialSize = Math.max(220, Math.min(320, winWidth * 0.8, (winHeight - CHROME_HEIGHT) * 0.78));
-  const handsetWidth = dialSize * 0.85;
-  // The handset-to-peg overlap now lives inside PhoneHandset itself (the
-  // pegs tuck up behind the handset's own bottom edge); this only needs to
-  // pull the ring up enough to meet the pegs' bottom tips, not swallow them.
-  const handsetOverlap = handsetWidth * 0.1045 * 0.2;
-
+  const dialSize = Math.max(220, Math.min(340, winWidth * 0.86, (winHeight - CHROME_HEIGHT) * 0.85));
+  // Prototype proportions (400px dial): a 220px handset whose top sits 42px
+  // above the dial, so its horns rest down over the brass bezel like a
+  // receiver sitting in its cradle rather than floating above the phone.
+  const handsetWidth = dialSize * (220 / 400);
+  const handsetRise = dialSize * (42 / 400);
   const handleHandsetPress = () => {
     if (callState === 'ringing') setCallState('active'); // answer
     else if (callState === 'active') setCallState('idle'); // hang up
@@ -78,22 +77,16 @@ export default function DialScreen() {
         </View>
 
         <View style={styles.stage}>
-          <View style={{ alignItems: 'center' }}>
-            <PhoneHandset
-              width={handsetWidth}
-              colours={colours}
-              isRinging={callState === 'ringing'}
-              isOpen={callState === 'active'}
-              onPress={handleHandsetPress}
-            />
-            <View style={{ marginTop: -handsetOverlap }}>
+          <View style={{ width: dialSize, height: dialSize + handsetRise }}>
+            <View style={{ position: 'absolute', top: handsetRise, left: 0 }}>
               <RotaryDial
                 size={dialSize}
                 colours={colours}
                 onDigit={(d) => setDialed((prev) => (prev + d).slice(0, 15))}
                 centerContent={
                   <KeeperAvatar
-                    size={dialSize * 0.47}
+                    // 48-unit avatar at the prototype's 2.32x hub scale
+                    size={dialSize * ((48 * 2.32) / 400)}
                     colours={colours}
                     awake={awake}
                     mood={mood}
@@ -101,6 +94,17 @@ export default function DialScreen() {
                     onPress={() => router.navigate('/room')}
                   />
                 }
+              />
+            </View>
+            {/* Rendered after the dial so it layers over the bezel, as the
+                prototype's .handset-hit (z-index 7) does over .dial-wrap. */}
+            <View pointerEvents="box-none" style={{ position: 'absolute', top: 0, left: (dialSize - handsetWidth) / 2 }}>
+              <PhoneHandset
+                width={handsetWidth}
+                colours={colours}
+                isRinging={callState === 'ringing'}
+                isOpen={callState === 'active'}
+                onPress={handleHandsetPress}
               />
             </View>
           </View>

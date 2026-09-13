@@ -16,13 +16,16 @@ export const DIGIT_LETTERS: Record<string, string> = {
   '0': 'OPER',
 };
 
-export const STOP_ANGLE_DEG = 54; // screen angle, 0deg = 3 o'clock, clockwise-positive (y-down)
-const HOLE_GAP_DEG = 36;
-const HALF_GAP_DEG = 18;
+// Matches the HOLES table in dial-hollow.html: stop at 50deg, "1" at 350deg,
+// then every 30deg counter-clockwise down to "0" at 80deg — leaving the
+// empty arc between "0" and "1" where the finger stop sits.
+export const STOP_ANGLE_DEG = 50; // screen angle, 0deg = 3 o'clock, clockwise-positive (y-down)
+const HOLE_GAP_DEG = 30;
+const FIRST_HOLE_OFFSET_DEG = 60;
 
 export function digitRestAngle(index: number): number {
   // index 0..9 for digits '1'..'9','0'
-  return (STOP_ANGLE_DEG - (HALF_GAP_DEG + HOLE_GAP_DEG * index) + 360) % 360;
+  return (STOP_ANGLE_DEG - (FIRST_HOLE_OFFSET_DEG + HOLE_GAP_DEG * index) + 360) % 360;
 }
 
 export function maxRotationForDigit(index: number): number {

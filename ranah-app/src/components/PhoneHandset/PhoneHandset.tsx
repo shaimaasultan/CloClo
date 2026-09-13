@@ -69,10 +69,18 @@ export function PhoneHandset({ width, colours, isRinging, isOpen, onPress }: Pho
     }).start();
   }, [isOpen, lift]);
 
-  const cradleGap = width * 0.645;
-  const pegWidth = width * 0.05;
-  const pegHeight = width * 0.1045;
-  const handsetHeight = width * (94 / 220);
+  // Everything below is in the prototype's pixel units (.handset-hit is
+  // 220x94, .cradle sits 40px below its top with 11x23 pegs 142px apart),
+  // scaled by u so the handset keeps its proportions at any width.
+  const u = width / 220;
+  const cradleGap = 142 * u;
+  const pegWidth = 11 * u;
+  const pegHeight = 23 * u;
+  const pegTop = 40 * u;
+  const handsetHeight = 94 * u;
+  // Only the hump above the dial is tappable — the horns hang down over the
+  // top finger holes, and a full-size hit box would swallow drags on 3/4/5.
+  const hitHeight = 36 * u;
   const glowWidth = width * 1.5;
   const glowHeight = handsetHeight * 2.8;
 
@@ -83,15 +91,34 @@ export function PhoneHandset({ width, colours, isRinging, isOpen, onPress }: Pho
   const glowScale = glow.interpolate({ inputRange: [0, 1], outputRange: [1, 1.12] });
 
   return (
-    <View style={{ width, alignItems: 'center' }} pointerEvents="box-none">
-      <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel="Lift handset">
-        <Animated.View
-          style={{
-            width,
-            height: handsetHeight,
-            transform: [{ translateY: liftY }, { rotate: isRinging ? rotate : liftRotate }],
-          }}
-        >
+    <View style={{ width, height: handsetHeight }} pointerEvents="box-none">
+      <View
+        pointerEvents="none"
+        style={{ position: 'absolute', top: pegTop, left: 0, width, flexDirection: 'row', justifyContent: 'center', gap: cradleGap }}
+      >
+        {[0, 1].map((i) => (
+          <Svg key={i} width={pegWidth} height={pegHeight} viewBox="0 0 11 23">
+            <Defs>
+              <LinearGradient id={`${pegGradientId}-${i}`} x1="0" y1="0" x2="0" y2="1">
+                <Stop offset="0%" stopColor={colours.metal1} />
+                <Stop offset="100%" stopColor={colours.metal3} />
+              </LinearGradient>
+            </Defs>
+            <Rect x={0} y={0} width={11} height={23} rx={3} fill={`url(#${pegGradientId}-${i})`} />
+          </Svg>
+        ))}
+      </View>
+      <Animated.View
+        pointerEvents="none"
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width,
+          height: handsetHeight,
+          transform: [{ translateY: liftY }, { rotate: isRinging ? rotate : liftRotate }],
+        }}
+      >
           {isRinging && (
             <Animated.View
               pointerEvents="none"
@@ -124,28 +151,13 @@ export function PhoneHandset({ width, colours, isRinging, isOpen, onPress }: Pho
               strokeWidth={1.4}
             />
           </Svg>
-        </Animated.View>
-      </Pressable>
-      <View style={{ flexDirection: 'row', gap: cradleGap, marginTop: -pegHeight * 0.55 }}>
-        <Svg width={pegWidth} height={pegHeight} viewBox="0 0 11 23">
-          <Defs>
-            <LinearGradient id={pegGradientId} x1="0" y1="0" x2="0" y2="1">
-              <Stop offset="0%" stopColor={colours.metal1} />
-              <Stop offset="100%" stopColor={colours.metal3} />
-            </LinearGradient>
-          </Defs>
-          <Rect x={0} y={0} width={11} height={23} rx={3} fill={`url(#${pegGradientId})`} />
-        </Svg>
-        <Svg width={pegWidth} height={pegHeight} viewBox="0 0 11 23">
-          <Defs>
-            <LinearGradient id={pegGradientId} x1="0" y1="0" x2="0" y2="1">
-              <Stop offset="0%" stopColor={colours.metal1} />
-              <Stop offset="100%" stopColor={colours.metal3} />
-            </LinearGradient>
-          </Defs>
-          <Rect x={0} y={0} width={11} height={23} rx={3} fill={`url(#${pegGradientId})`} />
-        </Svg>
-      </View>
+      </Animated.View>
+      <Pressable
+        onPress={onPress}
+        accessibilityRole="button"
+        accessibilityLabel="Lift handset"
+        style={{ position: 'absolute', top: 0, left: 0, width, height: hitHeight }}
+      />
     </View>
   );
 }

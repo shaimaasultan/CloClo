@@ -12,12 +12,16 @@ import {
   maxRotationForDigit,
 } from './geometry';
 
+// Dimensions ported from #dialSvg in dial-hollow.html (same 400 viewBox).
 const VB = 400;
 const CENTER = 200;
 const DIAL_R = 196;
 const FACE_R = 180;
-const HOLE_ORBIT = 148;
-const HOLE_R = 24;
+const RIM_R = 176;
+const HOLE_ORBIT = 130;
+const HOLE_R = 19;
+const HUB_R = 104;
+const DIGIT_FONT = 'sans-serif';
 
 interface RotaryDialProps {
   size: number;
@@ -25,13 +29,14 @@ interface RotaryDialProps {
   onDigit: (digit: string) => void;
   onDragStateChange?: (dragging: boolean) => void;
   centerContent?: React.ReactNode;
+  hubNote?: string;
 }
 
 function easeOutCubic(t: number) {
   return 1 - Math.pow(1 - t, 3);
 }
 
-export function RotaryDial({ size, colours, onDigit, onDragStateChange, centerContent }: RotaryDialProps) {
+export function RotaryDial({ size, colours, onDigit, onDragStateChange, centerContent, hubNote }: RotaryDialProps) {
   // react-native-svg's <Defs> ids are real DOM ids on web — if two RotaryDial
   // instances are ever mounted at once (e.g. a stale screen still in the
   // navigation stack), a shared literal id makes url(#brass) resolve
@@ -39,6 +44,7 @@ export function RotaryDial({ size, colours, onDigit, onDragStateChange, centerCo
   const uid = useId();
   const brassGradientId = `brass-${uid}`;
   const bodyGradientId = `body-${uid}`;
+  const hubGradientId = `hub-${uid}`;
   const containerRef = useRef<View>(null);
   const centerScreen = useRef({ x: 0, y: 0 });
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
@@ -54,16 +60,18 @@ export function RotaryDial({ size, colours, onDigit, onDragStateChange, centerCo
     });
   }, []);
 
-  const stopEnd = useMemo(() => {
+  // Same thin brass spike as the prototype's #fingerStop wedge: tip out on
+  // the rim at r=178, a 12-unit-wide base down at r=150 between "0" and "1".
+  const stopPath = useMemo(() => {
     const rad = degToRad(STOP_ANGLE_DEG);
-    return {
-      x1: CENTER + (FACE_R - 4) * Math.cos(rad),
-      y1: CENTER + (FACE_R - 4) * Math.sin(rad),
-      x2: CENTER + (FACE_R + 14) * Math.cos(degToRad(STOP_ANGLE_DEG - 6)),
-      y2: CENTER + (FACE_R + 14) * Math.sin(degToRad(STOP_ANGLE_DEG - 6)),
-      x3: CENTER + (FACE_R + 14) * Math.cos(degToRad(STOP_ANGLE_DEG + 6)),
-      y3: CENTER + (FACE_R + 14) * Math.sin(degToRad(STOP_ANGLE_DEG + 6)),
-    };
+    const perp = degToRad(STOP_ANGLE_DEG + 90);
+    const tipX = CENTER + 178 * Math.cos(rad);
+    const tipY = CENTER + 178 * Math.sin(rad);
+    const baseX = CENTER + 150 * Math.cos(rad);
+    const baseY = CENTER + 150 * Math.sin(rad);
+    const px = 6 * Math.cos(perp);
+    const py = 6 * Math.sin(perp);
+    return `M${tipX} ${tipY} L${baseX + px} ${baseY + py} L${baseX - px} ${baseY - py} Z`;
   }, []);
 
   const cancelReleaseAnim = useCallback(() => {
@@ -176,15 +184,17 @@ export function RotaryDial({ size, colours, onDigit, onDragStateChange, centerCo
             <Stop offset="0%" stopColor={colours.body1} />
             <Stop offset="100%" stopColor={colours.body2} />
           </RadialGradient>
+          <RadialGradient id={hubGradientId} cx="40%" cy="35%" r="70%">
+            <Stop offset="0%" stopColor={colours.hub1} />
+            <Stop offset="100%" stopColor={colours.hub2} />
+          </RadialGradient>
         </Defs>
 
         <Circle cx={CENTER} cy={CENTER} r={DIAL_R} fill={`url(#${brassGradientId})`} />
         <Circle cx={CENTER} cy={CENTER} r={FACE_R} fill={`url(#${bodyGradientId})`} />
+        <Circle cx={CENTER} cy={CENTER} r={RIM_R} fill="none" stroke={colours.metal1} strokeOpacity={0.25} strokeWidth={1.5} />
 
-        <Path
-          d={`M${stopEnd.x1} ${stopEnd.y1} L${stopEnd.x2} ${stopEnd.y2} L${stopEnd.x3} ${stopEnd.y3} Z`}
-          fill={colours.metal1}
-        />
+        <Path d={stopPath} fill={colours.metal1} stroke={colours.metal3} strokeWidth={1} />
 
         {/* The whole numbered ring is one rigid disk — pulling any hole
             rotates all of them together (a real dial's holes don't move
@@ -198,19 +208,28 @@ export function RotaryDial({ size, colours, onDigit, onDragStateChange, centerCo
             const letters = DIGIT_LETTERS[digit];
             return (
               <G key={digit}>
-                <Circle cx={hx} cy={hy} r={HOLE_R} fill={colours.face} />
+                <Circle cx={hx} cy={hy} r={HOLE_R} fill={colours.face} stroke={colours.metal3} strokeWidth={1} />
                 <SvgText
                   x={hx}
-                  y={hy + (letters ? -1 : 4)}
-                  fontSize={letters ? 15 : 17}
+                  y={hy + (letters ? 2 : 6)}
+                  fontSize={17}
                   fontWeight="700"
+                  fontFamily={DIGIT_FONT}
                   fill={colours.ink}
                   textAnchor="middle"
                 >
                   {digit}
                 </SvgText>
                 {letters ? (
-                  <SvgText x={hx} y={hy + 11} fontSize={5.5} fill={colours.inkMuted} textAnchor="middle">
+                  <SvgText
+                    x={hx}
+                    y={hy + 13}
+                    fontSize={5.4}
+                    letterSpacing={0.6}
+                    fontFamily={DIGIT_FONT}
+                    fill={colours.inkMuted}
+                    textAnchor="middle"
+                  >
                     {letters}
                   </SvgText>
                 ) : null}
@@ -218,6 +237,22 @@ export function RotaryDial({ size, colours, onDigit, onDragStateChange, centerCo
             );
           })}
         </G>
+
+        {/* The fixed hub — the keeper's little room. It doesn't turn with
+            the disk, same as #hubGroup sitting outside .dial-face's ring. */}
+        <Circle cx={CENTER} cy={CENTER} r={HUB_R} fill={`url(#${hubGradientId})`} stroke={colours.metal2} strokeWidth={2} />
+        {hubNote ? (
+          <SvgText
+            x={CENTER}
+            y={126}
+            fontSize={10.7}
+            fontFamily="monospace"
+            fill={colours.inkMuted}
+            textAnchor="middle"
+          >
+            {hubNote}
+          </SvgText>
+        ) : null}
       </Svg>
 
       {/* Invisible touch targets sit over each hole's rest position — only the
