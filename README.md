@@ -15,40 +15,98 @@ This repository holds two things:
 
 ## Features
 
+### Calling
+
 - **Rotary dial** – drag a finger hole clockwise to the brass stop and let go;
   the disk springs back and the digit is added to *Last dialed*.
-- **Keeper's room** – the keeper reads, hums, and waves; its mood drifts to
-  *Bored* after a quiet spell and *Excited* after a call. Tap the room to
-  change what it's doing.
 - **Incoming calls** – the handset vibrates over the top of the keeper's room,
   the caller's card shows their name and status, and the caller's ringtone
-  repeats until you answer or hit the glowing **Decline** button.
+  repeats until you answer or hit the glowing **Decline** button. A call
+  nobody answers is logged as missed.
+- **On a call** – a *Line in use* pill appears beside *Last dialed* and
+  *Number*, with **Mute** and **Hang up** on both the dial and the keeper's
+  room. Muting keeps the line open and turns the pill amber.
 - **Live call screen** – answering opens a call view with a running timer,
   Mute / Clarity / End controls, and a transcript where each line appears in
   the speaker's own language with a live translation underneath.
-- **Contacts, Recents, Sounds, Settings** – call anyone from Contacts or
-  Recents (with call directions and durations), pick a ringtone per caller,
-  and toggle sound effects or privacy mode (which masks dialled digits and
-  hides recent calls).
-- **Caller's sky** – clear, rain, snow, or storm weather drifts behind every
-  screen and follows the caller when they ring.
+- **Missed-call note** – the keeper pins a sticky note to the room's door and
+  beside the dial; tap it to open Recents, which takes the note down.
+
+### Contacts and Recents
+
+- **Contacts** – add, edit, and delete contacts: name, number, birthday, what
+  they're usually doing, their weather, and their local time. Their status
+  line ("Driving · light rain · 9:42 PM their time") is built from those
+  details in English and Arabic. Deleting asks for confirmation.
+- **Recents** – call directions and durations, with "Just now", "5m ago",
+  "Yesterday", "3d ago" labels.
+- **Sounds** – pick a ringtone per contact.
+- **Keepsakes** – in Settings, choose the object each contact leaves on the
+  keeper's shelf (mug, postcard, snow globe, book, photo, or shell). It
+  appears once you've talked with them.
+
+### The keeper
+
+- **A little person in the phone** – they doze in the dial's hub between
+  calls, leap up when the phone rings, and chat with the handset to their ear
+  on a call.
+- **Dressed for the caller's weather** – sunglasses for clear skies, a
+  raincoat and umbrella in the rain, a wool hat and scarf in the snow, and a
+  blanket (and shivers) in a storm.
+- **Mirrors the caller** – a tie when they're at work, fuzzy slippers when
+  they're at home, a steering wheel when they're driving.
+- **Reactions** – finger to their lips ("shh") while you're muted, and a party
+  hat with confetti when someone calls on their birthday.
+
+### The keeper's room
+
+- **Things to tap** – switch the lamp on and off, open the window to hear the
+  rain louder, poke the keeper (they giggle, then get grumpy), make the plant
+  grow, and wiggle the book and keepsakes on the shelf.
+- **Things to drag** – send the keeper to nap on the bed, peek out of the
+  front door, or sit on the window seat.
+- **Time of day** – the room's light follows the phone's clock, and switches
+  to the caller's local time while they ring.
+- **Seasons and holidays** – decorations follow the date: blossoms and a
+  butterfly in spring, lemonade and a sun hat in summer, maple leaves in
+  autumn, twinkling string lights in winter, plus crescent moons and lanterns
+  for Ramadan and bunting for Eid and New Year (Ramadan and Eid use the
+  Islamic calendar). Advanced settings can preview any of them.
+- **Birthdays** – when a contact calls on their birthday, the room puts up
+  bunting, balloons, and a cake, and the keeper says "Happy birthday!".
+
+### Look and language
+
 - **Header controls** – one pill beside the logo holds the clock, the sky
   picker, the case colour (Oxblood, Verdigris, Ivory, Graphite), and the
   language switch.
+- **Case colour** – repaints the phone, the keeper's sweater, and a wash over
+  the room's wall.
+- **Caller's sky** – clear, rain, snow, or storm weather drifts behind every
+  screen and follows the caller when they ring.
 - **English and Arabic** – full Egyptian-Arabic translation with right-to-left
-  layout.
+  layout. In Arabic the room mirrors, the keeper's book shows Arabic letters,
+  and they greet you with "أهلاً".
+
+### Remembered between launches
+
+Contacts, settings (sound, privacy mode, ringtones, keepsakes, decorations),
+language, case colour, and call history are saved on the device and restored
+when the app opens.
 
 ## Project status
 
 CloClo is a working prototype, not a telephony app yet:
 
-- Callers, recent calls, call durations, and the call transcript are sample
-  data; no real calls are placed or received.
-- Dial ticks, handset clunks, and ringtones are synthesised with the Web Audio
-  API, so they play in the web build only and are silent on iOS / Android
-  until recorded sound assets are added.
-- Settings, ringtone choices, and the dialled number reset when the app
-  restarts.
+- No real calls are placed or received: incoming calls come from the
+  *Preview an incoming call* button, and the call transcript and the starting
+  call history are sample data.
+- Dial ticks, handset clunks, ringtones, and room sounds are synthesised with
+  the Web Audio API, so they play in the web build only and are silent on
+  iOS / Android until recorded sound assets are added.
+- Ramadan and Eid decorations need a JavaScript engine with Islamic-calendar
+  support; where it's missing, those holidays are skipped.
+- The dialled number and the current call don't survive a restart.
 
 ## Getting started
 
@@ -97,15 +155,18 @@ The app is built on **Expo SDK 57**, **React Native 0.86**, and
     │   ├── room.tsx            # keeper's room + incoming call
     │   ├── call.tsx            # live call screen with transcript
     │   ├── contacts.tsx
+    │   ├── contact.tsx         # add / edit / delete a contact
     │   ├── recents.tsx
     │   ├── sounds.tsx
     │   ├── settings.tsx
-    │   └── advanced.tsx        # case colour + language
+    │   ├── keepsakes.tsx       # shelf object per contact
+    │   └── advanced.tsx        # case colour, language, decorations
     └── src/
-        ├── components/         # dial, handset, keeper, header, dock, …
-        ├── state/              # keeper/call, language, palette, settings
+        ├── components/         # dial, handset, keeper, room decor, header, dock, …
+        ├── state/              # calls, contacts, settings, language, palette,
+        │                       # decorations, and saved-data loading
         ├── i18n/               # English and Arabic dictionaries
-        ├── audio/              # synthesised tones and ringtones
+        ├── audio/              # synthesised tones, ringtones, and room sounds
         ├── data/               # sample call transcript
         └── theme/              # case-colour palettes
 ```

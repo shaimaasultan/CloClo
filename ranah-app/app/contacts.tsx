@@ -2,6 +2,7 @@ import { useRouter } from 'expo-router';
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
+import { BirthdayCard } from '../src/components/BirthdayCard/BirthdayCard';
 import { ContactRow } from '../src/components/ContactRow/ContactRow';
 import { ScreenShell } from '../src/components/ScreenShell/ScreenShell';
 import { useContacts } from '../src/state/ContactsContext';
@@ -38,6 +39,7 @@ export default function ContactsScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.list}>
+        <BirthdayCard people={contacts.filter((c) => isBirthdayOn(c.birthday))} onCall={callContact} />
         {contacts.length === 0 && <Text style={styles.empty}>{t.noContacts}</Text>}
         {contacts.map((caller) => {
           const meta = isBirthdayOn(caller.birthday) ? `🎂 ${t.birthdayToday} · ${caller.meta}` : caller.meta;

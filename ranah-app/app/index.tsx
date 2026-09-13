@@ -28,8 +28,10 @@ export default function DialScreen() {
   const { t, isRtl } = useLang();
   const { colours } = usePalette();
   const { callState, setCallState, sky, mood, appendDigit, ringerId, missedNotes, muted } = useKeeperState();
-  const { contactById } = useContacts();
+  const { contacts, contactById } = useContacts();
   const ringer = contactById(ringerId);
+  // Everyone whose birthday is today, for the reminder beside the dial.
+  const birthdayNames = contacts.filter((c) => isBirthdayOn(c.birthday)).map((c) => c.name);
   const { tick, clunk } = useSettings();
   const startIncomingCall = useIncomingCall();
   const { width: winWidth, height: winHeight } = useWindowDimensions();
@@ -97,6 +99,23 @@ export default function DialScreen() {
               <MissedCallNote names={missedNames} onPress={() => router.dismissTo('/recents')} />
             </View>
           )}
+          {/* Birthday reminder in the opposite corner; opens the Birthdays card on Contacts. */}
+          {callState === 'idle' && birthdayNames.length > 0 && (
+            <Pressable
+              onPress={() => router.dismissTo('/contacts')}
+              role="button"
+              style={[
+                styles.birthdayReminder,
+                { borderColor: `${colours.metal2}8c`, flexDirection: rowDir },
+                isRtl ? { left: 16 } : { right: 16 },
+              ]}
+            >
+              <Text style={styles.birthdayCake}>🎂</Text>
+              <Text style={[styles.birthdayText, { color: colours.highlight }]} numberOfLines={2}>
+                {t.birthdayReminder(birthdayNames.join(isRtl ? '، ' : ', '), birthdayNames.length)}
+              </Text>
+            </Pressable>
+          )}
           <View style={{ width: dialSize, height: dialSize + handsetRise }}>
             <View style={{ position: 'absolute', top: handsetRise, left: 0 }}>
               <RotaryDial
@@ -153,4 +172,19 @@ const styles = StyleSheet.create({
   demoBtnLabel: { color: 'rgba(239,230,211,.8)', fontSize: 10, fontWeight: '600' },
   stage: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   missedNote: { position: 'absolute', top: 8, zIndex: 2 },
+  birthdayReminder: {
+    position: 'absolute',
+    top: 8,
+    zIndex: 2,
+    maxWidth: 170,
+    alignItems: 'center',
+    gap: 6,
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    backgroundColor: 'rgba(11,10,8,.55)',
+  },
+  birthdayCake: { fontSize: 16 },
+  birthdayText: { flexShrink: 1, fontSize: 11, fontWeight: '700' },
 });
