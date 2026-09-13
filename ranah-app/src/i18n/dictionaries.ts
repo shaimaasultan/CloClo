@@ -58,7 +58,18 @@ export interface Dictionary {
   recents: RecentCall[];
   // Short spoken-style call length, e.g. "4m 12s" / "4 د 12 ث".
   formatCallDuration: (seconds: number) => string;
+  justNow: string;
+  minutesAgo: (minutes: number) => string;
+  hoursAgo: (hours: number) => string;
+  // Accessibility label for the missed-call sticky note on the room's door.
+  missedNoteLabel: (names: string) => string;
+  keepsakeNames: Record<KeepsakeKind, string>;
+  // Shown in the room caption when a shelf keepsake is tapped.
+  keepsakeCaption: (item: string, name: string, calls: number) => string;
 }
+
+// The little object each caller leaves on the keeper's shelf.
+export type KeepsakeKind = 'postcard' | 'mug' | 'snowGlobe';
 
 export type CallType = 'incoming' | 'outgoing' | 'missed';
 export type ToneId = 'classic' | 'chime' | 'buzz' | 'pulse';
@@ -68,6 +79,7 @@ export interface Caller {
   meta: string;
   sky: 'clear' | 'rain' | 'snow' | 'storm';
   number: string;
+  keepsake: KeepsakeKind;
 }
 
 export interface RecentCall {
@@ -135,9 +147,9 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
     paletteLabel: 'Case colour',
     paletteNames: { oxblood: 'Oxblood', verdigris: 'Verdigris', ivory: 'Ivory', graphite: 'Graphite' },
     callers: [
-      { name: 'Nadia', meta: 'Driving · light rain · 9:42 PM their time', sky: 'rain', number: '0100 214 7788' },
-      { name: 'Omar', meta: 'At work · clear skies · 2:15 PM their time', sky: 'clear', number: '0122 356 4190' },
-      { name: 'Mama', meta: 'At home · snow falling · 11:05 PM their time', sky: 'snow', number: '0111 908 2234' },
+      { name: 'Nadia', meta: 'Driving · light rain · 9:42 PM their time', sky: 'rain', number: '0100 214 7788', keepsake: 'postcard' },
+      { name: 'Omar', meta: 'At work · clear skies · 2:15 PM their time', sky: 'clear', number: '0122 356 4190', keepsake: 'mug' },
+      { name: 'Mama', meta: 'At home · snow falling · 11:05 PM their time', sky: 'snow', number: '0111 908 2234', keepsake: 'snowGlobe' },
     ],
     recents: [
       { callerIdx: 0, type: 'incoming', time: '2m ago', meta: 'Driving · light rain · 9:42 PM their time', durationSec: 252 },
@@ -150,6 +162,12 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
       const s = seconds % 60;
       return m > 0 ? `${m}m ${String(s).padStart(2, '0')}s` : `${s}s`;
     },
+    justNow: 'Just now',
+    minutesAgo: (minutes) => `${minutes}m ago`,
+    hoursAgo: (hours) => `${hours}h ago`,
+    missedNoteLabel: (names) => `Missed call from ${names}. Open Recents`,
+    keepsakeNames: { postcard: 'A postcard', mug: 'A coffee mug', snowGlobe: 'A snow globe' },
+    keepsakeCaption: (item, name, calls) => `${item} from ${name} · ${calls} ${calls === 1 ? 'call' : 'calls'}`,
   },
   ar: {
     dir: 'rtl',
@@ -211,9 +229,9 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
     paletteLabel: 'لون الجسم',
     paletteNames: { oxblood: 'عنّابي', verdigris: 'أخضر نحاسي', ivory: 'عاجي', graphite: 'غرافيت' },
     callers: [
-      { name: 'نادية', meta: 'بتسوق · مطر خفيف · 9:42 مساءً عندها', sky: 'rain', number: '0100 214 7788' },
-      { name: 'عمر', meta: 'في الشغل · جو صافي · 2:15 الضهر عنده', sky: 'clear', number: '0122 356 4190' },
-      { name: 'ماما', meta: 'في البيت · بينزل تلج · 11:05 بالليل عندها', sky: 'snow', number: '0111 908 2234' },
+      { name: 'نادية', meta: 'بتسوق · مطر خفيف · 9:42 مساءً عندها', sky: 'rain', number: '0100 214 7788', keepsake: 'postcard' },
+      { name: 'عمر', meta: 'في الشغل · جو صافي · 2:15 الضهر عنده', sky: 'clear', number: '0122 356 4190', keepsake: 'mug' },
+      { name: 'ماما', meta: 'في البيت · بينزل تلج · 11:05 بالليل عندها', sky: 'snow', number: '0111 908 2234', keepsake: 'snowGlobe' },
     ],
     recents: [
       { callerIdx: 0, type: 'incoming', time: 'من دقيقتين', meta: 'بتسوق · مطر خفيف · 9:42 مساءً عندها', durationSec: 252 },
@@ -226,5 +244,11 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
       const s = seconds % 60;
       return m > 0 ? `${m} د ${s} ث` : `${s} ث`;
     },
+    justNow: 'دلوقتي',
+    minutesAgo: (minutes) => `من ${minutes} دقيقة`,
+    hoursAgo: (hours) => `من ${hours} ساعة`,
+    missedNoteLabel: (names) => `مكالمة فايتة من ${names}. افتحي الأخيرة`,
+    keepsakeNames: { postcard: 'كارت بوستال', mug: 'مج قهوة', snowGlobe: 'كرة تلج' },
+    keepsakeCaption: (item, name, calls) => `${item} من ${name} · ${calls === 1 ? 'مكالمة واحدة' : `${calls} مكالمات`}`,
   },
 };

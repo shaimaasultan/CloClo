@@ -28,6 +28,7 @@ import { useLang } from '../src/state/LangContext';
 import { usePalette } from '../src/state/PaletteContext';
 import { useSettings } from '../src/state/SettingsContext';
 import { useReducedMotion } from '../src/state/useReducedMotion';
+import type { KeepsakeKind } from '../src/i18n/dictionaries';
 import { pointer } from '../src/theme/pointer';
 import { CaseColours } from '../src/theme/tokens';
 
@@ -232,6 +233,82 @@ function RoomWeather({ colours, sky }: { colours: CaseColours; sky: WeatherKind 
   );
 }
 
+// Tap areas for each keepsake on the shelf, in room units (around the book
+// that already lives there).
+const SHELF_SLOTS: Record<KeepsakeKind, { x: number; y: number; w: number; h: number }> = {
+  mug: { x: 279, y: 18, w: 25, h: 30 },
+  postcard: { x: 303, y: 20, w: 27, h: 28 },
+  snowGlobe: { x: 352, y: 16, w: 24, h: 32 },
+};
+// The door note's tap area.
+const NOTE_SLOT = { x: 332, y: 126, w: 46, h: 48 };
+
+// Little things callers leave behind, drawn on the shelf.
+function Keepsake({ kind, colours }: { kind: KeepsakeKind; colours: CaseColours }) {
+  switch (kind) {
+    case 'mug':
+      return (
+        <G>
+          <Rect x={284} y={32} width={13} height={14} rx={2} fill={colours.face} stroke={colours.metal3} strokeWidth={0.8} />
+          <Path d="M297 35 q5 0 5 4.5 q0 4.5 -5 4.5" stroke={colours.metal3} strokeWidth={1.6} fill="none" />
+          <Path
+            d="M288 29 q-2 -3 0 -6 M293 29 q-2 -3 0 -6"
+            stroke={colours.face}
+            strokeOpacity={0.55}
+            strokeWidth={1}
+            fill="none"
+            strokeLinecap="round"
+          />
+        </G>
+      );
+    case 'postcard':
+      return (
+        <G transform="rotate(8 316 38)">
+          <Rect x={305} y={30} width={22} height={15} rx={1.5} fill="#e9f1f4" stroke={colours.metal3} strokeWidth={0.8} />
+          <Rect x={320} y={32} width={5} height={6} fill="#c0463c" />
+          <Line x1={308} y1={37} x2={317} y2={37} stroke={colours.metal3} strokeOpacity={0.6} strokeWidth={0.7} />
+          <Line x1={308} y1={40.5} x2={315} y2={40.5} stroke={colours.metal3} strokeOpacity={0.6} strokeWidth={0.7} />
+        </G>
+      );
+    case 'snowGlobe':
+      return (
+        <G>
+          <Circle cx={364} cy={33} r={9} fill="#dbe9f1" fillOpacity={0.85} stroke={colours.metal1} strokeWidth={0.8} />
+          <Path d="M364 27 L359.5 36 H368.5 Z" fill="#3f7a5a" />
+          <Circle cx={359} cy={30} r={0.9} fill="#ffffff" />
+          <Circle cx={368.5} cy={28.5} r={0.9} fill="#ffffff" />
+          <Circle cx={366.5} cy={36} r={0.9} fill="#ffffff" />
+          <Rect x={355} y={40} width={18} height={6} rx={2} fill={colours.metal3} />
+        </G>
+      );
+  }
+}
+
+// A sticky note pinned to the door with the missed caller's initial, and a
+// count badge when several calls were missed.
+function MissedNote({ initials, count }: { initials: string; count: number }) {
+  return (
+    <G>
+      <G transform="rotate(-6 355 152)">
+        <Rect x={340} y={138} width={30} height={28} rx={2} fill="#f1dc72" />
+        <Path d="M362 166 L370 158 L370 166 Z" fill="#d6bf55" />
+        <Circle cx={355} cy={140} r={2.6} fill="#c0463c" />
+        <SvgText x={355} y={159} textAnchor="middle" fontSize={initials.length > 1 ? 10 : 13} fontWeight="800" fill="#5a3a1a">
+          {initials}
+        </SvgText>
+      </G>
+      {count > 1 && (
+        <G>
+          <Circle cx={371} cy={135} r={7} fill="#c0463c" />
+          <SvgText x={371} y={138.5} textAnchor="middle" fontSize={9} fontWeight="800" fill="#ffffff">
+            {count}
+          </SvgText>
+        </G>
+      )}
+    </G>
+  );
+}
+
 // Rough budget for the header (logo + settings pill) + dock + info row above
 // the stage, so the outdoor weather layer's sun doesn't render under that chrome.
 const CHROME_HEIGHT = 225;
@@ -240,7 +317,25 @@ export default function KeeperRoomScreen() {
   const router = useRouter();
   const { t, isRtl } = useLang();
   const { colours } = usePalette();
-  const { callState, setCallState, sky, mood, roomProp, cycleMoment, momentIndex, ringerIdx } = useKeeperState();
+  const {
+    callState,
+    setCallState,
+    sky,
+    mood,
+    roomProp,
+    cycleMoment,
+    momentIndex,
+    ringerIdx,
+    missedNotes,
+    connectedCallCount,
+  } = useKeeperState();
+  // Briefly replaces the moment caption after a keepsake is tapped.
+  const [shelfCaption, setShelfCaption] = useState<string | null>(null);
+  useEffect(() => {
+    if (!shelfCaption) return;
+    const id = setTimeout(() => setShelfCaption(null), 3500);
+    return () => clearTimeout(id);
+  }, [shelfCaption]);
   const { clunk } = useSettings();
   const { width: winWidth, height: winHeight } = useWindowDimensions();
   const [stageSize, setStageSize] = useState({ width: 0, height: 0 });
@@ -289,6 +384,20 @@ export default function KeeperRoomScreen() {
   const handsetHeight = handsetWidth * (94 / 220);
   const boxTop = (stageSize.height - boxH) / 2;
   const handsetTop = Math.max(0, boxTop - handsetHeight * 0.55);
+
+  // Room units → pixels inside the fitted 4:3 box.
+  const px = (x: number) => (x * boxW) / VB_W;
+  const py = (y: number) => (y * boxH) / VB_H;
+
+  // A keepsake appears once you've actually talked with that caller.
+  const keepsakes = t.callers
+    .map((caller, idx) => ({ idx, kind: caller.keepsake, name: caller.name, calls: connectedCallCount(idx) }))
+    .filter((k) => k.calls > 0);
+  const missedNames = missedNotes.map((idx) => t.callers[idx]?.name).filter((name): name is string => !!name);
+  const noteInitials = missedNames
+    .slice(0, 2)
+    .map((name) => name.charAt(0))
+    .join('');
 
   return (
     <View style={[styles.root, { backgroundColor: colours.body2 }]}>
@@ -347,6 +456,9 @@ export default function KeeperRoomScreen() {
 
                 <Rect x={276} y={46} width={96} height={7} rx={2} fill={colours.metal2} />
                 <Rect x={330} y={22} width={20} height={26} rx={2} transform="rotate(-6 340 35)" fill={colours.metal1} stroke={colours.metal3} strokeWidth={1} />
+                {keepsakes.map((k) => (
+                  <Keepsake key={k.kind} kind={k.kind} colours={colours} />
+                ))}
 
                 {/* Front door and mat, where the weather gets in. */}
                 <Rect x={326} y={120} width={56} height={142} rx={4} fill={colours.body1} stroke={colours.metal2} strokeWidth={3} />
@@ -354,6 +466,7 @@ export default function KeeperRoomScreen() {
                 <Rect x={336} y={190} width={36} height={58} rx={3} fill="none" stroke={colours.metal3} strokeOpacity={0.6} strokeWidth={1.2} />
                 <Circle cx={371} cy={196} r={3.2} fill={colours.metal1} />
                 <Rect x={318} y={262} width={72} height={7} rx={3} fill={colours.metal3} opacity={0.75} />
+                {missedNames.length > 0 && <MissedNote initials={noteInitials} count={missedNames.length} />}
 
                 {!ringing && <CeilingLamp colours={colours} storm={sky === 'storm'} />}
 
@@ -380,6 +493,35 @@ export default function KeeperRoomScreen() {
                   variant="room"
                 />
               </View>
+
+              {keepsakes.map((k) => {
+                const slot = SHELF_SLOTS[k.kind];
+                const label = t.keepsakeCaption(t.keepsakeNames[k.kind], k.name, k.calls);
+                return (
+                  <Pressable
+                    key={k.kind}
+                    onPress={() => setShelfCaption(label)}
+                    accessibilityRole="button"
+                    accessibilityLabel={label}
+                    style={{ position: 'absolute', left: px(slot.x), top: py(slot.y), width: px(slot.w), height: py(slot.h) }}
+                  />
+                );
+              })}
+
+              {missedNames.length > 0 && (
+                <Pressable
+                  onPress={() => router.navigate('/recents')}
+                  accessibilityRole="button"
+                  accessibilityLabel={t.missedNoteLabel(missedNames.join(', '))}
+                  style={{
+                    position: 'absolute',
+                    left: px(NOTE_SLOT.x),
+                    top: py(NOTE_SLOT.y),
+                    width: px(NOTE_SLOT.w),
+                    height: py(NOTE_SLOT.h),
+                  }}
+                />
+              )}
 
               {/* Incoming call card, ported from the prototype's .incoming:
                   tag, caller name, their status line, and Decline. */}
@@ -427,7 +569,7 @@ export default function KeeperRoomScreen() {
               <Text style={[styles.moodBadgeText, mood === 'happy' && { color: colours.ink }]}>{t.moodBadge[mood]}</Text>
             </View>
           )}
-          <Text style={styles.caption}>{t.moments[momentIndex]}</Text>
+          <Text style={styles.caption}>{shelfCaption ?? t.moments[momentIndex]}</Text>
         </View>
       </SafeAreaView>
     </View>
