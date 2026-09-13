@@ -1,32 +1,42 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { APP_NAME } from '../../i18n/dictionaries';
 import { useLang } from '../../state/LangContext';
 import { usePalette } from '../../state/PaletteContext';
 import { Logo } from '../Logo/Logo';
+import { SettingsBar } from '../SettingsBar/SettingsBar';
 
-// Sits above the navigation dock on every screen — the one piece of chrome
-// that's purely brand, not a control, so it stays put regardless of which
-// screen is active. The language toggle rides along on the opposite side
-// since it's the one control that isn't visual theming (sky/colour), which
-// now live in their own row under the dock.
+// Below this width the logo, wordmark, slogan, and settings pill can't share
+// one row, so the wordmark and slogan step aside (they stay in the
+// accessibility label) and the pill tightens up.
+const COMPACT_BELOW = 480;
+
+// The top row on every screen: the brand on one side and the settings pill
+// (clock, caller's sky, case colour, language) on the other.
 export function BrandHeader() {
-  const { t, lang, setLang, isRtl } = useLang();
+  const { t, isRtl } = useLang();
   const { colours } = usePalette();
+  const { width } = useWindowDimensions();
+  const compact = width < COMPACT_BELOW;
   const rowDir = isRtl ? 'row-reverse' : 'row';
 
   return (
-    <View style={[styles.row, { flexDirection: rowDir }]}>
-      <Logo size={30} colours={colours} />
-      <View style={[styles.textCol, { alignItems: isRtl ? 'flex-end' : 'flex-start' }]}>
-        <Text style={styles.brand}>{APP_NAME}</Text>
-        <Text style={styles.slogan}>{t.slogan}</Text>
+    <View style={[styles.row, { flexDirection: rowDir, paddingHorizontal: compact ? 12 : 16 }]}>
+      <View
+        style={[styles.brand, { flexDirection: rowDir }]}
+        accessibilityRole="header"
+        accessibilityLabel={`${APP_NAME} — ${t.slogan}`}
+      >
+        <Logo size={compact ? 28 : 30} colours={colours} />
+        {!compact && (
+          <View style={[styles.textCol, { alignItems: isRtl ? 'flex-end' : 'flex-start' }]}>
+            <Text style={styles.brandName}>{APP_NAME}</Text>
+            <Text style={styles.slogan}>{t.slogan}</Text>
+          </View>
+        )}
       </View>
-      <View style={{ flex: 1 }} />
-      <Pressable onPress={() => setLang(lang === 'en' ? 'ar' : 'en')} style={styles.langToggle}>
-        <Text style={[styles.langLabel, lang === 'en' && styles.langLabelActive]}>EN</Text>
-        <Text style={[styles.langLabel, lang === 'ar' && styles.langLabelActive]}>عربي</Text>
-      </Pressable>
+      <View style={styles.spacer} />
+      <SettingsBar compact={compact} />
     </View>
   );
 }
@@ -34,12 +44,13 @@ export function BrandHeader() {
 const styles = StyleSheet.create({
   row: {
     alignItems: 'center',
-    gap: 10,
-    paddingHorizontal: 16,
+    gap: 8,
     paddingTop: 10,
+    paddingBottom: 6,
   },
+  brand: { alignItems: 'center', gap: 10, flexShrink: 0 },
   textCol: { gap: 1 },
-  brand: {
+  brandName: {
     color: '#f3ecdd',
     fontSize: 17,
     fontWeight: '800',
@@ -50,14 +61,5 @@ const styles = StyleSheet.create({
     fontSize: 10,
     letterSpacing: 0.2,
   },
-  langToggle: {
-    flexDirection: 'row',
-    gap: 8,
-    backgroundColor: 'rgba(255,255,255,.08)',
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-  },
-  langLabel: { color: 'rgba(239,230,211,.5)', fontSize: 12, fontWeight: '600' },
-  langLabelActive: { color: '#efe6d3' },
+  spacer: { flex: 1 },
 });

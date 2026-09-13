@@ -8,12 +8,11 @@ import { BrandHeader } from '../BrandHeader/BrandHeader';
 import { Dock } from '../Dock/Dock';
 import { DockKey } from '../DockIcon/DockIcon';
 import { ChevronIcon } from '../Icons/Icons';
-import { TopBar } from '../TopBar/TopBar';
 import { WeatherLayer } from '../WeatherLayer/WeatherLayer';
 
-// Brand header + dock + top bar budget, so the weather's sun never lands
-// under the chrome.
-const CHROME_HEIGHT = 270;
+// Header (logo + settings pill) + dock budget, so the weather's sun never
+// lands under the chrome.
+const CHROME_HEIGHT = 220;
 
 interface BackLink {
   label: string;
@@ -46,8 +45,6 @@ export function ScreenShell({ active, back, children }: ScreenShellProps) {
         <BrandHeader />
 
         <Dock active={active} />
-
-        <TopBar />
 
         {back && (
           <View style={[styles.head, { flexDirection: rowDir }]}>

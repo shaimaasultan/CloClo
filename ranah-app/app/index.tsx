@@ -9,7 +9,6 @@ import { Dock } from '../src/components/Dock/Dock';
 import { KeeperAvatar } from '../src/components/KeeperAvatar/KeeperAvatar';
 import { PhoneHandset } from '../src/components/PhoneHandset/PhoneHandset';
 import { RotaryDial } from '../src/components/RotaryDial/RotaryDial';
-import { TopBar } from '../src/components/TopBar/TopBar';
 import { WeatherLayer } from '../src/components/WeatherLayer/WeatherLayer';
 import { useKeeperState } from '../src/state/KeeperStateContext';
 import { useLang } from '../src/state/LangContext';
@@ -17,7 +16,7 @@ import { usePalette } from '../src/state/PaletteContext';
 import { useSettings } from '../src/state/SettingsContext';
 import { useIncomingCall } from '../src/state/useIncomingCall';
 
-const CHROME_HEIGHT = 275; // rough budget for the brand header + topBar + dock + readout row above the stage
+const CHROME_HEIGHT = 225; // rough budget for the header (logo + settings pill) + dock + readout row above the stage
 
 export default function DialScreen() {
   const router = useRouter();
@@ -64,8 +63,6 @@ export default function DialScreen() {
         <BrandHeader />
 
         <Dock active="dial" />
-
-        <TopBar />
 
         <View style={[styles.readoutRow, { flexDirection: rowDir }]}>
           <CallInfoBar />

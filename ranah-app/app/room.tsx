@@ -8,7 +8,6 @@ import { DeclineButton } from '../src/components/DeclineButton/DeclineButton';
 import { Dock } from '../src/components/Dock/Dock';
 import { KeeperAvatar } from '../src/components/KeeperAvatar/KeeperAvatar';
 import { PhoneHandset } from '../src/components/PhoneHandset/PhoneHandset';
-import { TopBar } from '../src/components/TopBar/TopBar';
 import { WeatherLayer } from '../src/components/WeatherLayer/WeatherLayer';
 import Svg, {
   Circle,
@@ -124,9 +123,9 @@ function WindowWeather({ sky, clipId }: { sky: 'clear' | 'rain' | 'snow' | 'stor
 
 const PROP_GLYPH: Record<'book' | 'music' | 'chat', string> = { book: '📖', music: '♫', chat: '💬' };
 
-// Rough budget for the brand header + dock + topBar + info row above the
-// stage, so the outdoor weather layer's sun doesn't render under that chrome.
-const CHROME_HEIGHT = 275;
+// Rough budget for the header (logo + settings pill) + dock + info row above
+// the stage, so the outdoor weather layer's sun doesn't render under that chrome.
+const CHROME_HEIGHT = 225;
 
 export default function KeeperRoomScreen() {
   const router = useRouter();
@@ -188,8 +187,6 @@ export default function KeeperRoomScreen() {
         <BrandHeader />
 
         <Dock active="keeper" />
-
-        <TopBar />
 
         <View style={styles.infoRow}>
           <CallInfoBar />
