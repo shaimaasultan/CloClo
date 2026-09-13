@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-na
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BrandHeader } from '../src/components/BrandHeader/BrandHeader';
 import { CallInfoBar } from '../src/components/CallInfoBar/CallInfoBar';
+import { DeclineButton } from '../src/components/DeclineButton/DeclineButton';
 import { Dock } from '../src/components/Dock/Dock';
 import { KeeperAvatar } from '../src/components/KeeperAvatar/KeeperAvatar';
 import { PhoneHandset } from '../src/components/PhoneHandset/PhoneHandset';
@@ -74,11 +75,7 @@ export default function DialScreen() {
               <Text style={styles.demoBtnLabel}>Preview an incoming call</Text>
             </Pressable>
           )}
-          {callState === 'ringing' && (
-            <Pressable onPress={() => setCallState('idle')} style={styles.demoBtn}>
-              <Text style={styles.demoBtnLabel}>{t.decline}</Text>
-            </Pressable>
-          )}
+          {callState === 'ringing' && <DeclineButton label={t.decline} onPress={() => setCallState('idle')} />}
         </View>
 
         <View style={styles.stage}>

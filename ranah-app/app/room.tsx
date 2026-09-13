@@ -4,6 +4,7 @@ import { Animated, LayoutChangeEvent, Pressable, StyleSheet, Text, useWindowDime
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BrandHeader } from '../src/components/BrandHeader/BrandHeader';
 import { CallInfoBar } from '../src/components/CallInfoBar/CallInfoBar';
+import { DeclineButton } from '../src/components/DeclineButton/DeclineButton';
 import { Dock } from '../src/components/Dock/Dock';
 import { KeeperAvatar } from '../src/components/KeeperAvatar/KeeperAvatar';
 import { PhoneHandset } from '../src/components/PhoneHandset/PhoneHandset';
@@ -282,16 +283,9 @@ export default function KeeperRoomScreen() {
                     <Text style={[styles.incomingTag, { color: `${colours.metal1}d9` }]}>{t.incomingTag}</Text>
                     <Text style={styles.incomingName}>{ringer.name}</Text>
                     <Text style={styles.incomingMeta}>{ringer.meta}</Text>
-                    <Pressable
-                      onPress={declineCall}
-                      accessibilityRole="button"
-                      style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
-                        styles.declineBtn,
-                        (pressed || hovered) && styles.declineBtnActive,
-                      ]}
-                    >
-                      <Text style={styles.declineLabel}>{t.decline}</Text>
-                    </Pressable>
+                    <View style={styles.declineWrap}>
+                      <DeclineButton label={t.decline} onPress={declineCall} />
+                    </View>
                   </View>
                 </View>
               )}
@@ -382,17 +376,8 @@ const styles = StyleSheet.create({
     fontFamily: 'monospace',
     textAlign: 'center',
   },
-  declineBtn: {
-    marginTop: 2,
-    backgroundColor: '#7a3630',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,.12)',
-    borderRadius: 999,
-    paddingVertical: 7,
-    paddingHorizontal: 20,
-  },
-  declineBtnActive: { backgroundColor: '#8f423b' },
-  declineLabel: { color: '#f6ece7', fontSize: 12, fontWeight: '600', letterSpacing: 0.4 },
+  // Extra room above so the button's pulsing halo doesn't crowd the meta line.
+  declineWrap: { marginTop: 6 },
   captionRow: {
     alignItems: 'center',
     justifyContent: 'center',
