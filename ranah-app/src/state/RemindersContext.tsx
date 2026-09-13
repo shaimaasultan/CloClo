@@ -19,6 +19,9 @@ export interface Reminder {
   contactId: string | null;
   // Days ("YYYY-MM-DD") it was ticked off.
   doneDates: string[];
+  // Snoozed once for `day`: it alerts again at `at` (epoch ms), and is
+  // marked done when that second alert comes.
+  snooze?: { day: string; at: number } | null;
 }
 
 export type ReminderDraft = Omit<Reminder, 'id' | 'titles' | 'doneDates'>;
@@ -66,6 +69,13 @@ export function nextOccurrenceAfter(r: Reminder, day: Date): Date | null {
   return null;
 }
 
+// Reminders snoozed and still waiting for their second alert, soonest first.
+export function pendingSnoozes(reminders: Reminder[], now: number = Date.now()): Reminder[] {
+  return reminders
+    .filter((r) => r.snooze && r.snooze.at > now && !r.doneDates.includes(r.snooze.day))
+    .sort((a, b) => (a.snooze?.at ?? 0) - (b.snooze?.at ?? 0));
+}
+
 const SEED_REMINDERS: Reminder[] = [
   {
     id: 'call-mama',
@@ -90,6 +100,8 @@ interface RemindersValue {
   // Tick it off for one day (no change if it already is), e.g. after calling
   // the contact it's about.
   markDone: (id: string, day: string) => void;
+  // Snooze a day's alert for `minutes` — once only for that day.
+  snoozeReminder: (id: string, day: string, minutes: number) => void;
 }
 
 const RemindersContext = createContext<RemindersValue | null>(null);
@@ -138,9 +150,17 @@ export function RemindersProvider({ children }: { children: React.ReactNode }) {
     );
   }, []);
 
+  const snoozeReminder = useCallback((id: string, day: string, minutes: number) => {
+    setReminders((prev) =>
+      prev.map((r) =>
+        r.id === id && r.snooze?.day !== day ? { ...r, snooze: { day, at: Date.now() + minutes * 60 * 1000 } } : r
+      )
+    );
+  }, []);
+
   const value = useMemo<RemindersValue>(
-    () => ({ reminders, reminderById, addReminder, updateReminder, removeReminder, toggleDone, markDone }),
-    [reminders, reminderById, addReminder, updateReminder, removeReminder, toggleDone, markDone]
+    () => ({ reminders, reminderById, addReminder, updateReminder, removeReminder, toggleDone, markDone, snoozeReminder }),
+    [reminders, reminderById, addReminder, updateReminder, removeReminder, toggleDone, markDone, snoozeReminder]
   );
 
   return <RemindersContext.Provider value={value}>{children}</RemindersContext.Provider>;

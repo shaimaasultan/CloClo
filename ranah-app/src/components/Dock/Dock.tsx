@@ -3,7 +3,11 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useLang } from '../../state/LangContext';
 import { usePalette } from '../../state/PaletteContext';
+import { pendingSnoozes, useReminders } from '../../state/RemindersContext';
 import { DockIcon, DockKey } from '../DockIcon/DockIcon';
+
+// Same blue as the snooze sticker on the dial.
+const SNOOZE_BLUE = '#3d5a8a';
 
 const DOCK_KEYS: DockKey[] = ['dial', 'contacts', 'recents', 'reminders', 'keeper', 'sounds', 'settings'];
 
@@ -26,6 +30,8 @@ export function Dock({ active }: DockProps) {
   const { t, isRtl } = useLang();
   const { colours } = usePalette();
   const rowDir = isRtl ? 'row-reverse' : 'row';
+  const { reminders } = useReminders();
+  const snoozedCount = pendingSnoozes(reminders).length;
 
   return (
     <View style={[styles.dock, { flexDirection: rowDir }]}>
@@ -34,7 +40,15 @@ export function Dock({ active }: DockProps) {
         const iconColor = isActive ? colours.highlight : '#c9bfa9';
         const content = (
           <View style={[styles.dockBtn, isActive && styles.dockBtnActive]}>
-            <DockIcon name={key} color={iconColor} />
+            <View>
+              <DockIcon name={key} color={iconColor} />
+              {/* How many reminders are snoozed, on the bell. */}
+              {key === 'reminders' && snoozedCount > 0 && (
+                <View style={[styles.badge, { backgroundColor: SNOOZE_BLUE }]}>
+                  <Text style={styles.badgeText}>{snoozedCount}</Text>
+                </View>
+              )}
+            </View>
             <Text style={[styles.dockLabel, isActive && { color: iconColor }]}>{t.dockNames[key]}</Text>
           </View>
         );
@@ -68,4 +82,18 @@ const styles = StyleSheet.create({
   dockBtn: { alignItems: 'center', gap: 5, paddingVertical: 6, paddingHorizontal: 3, borderRadius: 12 },
   dockBtnActive: { backgroundColor: 'rgba(201,162,75,.18)' },
   dockLabel: { color: '#c9bfa9', fontSize: 9, letterSpacing: 0.3, textTransform: 'uppercase' },
+  badge: {
+    position: 'absolute',
+    top: -5,
+    right: -9,
+    minWidth: 15,
+    height: 15,
+    borderRadius: 7.5,
+    paddingHorizontal: 3,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#bcd9f2',
+  },
+  badgeText: { color: '#ffffff', fontSize: 9, fontWeight: '800', lineHeight: 11 },
 });

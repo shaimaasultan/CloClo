@@ -7,6 +7,7 @@ import { BrandHeader } from '../src/components/BrandHeader/BrandHeader';
 import { CallInfoBar } from '../src/components/CallInfoBar/CallInfoBar';
 import { DeclineButton } from '../src/components/DeclineButton/DeclineButton';
 import { MissedCallNote } from '../src/components/MissedCallNote/MissedCallNote';
+import { SnoozeSticker } from '../src/components/SnoozeSticker/SnoozeSticker';
 import { MuteButton } from '../src/components/MuteButton/MuteButton';
 import { Dock } from '../src/components/Dock/Dock';
 import { KeeperAvatar } from '../src/components/KeeperAvatar/KeeperAvatar';
@@ -18,7 +19,7 @@ import { isBirthdayOn } from '../src/state/decorations';
 import { useKeeperState } from '../src/state/KeeperStateContext';
 import { useLang } from '../src/state/LangContext';
 import { usePalette } from '../src/state/PaletteContext';
-import { dayKey, occursOn, useReminders } from '../src/state/RemindersContext';
+import { dayKey, occursOn, pendingSnoozes, useReminders } from '../src/state/RemindersContext';
 import { useSettings } from '../src/state/SettingsContext';
 import { useIncomingCall } from '../src/state/useIncomingCall';
 import { pointer } from '../src/theme/pointer';
@@ -39,6 +40,8 @@ export default function DialScreen() {
   const now = new Date();
   const todaysReminders = reminders.filter((r) => occursOn(r, now));
   const pendingReminders = todaysReminders.filter((r) => !r.doneDates.includes(dayKey(now))).length;
+  // Snoozed reminders still waiting to come back.
+  const snoozed = pendingSnoozes(reminders, now.getTime());
   const { tick, clunk } = useSettings();
   const startIncomingCall = useIncomingCall();
   const { width: winWidth, height: winHeight } = useWindowDimensions();
@@ -101,9 +104,17 @@ export default function DialScreen() {
 
         <View style={styles.stage}>
           {/* The keeper's missed-call note, pinned in the corner beside the dial. */}
-          {missedNames.length > 0 && (
+          {/* Beneath it, a blue sticker while any reminder is snoozed. */}
+          {(missedNames.length > 0 || snoozed.length > 0) && (
             <View style={[styles.missedNote, isRtl ? { right: 16 } : { left: 16 }]}>
-              <MissedCallNote names={missedNames} onPress={() => router.dismissTo('/recents')} />
+              {missedNames.length > 0 && <MissedCallNote names={missedNames} onPress={() => router.dismissTo('/recents')} />}
+              {snoozed.length > 0 && (
+                <SnoozeSticker
+                  count={snoozed.length}
+                  nextAt={snoozed[0].snooze?.at ?? 0}
+                  onPress={() => router.dismissTo('/reminders')}
+                />
+              )}
             </View>
           )}
           {/* Today's birthdays and reminders in the opposite corner: the
@@ -193,7 +204,7 @@ const styles = StyleSheet.create({
   },
   demoBtnLabel: { color: 'rgba(239,230,211,.8)', fontSize: 10, fontWeight: '600' },
   stage: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  missedNote: { position: 'absolute', top: 8, zIndex: 2 },
+  missedNote: { position: 'absolute', top: 8, zIndex: 2, gap: 6 },
   cornerStack: { position: 'absolute', top: 8, zIndex: 2, gap: 6 },
   cornerPill: {
     maxWidth: 170,

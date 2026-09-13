@@ -137,6 +137,14 @@ export interface Dictionary {
   reminderAlertTag: string;
   markDoneLabel: string;
   dismissLabel: string;
+  // Snoozing a reminder alert (once).
+  snoozeLabel: string;
+  snoozeFor: string;
+  snoozeMinutes: (minutes: number) => string;
+  snoozedTag: string;
+  snoozedUntil: (time: string) => string;
+  // The blue sticker on the dial while reminders are snoozed.
+  snoozeStickerLabel: (count: number, time: string) => string;
   // Short spoken-style call length, e.g. "4m 12s" / "4 د 12 ث".
   formatCallDuration: (seconds: number) => string;
   justNow: string;
@@ -347,6 +355,15 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
     reminderAlertTag: 'Reminder',
     markDoneLabel: 'Done',
     dismissLabel: 'Dismiss',
+    snoozeLabel: 'Snooze',
+    snoozeFor: 'Snooze for',
+    snoozeMinutes: (minutes) => (minutes < 60 ? `${minutes} min` : minutes === 60 ? '1 hour' : `${minutes / 60} hours`),
+    snoozedTag: 'Snoozed reminder',
+    snoozedUntil: (time) => `Snoozed until ${time}`,
+    snoozeStickerLabel: (count, time) =>
+      count === 1
+        ? `Snoozed reminder, back at ${time}. Open Reminders`
+        : `${count} snoozed reminders, next at ${time}. Open Reminders`,
     formatCallDuration: (seconds) => {
       const m = Math.floor(seconds / 60);
       const s = seconds % 60;
@@ -541,6 +558,15 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
     reminderAlertTag: 'تذكير',
     markDoneLabel: 'تم',
     dismissLabel: 'إخفاء',
+    snoozeLabel: 'تأجيل',
+    snoozeFor: 'أجّلي لمدة',
+    snoozeMinutes: (minutes) => (minutes < 60 ? `${minutes} دقيقة` : minutes === 60 ? 'ساعة' : `${minutes / 60} ساعات`),
+    snoozedTag: 'تذكير متأجل',
+    snoozedUntil: (time) => `متأجل لحد ${time}`,
+    snoozeStickerLabel: (count, time) =>
+      count === 1
+        ? `تذكير متأجل، راجع الساعة ${time}. افتحي التذكيرات`
+        : `${count} تذكيرات متأجلة، أقربها الساعة ${time}. افتحي التذكيرات`,
     formatCallDuration: (seconds) => {
       const m = Math.floor(seconds / 60);
       const s = seconds % 60;

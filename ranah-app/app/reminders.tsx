@@ -79,7 +79,10 @@ export default function RemindersScreen() {
     const title = r.titles?.[lang] ?? r.title;
     const contact = contactById(r.contactId);
     const done = isToday && r.doneDates.includes(today);
-    const due = isToday && !done && r.time !== '' && r.time <= nowClock;
+    // Snoozed today and waiting for its second alert.
+    const snoozedUntil =
+      isToday && !done && r.snooze && r.snooze.day === today && r.snooze.at > now.getTime() ? new Date(r.snooze.at) : null;
+    const due = isToday && !done && !snoozedUntil && r.time !== '' && r.time <= nowClock;
     const meta = [
       due ? t.reminderDue : null,
       when,
@@ -131,6 +134,16 @@ export default function RemindersScreen() {
             {meta}
           </Text>
         </Pressable>
+        {snoozedUntil && (
+          // A little blue sticker: snoozed, and when it comes back.
+          <View
+            style={[styles.snoozeSticker, { flexDirection: rowDir }]}
+            accessibilityLabel={t.snoozedUntil(t.clockTime(snoozedUntil.getHours(), snoozedUntil.getMinutes()))}
+          >
+            <Text style={styles.snoozeStickerEmoji}>⏰</Text>
+            <Text style={styles.snoozeStickerText}>{t.clockTime(snoozedUntil.getHours(), snoozedUntil.getMinutes())}</Text>
+          </View>
+        )}
         {contact && callButton(contact.id, contact.name)}
       </View>
     );
@@ -221,6 +234,17 @@ const styles = StyleSheet.create({
   notifyText: { flex: 1, minWidth: 0, color: 'rgba(239,230,211,.75)', fontSize: 11 },
   notifyBtn: { borderRadius: 999, paddingVertical: 6, paddingHorizontal: 12 },
   notifyBtnLabel: { fontSize: 11, fontWeight: '800' },
+  snoozeSticker: {
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#bcd9f2',
+    borderRadius: 6,
+    paddingVertical: 3,
+    paddingHorizontal: 7,
+    transform: [{ rotate: '-3deg' }],
+  },
+  snoozeStickerEmoji: { fontSize: 11 },
+  snoozeStickerText: { color: '#2f4870', fontSize: 10, fontWeight: '800' },
   heading: {
     fontSize: 9,
     letterSpacing: 1.2,
