@@ -67,6 +67,12 @@ This repository holds two things:
   confirmation.
 - **Tick them off** – check today's reminders as done; ones whose time has
   come are marked *Due now*, and linked contacts get a **Call** button.
+  Calling about a reminder ticks it off too.
+- **Notifications** – when a reminder's time comes you get a notification
+  (reminders without a time nudge you at 9:00 AM). On iOS and Android they're
+  scheduled with the system, so they arrive even when CloClo is closed; tap
+  one to open Reminders. While the app is open, a banner slides in with
+  **Call**, **Done**, and dismiss. The Reminders tab asks for permission.
 - **Today's reminders on the dial** – a 🔔 button shows how many are left
   today (or *All done for today*) and opens the Reminders tab.
 
@@ -131,8 +137,10 @@ CloClo is a working prototype, not a telephony app yet:
   iOS / Android until recorded sound assets are added.
 - Ramadan and Eid decorations need a JavaScript engine with Islamic-calendar
   support; where it's missing, those holidays are skipped.
-- Reminders show inside the app only; there are no system notifications when
-  a reminder's time comes.
+- In the web build, reminder notifications only arrive while CloClo is open
+  in a browser tab (a web page can't schedule them ahead of time). Phone
+  notifications need a restart of the Expo server after installing, and are
+  capped at the next 60 alerts.
 - The dialled number and the current call don't survive a restart.
 
 ## Getting started
@@ -192,8 +200,10 @@ The app is built on **Expo SDK 57**, **React Native 0.86**, and
     │   └── advanced.tsx        # case colour, language, decorations
     └── src/
         ├── components/         # dial, handset, keeper, room decor, header, dock, …
-        ├── state/              # calls, contacts, settings, language, palette,
-        │                       # decorations, and saved-data loading
+        ├── state/              # calls, contacts, reminders, settings, language,
+        │                       # palette, decorations, and saved-data loading
+        ├── notifications/      # reminder alerts: planning, phone scheduling,
+        │                       # browser notifications, and permission
         ├── i18n/               # English and Arabic dictionaries
         ├── audio/              # synthesised tones, ringtones, and room sounds
         ├── data/               # sample call transcript

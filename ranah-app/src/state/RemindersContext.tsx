@@ -87,6 +87,9 @@ interface RemindersValue {
   removeReminder: (id: string) => void;
   // Tick a reminder off for one day, or untick it.
   toggleDone: (id: string, day: string) => void;
+  // Tick it off for one day (no change if it already is), e.g. after calling
+  // the contact it's about.
+  markDone: (id: string, day: string) => void;
 }
 
 const RemindersContext = createContext<RemindersValue | null>(null);
@@ -127,9 +130,17 @@ export function RemindersProvider({ children }: { children: React.ReactNode }) {
     );
   }, []);
 
+  const markDone = useCallback((id: string, day: string) => {
+    setReminders((prev) =>
+      prev.map((r) =>
+        r.id === id && !r.doneDates.includes(day) ? { ...r, doneDates: [...r.doneDates, day].slice(-DONE_HISTORY) } : r
+      )
+    );
+  }, []);
+
   const value = useMemo<RemindersValue>(
-    () => ({ reminders, reminderById, addReminder, updateReminder, removeReminder, toggleDone }),
-    [reminders, reminderById, addReminder, updateReminder, removeReminder, toggleDone]
+    () => ({ reminders, reminderById, addReminder, updateReminder, removeReminder, toggleDone, markDone }),
+    [reminders, reminderById, addReminder, updateReminder, removeReminder, toggleDone, markDone]
   );
 
   return <RemindersContext.Provider value={value}>{children}</RemindersContext.Provider>;

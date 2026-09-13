@@ -1,12 +1,14 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { DockIcon } from '../src/components/DockIcon/DockIcon';
 import { PhoneIcon } from '../src/components/Icons/Icons';
 import { ScreenShell } from '../src/components/ScreenShell/ScreenShell';
+import { useNotificationPermission } from '../src/notifications/permission';
 import { useContacts } from '../src/state/ContactsContext';
 import { isBirthdayOn } from '../src/state/decorations';
+import { useKeeperState } from '../src/state/KeeperStateContext';
 import { useLang } from '../src/state/LangContext';
 import { usePalette } from '../src/state/PaletteContext';
 import {
@@ -29,9 +31,11 @@ export default function RemindersScreen() {
   const router = useRouter();
   const { t, lang, isRtl } = useLang();
   const { colours } = usePalette();
-  const { reminders, toggleDone } = useReminders();
+  const { reminders, toggleDone, markDone } = useReminders();
+  const { callState } = useKeeperState();
   const { contacts, contactById } = useContacts();
   const callContact = useCallContact();
+  const [permission, requestPermission] = useNotificationPermission();
 
   // Keeps "Due now" and the day itself current while the screen is open.
   const [now, setNow] = useState(() => new Date());
@@ -58,9 +62,14 @@ export default function RemindersScreen() {
     .sort((a, b) => a.next.getTime() - b.next.getTime() || byTime(a.r, b.r));
   const earlier = reminders.filter((r) => r.repeat === 'none' && r.date < today);
 
-  const callButton = (id: string, name: string) => (
+  // `onCalled` runs only if the call actually starts (not while another call
+  // is ringing or live) — calling about a reminder ticks it off.
+  const callButton = (id: string, name: string, onCalled?: () => void) => (
     <Pressable
-      onPress={() => callContact(id)}
+      onPress={() => {
+        if (callState === 'idle') onCalled?.();
+        callContact(id);
+      }}
       role="button"
       aria-label={t.callNameAria(name)}
       style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
@@ -128,7 +137,7 @@ export default function RemindersScreen() {
             {meta}
           </Text>
         </Pressable>
-        {contact && callButton(contact.id, contact.name)}
+        {contact && callButton(contact.id, contact.name, isToday ? () => markDone(r.id, today) : undefined)}
       </View>
     );
   };
@@ -157,6 +166,24 @@ export default function RemindersScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.list}>
+        {permission !== 'granted' && permission !== 'unsupported' && (
+          <View style={[styles.notify, { flexDirection: rowDir, borderColor: `${colours.metal2}66` }]}>
+            <Text style={styles.notifyEmoji}>🔔</Text>
+            <Text style={[styles.notifyText, { textAlign }]}>
+              {permission === 'denied' ? t.notificationsBlocked : t.notificationsOffHint}
+            </Text>
+            {permission === 'undetermined' && (
+              <Pressable
+                onPress={() => requestPermission()}
+                role="button"
+                style={[styles.notifyBtn, { backgroundColor: colours.metal2 }]}
+              >
+                <Text style={[styles.notifyBtnLabel, { color: colours.ink }]}>{t.turnOnNotifications}</Text>
+              </Pressable>
+            )}
+          </View>
+        )}
+        {Platform.OS === 'web' && permission === 'granted' && empty(t.notificationsWebNote)}
         {heading(t.todayHeading)}
         {birthdays.length === 0 && todays.length === 0 && empty(t.nothingToday)}
         {birthdays.map((c) => (
@@ -195,6 +222,11 @@ const styles = StyleSheet.create({
   addBtn: { alignItems: 'center', gap: 6, borderWidth: 1, borderRadius: 999, paddingVertical: 6, paddingHorizontal: 12 },
   addLabel: { fontSize: 11, fontWeight: '700' },
   list: { paddingTop: 4, paddingHorizontal: 12, paddingBottom: 16, gap: 4 },
+  notify: { alignItems: 'center', gap: 10, borderWidth: 1, borderRadius: 14, padding: 10, marginTop: 6 },
+  notifyEmoji: { fontSize: 18 },
+  notifyText: { flex: 1, minWidth: 0, color: 'rgba(239,230,211,.75)', fontSize: 11 },
+  notifyBtn: { borderRadius: 999, paddingVertical: 6, paddingHorizontal: 12 },
+  notifyBtnLabel: { fontSize: 11, fontWeight: '800' },
   heading: {
     fontSize: 9,
     letterSpacing: 1.2,

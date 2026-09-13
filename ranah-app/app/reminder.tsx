@@ -2,6 +2,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { ScreenShell } from '../src/components/ScreenShell/ScreenShell';
+import { useNotificationPermission } from '../src/notifications/permission';
 import { useContacts } from '../src/state/ContactsContext';
 import { useLang } from '../src/state/LangContext';
 import { usePalette } from '../src/state/PaletteContext';
@@ -19,6 +20,7 @@ export default function ReminderEditScreen() {
   const { reminderById, addReminder, updateReminder, removeReminder } = useReminders();
   const { contacts } = useContacts();
   const { sfx } = useSettings();
+  const [permission, requestPermission] = useNotificationPermission();
 
   const existing = id ? reminderById(id) : undefined;
   const shownTitle = existing ? existing.titles?.[lang] ?? existing.title : '';
@@ -69,6 +71,8 @@ export default function ReminderEditScreen() {
       repeat,
       contactId,
     };
+    // Saving a timed reminder is the natural moment to ask for notifications.
+    if (time && permission === 'undetermined') requestPermission();
     if (existing) updateReminder(existing.id, draft);
     else addReminder(draft);
     sfx('bump');

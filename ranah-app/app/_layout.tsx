@@ -2,6 +2,7 @@ import { Stack } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { IncomingRinger } from '../src/components/IncomingRinger/IncomingRinger';
+import { ReminderNotifier } from '../src/components/ReminderNotifier/ReminderNotifier';
 import { ContactsProvider } from '../src/state/ContactsContext';
 import { KeeperStateProvider } from '../src/state/KeeperStateContext';
 import { LangProvider } from '../src/state/LangContext';
@@ -23,6 +24,7 @@ export default function RootLayout() {
                 <KeeperStateProvider>
                   <IncomingRinger />
                   <Stack screenOptions={{ headerShown: false }} />
+                  <ReminderNotifier />
                 </KeeperStateProvider>
               </SettingsProvider>
             </PaletteProvider>

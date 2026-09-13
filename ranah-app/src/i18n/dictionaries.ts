@@ -129,6 +129,14 @@ export interface Dictionary {
   // The "today's reminders" button on the dial.
   remindersToday: (count: number) => string;
   allDoneToday: string;
+  // Reminder notifications.
+  notificationsOffHint: string;
+  turnOnNotifications: string;
+  notificationsBlocked: string;
+  notificationsWebNote: string;
+  reminderAlertTag: string;
+  markDoneLabel: string;
+  dismissLabel: string;
   // Short spoken-style call length, e.g. "4m 12s" / "4 د 12 ث".
   formatCallDuration: (seconds: number) => string;
   justNow: string;
@@ -332,6 +340,13 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
     callNameAria: (name) => `Call ${name}`,
     remindersToday: (count) => (count === 1 ? '1 reminder today' : `${count} reminders today`),
     allDoneToday: 'All done for today',
+    notificationsOffHint: 'Get a notification when a reminder is due',
+    turnOnNotifications: 'Turn on',
+    notificationsBlocked: 'Notifications are blocked — allow them in your browser or phone settings',
+    notificationsWebNote: 'In the browser, alerts arrive while CloClo is open',
+    reminderAlertTag: 'Reminder',
+    markDoneLabel: 'Done',
+    dismissLabel: 'Dismiss',
     formatCallDuration: (seconds) => {
       const m = Math.floor(seconds / 60);
       const s = seconds % 60;
@@ -519,6 +534,13 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
     callNameAria: (name) => `اتصلي بـ${name}`,
     remindersToday: (count) => (count === 1 ? 'تذكير واحد النهارده' : `${count} تذكيرات النهارده`),
     allDoneToday: 'خلصتي كل حاجة النهارده',
+    notificationsOffHint: 'خلي التليفون ينبهك لما ييجي وقت التذكير',
+    turnOnNotifications: 'تشغيل',
+    notificationsBlocked: 'الإشعارات مقفولة — اسمحي بيها من إعدادات المتصفح أو التليفون',
+    notificationsWebNote: 'في المتصفح، التنبيهات بتوصل طول ما CloClo مفتوح',
+    reminderAlertTag: 'تذكير',
+    markDoneLabel: 'تم',
+    dismissLabel: 'إخفاء',
     formatCallDuration: (seconds) => {
       const m = Math.floor(seconds / 60);
       const s = seconds % 60;
