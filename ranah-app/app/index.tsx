@@ -98,7 +98,7 @@ export default function DialScreen() {
             </View>
             {/* Rendered after the dial so it layers over the bezel, as the
                 prototype's .handset-hit (z-index 7) does over .dial-wrap. */}
-            <View pointerEvents="box-none" style={{ position: 'absolute', top: 0, left: (dialSize - handsetWidth) / 2 }}>
+            <View style={{ pointerEvents: 'box-none', position: 'absolute', top: 0, left: (dialSize - handsetWidth) / 2 }}>
               <PhoneHandset
                 width={handsetWidth}
                 colours={colours}

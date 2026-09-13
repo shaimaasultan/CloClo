@@ -283,8 +283,8 @@ export function RotaryDial({ size, colours, onDigit, onDragStateChange, centerCo
 
       {centerContent ? (
         <View
-          pointerEvents="box-none"
           style={{
+            pointerEvents: 'box-none',
             position: 'absolute',
             left: 0,
             top: 0,

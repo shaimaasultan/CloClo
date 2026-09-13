@@ -170,7 +170,7 @@ export function WeatherLayer({ width, height, kind, topInset = 0 }: WeatherLayer
   if (width <= 0 || height <= 0) return null;
 
   return (
-    <Svg width={width} height={height} style={{ position: 'absolute', left: 0, top: 0 }} pointerEvents="none">
+    <Svg width={width} height={height} style={{ position: 'absolute', left: 0, top: 0, pointerEvents: 'none' }}>
       {kind === 'clear' && <Sun width={width} topInset={topInset} />}
       {rainDrops.map((d, i) => (
         <Raindrop key={i} width={width} height={height} x={d.x} len={d.len} duration={d.duration} opacity={d.opacity} />

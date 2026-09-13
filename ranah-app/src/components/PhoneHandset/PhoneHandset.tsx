@@ -1,6 +1,7 @@
 import React, { useEffect, useId, useRef } from 'react';
 import { Animated, Easing, Pressable, View } from 'react-native';
 import Svg, { Defs, Ellipse, LinearGradient, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
+import { USE_NATIVE_DRIVER } from '../../theme/animation';
 import { CaseColours } from '../../theme/tokens';
 
 interface PhoneHandsetProps {
@@ -46,7 +47,7 @@ export function PhoneHandset({
     let loop: Animated.CompositeAnimation | null = null;
     if (isRinging) {
       const step = (toValue: number) =>
-        Animated.timing(shake, { toValue, duration: 120, easing: Easing.inOut(Easing.ease), useNativeDriver: true });
+        Animated.timing(shake, { toValue, duration: 120, easing: Easing.inOut(Easing.ease), useNativeDriver: USE_NATIVE_DRIVER });
       loop = Animated.loop(Animated.sequence([step(-6), step(5), step(-4), step(3), step(0)]));
       loop.start();
     } else {
@@ -76,7 +77,7 @@ export function PhoneHandset({
   useEffect(() => {
     Animated.spring(lift, {
       toValue: isOpen ? 1 : 0,
-      useNativeDriver: true,
+      useNativeDriver: USE_NATIVE_DRIVER,
       friction: 7,
       tension: 90,
     }).start();
@@ -104,10 +105,9 @@ export function PhoneHandset({
   const glowScale = glow.interpolate({ inputRange: [0, 1], outputRange: [1, 1.12] });
 
   return (
-    <View style={{ width, height: handsetHeight }} pointerEvents="box-none">
+    <View style={{ pointerEvents: 'box-none', width, height: handsetHeight }}>
       <View
-        pointerEvents="none"
-        style={{ position: 'absolute', top: pegTop, left: 0, width, flexDirection: 'row', justifyContent: 'center', gap: cradleGap }}
+        style={{ pointerEvents: 'none', position: 'absolute', top: pegTop, left: 0, width, flexDirection: 'row', justifyContent: 'center', gap: cradleGap }}
       >
         {[0, 1].map((i) => (
           <Svg key={i} width={pegWidth} height={pegHeight} viewBox="0 0 11 23">
@@ -122,8 +122,8 @@ export function PhoneHandset({
         ))}
       </View>
       <Animated.View
-        pointerEvents="none"
         style={{
+          pointerEvents: 'none',
           position: 'absolute',
           top: 0,
           left: 0,
@@ -134,8 +134,8 @@ export function PhoneHandset({
       >
           {isRinging && (
             <Animated.View
-              pointerEvents="none"
               style={{
+                pointerEvents: 'none',
                 position: 'absolute',
                 width: glowWidth,
                 height: glowHeight,

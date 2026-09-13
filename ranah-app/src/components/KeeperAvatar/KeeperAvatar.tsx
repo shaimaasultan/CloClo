@@ -3,6 +3,7 @@ import { Animated, Easing, Pressable, View } from 'react-native';
 import Svg, { Circle, Ellipse, G, Line, Path, Rect, Text as SvgText } from 'react-native-svg';
 import type { CallState, KeeperMood, RoomProp } from '../../state/KeeperStateContext';
 import { useReducedMotion } from '../../state/useReducedMotion';
+import { USE_NATIVE_DRIVER } from '../../theme/animation';
 import { CaseColours } from '../../theme/tokens';
 import type { WeatherKind } from '../WeatherLayer/WeatherLayer';
 
@@ -104,15 +105,15 @@ export function KeeperAvatar({
     const loop = isAlert
       ? Animated.loop(
           Animated.sequence([
-            Animated.timing(bob, { toValue: 1, duration: 180, easing: Easing.out(Easing.quad), useNativeDriver: true }),
-            Animated.timing(bob, { toValue: 0, duration: 220, easing: Easing.in(Easing.quad), useNativeDriver: true }),
+            Animated.timing(bob, { toValue: 1, duration: 180, easing: Easing.out(Easing.quad), useNativeDriver: USE_NATIVE_DRIVER }),
+            Animated.timing(bob, { toValue: 0, duration: 220, easing: Easing.in(Easing.quad), useNativeDriver: USE_NATIVE_DRIVER }),
             Animated.delay(260),
           ])
         )
       : Animated.loop(
           Animated.sequence([
-            Animated.timing(bob, { toValue: 1, duration: 1600, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-            Animated.timing(bob, { toValue: 0, duration: 1600, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
+            Animated.timing(bob, { toValue: 1, duration: 1600, easing: Easing.inOut(Easing.sin), useNativeDriver: USE_NATIVE_DRIVER }),
+            Animated.timing(bob, { toValue: 0, duration: 1600, easing: Easing.inOut(Easing.sin), useNativeDriver: USE_NATIVE_DRIVER }),
           ])
         );
     loop.start();
@@ -125,7 +126,7 @@ export function KeeperAvatar({
       shiver.setValue(0);
       return;
     }
-    const step = (toValue: number) => Animated.timing(shiver, { toValue, duration: 55, useNativeDriver: true });
+    const step = (toValue: number) => Animated.timing(shiver, { toValue, duration: 55, useNativeDriver: USE_NATIVE_DRIVER });
     const loop = Animated.loop(Animated.sequence([step(-1), step(1), step(-1), step(1), step(0), Animated.delay(700)]));
     loop.start();
     return () => loop.stop();
@@ -463,7 +464,7 @@ export function KeeperAvatar({
   );
 
   const content = (
-    <View pointerEvents="none" style={{ width, height: size }}>
+    <View style={{ pointerEvents: 'none', width, height: size }}>
       {/* Ground shadow stays put while the body bobs above it. */}
       <Svg width={width} height={size} viewBox={`0 0 ${VB_W} ${VB_H}`} style={{ position: 'absolute', left: 0, top: 0 }}>
         <Ellipse cx={50} cy={134} rx={sitting ? 30 : 22} ry={4} fill="#000" opacity={0.22} />

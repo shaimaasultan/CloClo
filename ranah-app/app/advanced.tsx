@@ -94,11 +94,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 2,
     borderColor: 'transparent',
-    shadowColor: '#000',
-    shadowOpacity: 0.4,
-    shadowRadius: 3,
-    shadowOffset: { width: 0, height: 1 },
-    elevation: 2,
+    boxShadow: '0 1px 3px rgba(0,0,0,0.4)',
   },
   langSwitch: {
     borderWidth: 1,

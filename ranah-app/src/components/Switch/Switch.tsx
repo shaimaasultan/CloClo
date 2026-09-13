@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { Animated, Easing, Pressable, StyleSheet } from 'react-native';
 import { useLang } from '../../state/LangContext';
 import { usePalette } from '../../state/PaletteContext';
+import { USE_NATIVE_DRIVER } from '../../theme/animation';
 
 const TRAVEL = 16;
 
@@ -23,7 +24,7 @@ export function Switch({ value, onToggle, accessibilityLabel }: SwitchProps) {
       toValue: value ? 1 : 0,
       duration: 200,
       easing: Easing.out(Easing.ease),
-      useNativeDriver: true,
+      useNativeDriver: USE_NATIVE_DRIVER,
     }).start();
   }, [value, progress]);
 
