@@ -1,5 +1,6 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useContacts } from '../../state/ContactsContext';
 import { useKeeperState } from '../../state/KeeperStateContext';
 import { useLang } from '../../state/LangContext';
 import { usePalette } from '../../state/PaletteContext';
@@ -11,13 +12,14 @@ import { useSettings } from '../../state/SettingsContext';
 export function CallInfoBar() {
   const { t, isRtl } = useLang();
   const { colours } = usePalette();
-  const { dialed, clearDialed, callState, ringerIdx, muted } = useKeeperState();
+  const { dialed, clearDialed, callState, ringerId, muted } = useKeeperState();
+  const { contactById } = useContacts();
   const { privacyMode } = useSettings();
   const rowDir = isRtl ? 'row-reverse' : 'row';
 
   // Privacy mode masks the dialled digits one-for-one, as the prototype does.
   const readout = dialed ? (privacyMode ? '•'.repeat(dialed.length) : dialed) : '—';
-  const caller = callState !== 'idle' && ringerIdx !== null ? t.callers[ringerIdx] : null;
+  const caller = callState !== 'idle' ? contactById(ringerId) : undefined;
   const pillBorder = { borderColor: `${colours.metal2}66` };
 
   return (

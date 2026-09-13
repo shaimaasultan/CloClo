@@ -33,7 +33,8 @@ import { useLang } from '../src/state/LangContext';
 import { usePalette } from '../src/state/PaletteContext';
 import { useSettings } from '../src/state/SettingsContext';
 import { useReducedMotion } from '../src/state/useReducedMotion';
-import { resolveDecor } from '../src/state/decorations';
+import { useContacts } from '../src/state/ContactsContext';
+import { isBirthdayOn, resolveDecor, RoomDecor } from '../src/state/decorations';
 import { useCallContact } from '../src/state/useCallContact';
 import type { KeepsakeKind } from '../src/i18n/dictionaries';
 import { USE_NATIVE_DRIVER } from '../src/theme/animation';
@@ -516,13 +517,14 @@ export default function KeeperRoomScreen() {
     roomProp,
     cycleMoment,
     momentIndex,
-    ringerIdx,
+    ringerId,
     missedNotes,
     connectedCallCount,
     muted,
   } = useKeeperState();
   const { clunk, sfx, soundEnabled, decorChoice, keepsakeFor } = useSettings();
   const callContact = useCallContact();
+  const { contacts, contactById } = useContacts();
 
   // Briefly replaces the moment caption after something in the room is tapped.
   const [shelfCaption, setShelfCaption] = useState<string | null>(null);
@@ -546,8 +548,8 @@ export default function KeeperRoomScreen() {
   const [reaction, setReaction] = useState<KeeperReaction | null>(null);
   const [lookUp, setLookUp] = useState(false);
   const [plantGrowth, setPlantGrowth] = useState(0);
-  // Which caller's keepsake was just tapped (by caller index).
-  const [excitedItem, setExcitedItem] = useState<number | null>(null);
+  // Which contact's keepsake was just tapped.
+  const [excitedItem, setExcitedItem] = useState<string | null>(null);
   const pokeTimes = useRef<number[]>([]);
 
   useEffect(() => {
@@ -566,7 +568,7 @@ export default function KeeperRoomScreen() {
     return () => clearTimeout(id);
   }, [excitedItem]);
 
-  // One wobble per caller's shelf spot (three callers).
+  // One wobble per shelf spot (three keepsakes fit).
   const shelfWiggle0 = useWiggle();
   const shelfWiggle1 = useWiggle();
   const shelfWiggle2 = useWiggle();
@@ -587,7 +589,9 @@ export default function KeeperRoomScreen() {
 
   const idle = callState === 'idle';
   const ringing = callState === 'ringing';
-  const ringer = ringerIdx !== null ? t.callers[ringerIdx] : null;
+  const ringer = contactById(ringerId) ?? null;
+  // Ringing or on the line with someone on their birthday.
+  const celebrating = !idle && ringer !== null && isBirthdayOn(ringer.birthday);
   // While a call rings, the room takes on the caller's local time of day.
   const phase = dayPhase(ringer ? ringer.localHour : deviceHour);
   const windowSky = WINDOW_SKIES[phase];
@@ -596,12 +600,14 @@ export default function KeeperRoomScreen() {
 
   // Seasonal and holiday decorations from today's date — or whatever is
   // being previewed in Advanced settings. Rechecked as the hour changes.
-  const birthdayKey = t.callers.map((c) => c.birthday).join();
-  const decor = useMemo(
-    () => resolveDecor(decorChoice, new Date(), birthdayKey.split(',')),
-    [decorChoice, deviceHour, birthdayKey]
+  const baseDecor = useMemo(
+    () => resolveDecor(decorChoice, new Date(), contacts),
+    [decorChoice, deviceHour, contacts]
   );
-  const birthdayName = decor.birthdayIdx !== null ? t.callers[decor.birthdayIdx]?.name ?? null : null;
+  // A birthday call throws the party whatever the decorations are set to.
+  const decor: RoomDecor =
+    celebrating && ringer ? { ...baseDecor, holiday: 'birthday', birthdayId: ringer.id } : baseDecor;
+  const birthdayName = contactById(decor.birthdayId)?.name ?? null;
   const greeting =
     decor.holiday === 'ramadan'
       ? t.ramadanGreeting
@@ -805,24 +811,27 @@ export default function KeeperRoomScreen() {
     setShelfCaption(t.plantCaption);
     sfx('rustle');
   };
-  const tapKeepsake = (idx: number, kind: KeepsakeKind, label: string) => {
-    shelfWiggles[idx]?.play();
-    setExcitedItem(idx);
+  const tapKeepsake = (slot: number, id: string, kind: KeepsakeKind, label: string) => {
+    shelfWiggles[slot]?.play();
+    setExcitedItem(id);
     setShelfCaption(label);
     sfx(kind === 'snowGlobe' ? 'shimmer' : 'bump');
   };
 
-  // A keepsake appears once you've actually talked with that caller.
-  const keepsakes = t.callers
-    .map((caller, idx) => ({
-      idx,
-      // The object picked in Settings › Keepsakes, or the caller's default.
-      kind: keepsakeFor(idx, caller.keepsake),
+  // A keepsake appears once you've actually talked with that contact; the
+  // shelf fits the first three.
+  const keepsakes = contacts
+    .map((caller) => ({
+      id: caller.id,
+      // The object picked in Settings › Keepsakes, or the contact's default.
+      kind: keepsakeFor(caller.id, caller.keepsake),
       name: caller.name,
-      calls: connectedCallCount(idx),
+      calls: connectedCallCount(caller.id),
     }))
-    .filter((k) => k.calls > 0 && k.idx < CALLER_SHELF_X.length);
-  const missedNames = missedNotes.map((idx) => t.callers[idx]?.name).filter((name): name is string => !!name);
+    .filter((k) => k.calls > 0)
+    .slice(0, CALLER_SHELF_X.length)
+    .map((k, slot) => ({ ...k, slot }));
+  const missedNames = missedNotes.map((id) => contactById(id)?.name).filter((name): name is string => !!name);
   const noteInitials = missedNames
     .slice(0, 2)
     .map((name) => name.charAt(0))
@@ -958,9 +967,9 @@ export default function KeeperRoomScreen() {
                   <Rect x={330} y={22} width={20} height={26} rx={2} transform="rotate(-6 340 35)" fill={colours.metal1} stroke={colours.metal3} strokeWidth={1} />
                 </Wobble>
                 {keepsakes.map((k) => (
-                  <Wobble key={k.idx} pivot={[CALLER_SHELF_X[k.idx], 46]} rotate={shelfWiggles[k.idx].rotate}>
-                    <G transform={`translate(${CALLER_SHELF_X[k.idx]} 0)`}>
-                      <Keepsake kind={k.kind} colours={colours} excited={excitedItem === k.idx} />
+                  <Wobble key={k.id} pivot={[CALLER_SHELF_X[k.slot], 46]} rotate={shelfWiggles[k.slot].rotate}>
+                    <G transform={`translate(${CALLER_SHELF_X[k.slot]} 0)`}>
+                      <Keepsake kind={k.kind} colours={colours} excited={excitedItem === k.id} />
                     </G>
                   </Wobble>
                 ))}
@@ -1037,7 +1046,7 @@ export default function KeeperRoomScreen() {
               {hotspot('plant', PLANT_SLOT, t.plantCaption, tapPlant)}
               {keepsakes.map((k) => {
                 const label = t.keepsakeCaption(t.keepsakeNames[k.kind], k.name, k.calls);
-                return hotspot(`keepsake-${k.idx}`, shelfSlot(k.idx), label, () => tapKeepsake(k.idx, k.kind, label));
+                return hotspot(`keepsake-${k.id}`, shelfSlot(k.slot), label, () => tapKeepsake(k.slot, k.id, k.kind, label));
               })}
               {idle && hotspot('bed', BED_SLOT, t.napLabel, () => moveKeeper(keeperSpot === 'bed' ? 'center' : 'bed'))}
               {idle && hotspot('seat', SEAT_SLOT, t.seatLabel, () => moveKeeper(keeperSpot === 'seat' ? 'center' : 'seat'))}
@@ -1045,9 +1054,9 @@ export default function KeeperRoomScreen() {
               {/* On someone's birthday, tap the cake to call them. */}
               {idle &&
                 decor.holiday === 'birthday' &&
-                decor.birthdayIdx !== null &&
+                decor.birthdayId !== null &&
                 birthdayName &&
-                hotspot('cake', CAKE_SLOT, t.birthdayCakeLabel(birthdayName), () => callContact(decor.birthdayIdx as number))}
+                hotspot('cake', CAKE_SLOT, t.birthdayCakeLabel(birthdayName), () => callContact(decor.birthdayId as string))}
               {!doorOpen && missedNames.length > 0 &&
                 hotspot('missed-note', NOTE_SLOT, t.missedNoteLabel(missedNames.join(', ')), () => router.dismissTo('/recents'))}
 
@@ -1082,7 +1091,17 @@ export default function KeeperRoomScreen() {
                     lookUp={lookUp}
                     shiverStrength={windowOpen && sky === 'storm' ? 2.2 : 1}
                     muted={muted}
+                    celebrating={celebrating}
                   />
+                  {celebrating && ringer && (
+                    // "Happy birthday, Nadia!" over the keeper's head.
+                    <View style={[pointer.none, styles.helloBubble, styles.birthdayBubble, { left: keeperW * 0.5, top: -keeperH * 0.1 }]}>
+                      <Text style={styles.helloText} numberOfLines={1}>
+                        🎂 {t.birthdayGreeting(ringer.name)}
+                      </Text>
+                      <View style={styles.helloTail} />
+                    </View>
+                  )}
                   {waving && (
                     // "Hello!" / "أهلاً" beside their waving hand.
                     <View style={[pointer.none, styles.helloBubble, { left: keeperW * 0.66, top: -keeperH * 0.04 }]}>
@@ -1104,6 +1123,9 @@ export default function KeeperRoomScreen() {
                     <Text style={[styles.incomingTag, { color: `${colours.metal1}d9` }]}>{t.incomingTag}</Text>
                     <Text style={styles.incomingName}>{ringer.name}</Text>
                     <Text style={styles.incomingMeta}>{ringer.meta}</Text>
+                    {celebrating && (
+                      <Text style={[styles.incomingBirthday, { color: colours.highlight }]}>🎂 {t.birthdayToday}</Text>
+                    )}
                     <View style={styles.declineWrap}>
                       <DeclineButton label={t.decline} onPress={declineCall} />
                     </View>
@@ -1184,6 +1206,7 @@ const styles = StyleSheet.create({
     fontFamily: 'monospace',
     textAlign: 'center',
   },
+  incomingBirthday: { fontSize: 11, fontWeight: '700' },
   // Extra room above so the button's pulsing halo doesn't crowd the meta line.
   declineWrap: { marginTop: 6 },
   helloBubble: {
@@ -1193,6 +1216,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 9,
     paddingVertical: 3,
   },
+  // Wider than "Hello!", so it isn't squeezed into the keeper's width.
+  birthdayBubble: { width: 'auto', minWidth: 140, alignItems: 'center' },
   helloText: { color: '#3a2a20', fontSize: 12, fontWeight: '700' },
   helloTail: {
     position: 'absolute',

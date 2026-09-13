@@ -61,8 +61,33 @@ export interface Dictionary {
   languageLabel: string;
   paletteLabel: string;
   paletteNames: Record<'oxblood' | 'verdigris' | 'ivory' | 'graphite', string>;
-  callers: Caller[];
   recents: RecentCall[];
+  // Pieces of a contact's status line ("Driving · light rain · 9:42 PM their time").
+  activityNames: Record<CallerActivity, string>;
+  skyPhrases: Record<Caller['sky'], string>;
+  theirTime: (hour: number, minute: number) => string;
+  // Contacts: add, edit, delete.
+  addContact: string;
+  editContact: string;
+  editContactAria: (name: string) => string;
+  contactNameLabel: string;
+  contactNumberLabel: string;
+  birthdayLabel: string;
+  birthdayMonth: string;
+  birthdayDay: string;
+  birthdayInvalid: string;
+  activityLabel: string;
+  weatherLabel: string;
+  localHourLabel: string;
+  earlierHour: string;
+  laterHour: string;
+  saveContact: string;
+  deleteContact: string;
+  deleteConfirm: (name: string) => string;
+  keepContact: string;
+  noContacts: string;
+  // On a contact's birthday: a tag on their rows and cards, and the keeper's bubble.
+  birthdayToday: string;
   // Short spoken-style call length, e.g. "4m 12s" / "4 د 12 ث".
   formatCallDuration: (seconds: number) => string;
   justNow: string;
@@ -114,7 +139,10 @@ export type CallerActivity = 'driving' | 'work' | 'home';
 export type CallType = 'incoming' | 'outgoing' | 'missed';
 export type ToneId = 'classic' | 'chime' | 'buzz' | 'pulse';
 
+// A contact as the screens see it: name in the current language and a status
+// line built from their activity, weather and local time.
 export interface Caller {
+  id: string;
   name: string;
   meta: string;
   sky: 'clear' | 'rain' | 'snow' | 'storm';
@@ -124,12 +152,12 @@ export interface Caller {
   // time" in `meta`, and drives the keeper's props and the room's lighting.
   activity: CallerActivity;
   localHour: number;
-  // "MM-DD"; on the day, the Keeper's room throws them a little party.
+  // "MM-DD" (or empty); on the day, the Keeper's room throws them a little party.
   birthday: string;
 }
 
 export interface RecentCall {
-  callerIdx: number;
+  contactId: string;
   type: CallType;
   time: string;
   meta: string;
@@ -195,17 +223,36 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
     languageLabel: 'Language',
     paletteLabel: 'Case colour',
     paletteNames: { oxblood: 'Oxblood', verdigris: 'Verdigris', ivory: 'Ivory', graphite: 'Graphite' },
-    callers: [
-      { name: 'Nadia', meta: 'Driving · light rain · 9:42 PM their time', sky: 'rain', number: '0100 214 7788', keepsake: 'postcard', activity: 'driving', localHour: 21, birthday: '03-21' },
-      { name: 'Omar', meta: 'At work · clear skies · 2:15 PM their time', sky: 'clear', number: '0122 356 4190', keepsake: 'mug', activity: 'work', localHour: 14, birthday: '07-02' },
-      { name: 'Mama', meta: 'At home · snow falling · 11:05 PM their time', sky: 'snow', number: '0111 908 2234', keepsake: 'snowGlobe', activity: 'home', localHour: 23, birthday: '11-05' },
-    ],
     recents: [
-      { callerIdx: 0, type: 'incoming', time: '2m ago', meta: 'Driving · light rain · 9:42 PM their time', durationSec: 252 },
-      { callerIdx: 1, type: 'outgoing', time: 'Yesterday', meta: 'At the gym · clear skies · 6:30 PM their time', durationSec: 65 },
-      { callerIdx: 2, type: 'missed', time: 'Yesterday', meta: 'At home · snow falling · 11:20 PM their time' },
-      { callerIdx: 0, type: 'outgoing', time: 'Monday', meta: 'At home · clear skies · 8:00 AM their time', durationSec: 758 },
+      { contactId: 'nadia', type: 'incoming', time: '2m ago', meta: 'Driving · light rain · 9:42 PM their time', durationSec: 252 },
+      { contactId: 'omar', type: 'outgoing', time: 'Yesterday', meta: 'At the gym · clear skies · 6:30 PM their time', durationSec: 65 },
+      { contactId: 'mama', type: 'missed', time: 'Yesterday', meta: 'At home · snow falling · 11:20 PM their time' },
+      { contactId: 'nadia', type: 'outgoing', time: 'Monday', meta: 'At home · clear skies · 8:00 AM their time', durationSec: 758 },
     ],
+    activityNames: { driving: 'Driving', work: 'At work', home: 'At home' },
+    skyPhrases: { clear: 'clear skies', rain: 'light rain', snow: 'snow falling', storm: 'stormy' },
+    theirTime: (hour, minute) =>
+      `${hour % 12 || 12}:${String(minute).padStart(2, '0')} ${hour < 12 ? 'AM' : 'PM'} their time`,
+    addContact: 'Add contact',
+    editContact: 'Edit contact',
+    editContactAria: (name) => `Edit ${name}`,
+    contactNameLabel: 'Name',
+    contactNumberLabel: 'Number',
+    birthdayLabel: 'Birthday',
+    birthdayMonth: 'MM',
+    birthdayDay: 'DD',
+    birthdayInvalid: 'Enter a real month and day, or leave both empty',
+    activityLabel: 'Usually',
+    weatherLabel: 'Their weather',
+    localHourLabel: 'Their local time',
+    earlierHour: 'An hour earlier',
+    laterHour: 'An hour later',
+    saveContact: 'Save',
+    deleteContact: 'Delete contact',
+    deleteConfirm: (name) => `Delete ${name}? This can’t be undone.`,
+    keepContact: 'Keep',
+    noContacts: 'No contacts yet — add someone to call',
+    birthdayToday: 'Birthday today',
     formatCallDuration: (seconds) => {
       const m = Math.floor(seconds / 60);
       const s = seconds % 60;
@@ -325,17 +372,36 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
     languageLabel: 'اللغة',
     paletteLabel: 'لون الجسم',
     paletteNames: { oxblood: 'عنّابي', verdigris: 'أخضر نحاسي', ivory: 'عاجي', graphite: 'غرافيت' },
-    callers: [
-      { name: 'نادية', meta: 'بتسوق · مطر خفيف · 9:42 مساءً عندها', sky: 'rain', number: '0100 214 7788', keepsake: 'postcard', activity: 'driving', localHour: 21, birthday: '03-21' },
-      { name: 'عمر', meta: 'في الشغل · جو صافي · 2:15 الضهر عنده', sky: 'clear', number: '0122 356 4190', keepsake: 'mug', activity: 'work', localHour: 14, birthday: '07-02' },
-      { name: 'ماما', meta: 'في البيت · بينزل تلج · 11:05 بالليل عندها', sky: 'snow', number: '0111 908 2234', keepsake: 'snowGlobe', activity: 'home', localHour: 23, birthday: '11-05' },
-    ],
     recents: [
-      { callerIdx: 0, type: 'incoming', time: 'من دقيقتين', meta: 'بتسوق · مطر خفيف · 9:42 مساءً عندها', durationSec: 252 },
-      { callerIdx: 1, type: 'outgoing', time: 'إمبارح', meta: 'في الجيم · جو صافي · 6:30 المغرب عنده', durationSec: 65 },
-      { callerIdx: 2, type: 'missed', time: 'إمبارح', meta: 'في البيت · بينزل تلج · 11:20 بالليل عندها' },
-      { callerIdx: 0, type: 'outgoing', time: 'الإتنين', meta: 'في البيت · جو صافي · 8:00 الصبح عندها', durationSec: 758 },
+      { contactId: 'nadia', type: 'incoming', time: 'من دقيقتين', meta: 'بتسوق · مطر خفيف · 9:42 مساءً عندها', durationSec: 252 },
+      { contactId: 'omar', type: 'outgoing', time: 'إمبارح', meta: 'في الجيم · جو صافي · 6:30 المغرب عنده', durationSec: 65 },
+      { contactId: 'mama', type: 'missed', time: 'إمبارح', meta: 'في البيت · بينزل تلج · 11:20 بالليل عندها' },
+      { contactId: 'nadia', type: 'outgoing', time: 'الإتنين', meta: 'في البيت · جو صافي · 8:00 الصبح عندها', durationSec: 758 },
     ],
+    activityNames: { driving: 'في العربية', work: 'في الشغل', home: 'في البيت' },
+    skyPhrases: { clear: 'جو صافي', rain: 'مطر خفيف', snow: 'بينزل تلج', storm: 'عاصفة' },
+    theirTime: (hour, minute) =>
+      `${hour % 12 || 12}:${String(minute).padStart(2, '0')} ${hour < 12 ? 'صباحاً' : 'مساءً'} عندهم`,
+    addContact: 'إضافة جهة اتصال',
+    editContact: 'تعديل جهة الاتصال',
+    editContactAria: (name) => `تعديل ${name}`,
+    contactNameLabel: 'الاسم',
+    contactNumberLabel: 'الرقم',
+    birthdayLabel: 'عيد الميلاد',
+    birthdayMonth: 'شهر',
+    birthdayDay: 'يوم',
+    birthdayInvalid: 'اكتبي شهر ويوم صحيحين، أو سيبيهم فاضيين',
+    activityLabel: 'غالباً',
+    weatherLabel: 'الجو عندهم',
+    localHourLabel: 'الساعة عندهم',
+    earlierHour: 'ساعة بدري',
+    laterHour: 'ساعة متأخر',
+    saveContact: 'حفظ',
+    deleteContact: 'مسح جهة الاتصال',
+    deleteConfirm: (name) => `تمسحي ${name}؟ مش هينفع ترجعيه.`,
+    keepContact: 'خليه',
+    noContacts: 'لسه مفيش جهات اتصال — ضيفي حد تكلميه',
+    birthdayToday: 'عيد الميلاد النهارده',
     formatCallDuration: (seconds) => {
       const m = Math.floor(seconds / 60);
       const s = seconds % 60;

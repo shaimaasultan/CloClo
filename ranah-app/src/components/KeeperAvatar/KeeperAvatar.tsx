@@ -30,6 +30,21 @@ const SLIPPER_FLUFF = '#f7e6ec';
 const TIE = '#3d5a8a';
 const TIE_KNOT = '#2f4870';
 const WHEEL = '#2e2a2e';
+const PARTY_HAT = '#f3d78b';
+const PARTY_HAT_SHADE = '#c9a44a';
+const PARTY_PINK = '#e8709a';
+const PARTY_TEAL = '#5fb8a8';
+// Confetti bits around a birthday keeper: [x, y, rotation, colour].
+const CONFETTI: [number, number, number, string][] = [
+  [10, 22, 20, PARTY_PINK],
+  [88, 14, -30, PARTY_TEAL],
+  [6, 62, 45, '#f3d78b'],
+  [93, 56, 15, PARTY_PINK],
+  [14, 96, -20, PARTY_TEAL],
+  [86, 98, 35, '#8fb3e8'],
+  [24, 8, 60, '#8fb3e8'],
+  [78, 34, -50, '#f3d78b'],
+];
 
 export type KeeperPose = 'sleep' | 'book' | 'music' | 'wave' | 'alert' | 'onCall' | 'peek' | 'gaze';
 
@@ -100,6 +115,8 @@ interface KeeperAvatarProps {
   // On a live call with your microphone muted, the keeper hushes: finger to
   // their lips, handset still at their ear.
   muted?: boolean;
+  // It's the caller's birthday: party hat and confetti.
+  celebrating?: boolean;
   onPress?: () => void;
   accessibilityLabel?: string;
 }
@@ -123,6 +140,7 @@ export function KeeperAvatar({
   lookUp = false,
   shiverStrength = 1,
   muted = false,
+  celebrating = false,
   onPress,
   accessibilityLabel,
 }: KeeperAvatarProps) {
@@ -457,8 +475,24 @@ export function KeeperAvatar({
           <Rect x={70.5} y={46} width={9} height={14} rx={4} fill="#2e2a2e" />
         </G>
       )}
+      {celebrating && renderPartyHat()}
     </G>
   );
+
+  // A striped cone hat, perched on top of whatever else they're wearing.
+  const renderPartyHat = () => {
+    const base = sky === 'snow' ? 18 : sky === 'rain' ? 22 : pose === 'music' ? 19 : 28;
+    const top = base - 17;
+    return (
+      <G transform={`rotate(-14 50 ${base})`}>
+        <Path d={`M39.5 ${base} L50 ${top} L60.5 ${base} Z`} fill={PARTY_HAT} stroke={PARTY_HAT_SHADE} strokeWidth={0.8} strokeLinejoin="round" />
+        <Path d={`M43.2 ${base - 6} L56.8 ${base - 6}`} stroke={PARTY_PINK} strokeWidth={2} />
+        <Path d={`M46.4 ${base - 12} L53.6 ${base - 12}`} stroke={PARTY_TEAL} strokeWidth={1.8} />
+        <Circle cx={50} cy={top} r={2.8} fill={PARTY_PINK} />
+        <Path d={`M39 ${base} Q50 ${base + 2.5} 61 ${base}`} stroke={PARTY_HAT_SHADE} strokeWidth={1.6} fill="none" strokeLinecap="round" />
+      </G>
+    );
+  };
 
   const renderTorso = () => (
     <G>
@@ -685,6 +719,14 @@ export function KeeperAvatar({
             )}
 
             {upperBody}
+
+            {celebrating && (
+              <G>
+                {CONFETTI.map(([x, y, r, fill], i) => (
+                  <Rect key={i} x={x - 2} y={y - 1} width={4} height={2} rx={0.6} fill={fill} transform={`rotate(${r} ${x} ${y})`} />
+                ))}
+              </G>
+            )}
 
             {pose === 'music' && (
               <G>

@@ -12,6 +12,8 @@ import { KeeperAvatar } from '../src/components/KeeperAvatar/KeeperAvatar';
 import { PhoneHandset } from '../src/components/PhoneHandset/PhoneHandset';
 import { RotaryDial } from '../src/components/RotaryDial/RotaryDial';
 import { WeatherLayer } from '../src/components/WeatherLayer/WeatherLayer';
+import { useContacts } from '../src/state/ContactsContext';
+import { isBirthdayOn } from '../src/state/decorations';
 import { useKeeperState } from '../src/state/KeeperStateContext';
 import { useLang } from '../src/state/LangContext';
 import { usePalette } from '../src/state/PaletteContext';
@@ -25,7 +27,9 @@ export default function DialScreen() {
   const router = useRouter();
   const { t, isRtl } = useLang();
   const { colours } = usePalette();
-  const { callState, setCallState, sky, mood, appendDigit, ringerIdx, missedNotes, muted } = useKeeperState();
+  const { callState, setCallState, sky, mood, appendDigit, ringerId, missedNotes, muted } = useKeeperState();
+  const { contactById } = useContacts();
+  const ringer = contactById(ringerId);
   const { tick, clunk } = useSettings();
   const startIncomingCall = useIncomingCall();
   const { width: winWidth, height: winHeight } = useWindowDimensions();
@@ -63,7 +67,7 @@ export default function DialScreen() {
   };
 
   // The same unseen missed calls the keeper pins to the room's door.
-  const missedNames = missedNotes.map((idx) => t.callers[idx]?.name).filter((name): name is string => !!name);
+  const missedNames = missedNotes.map((id) => contactById(id)?.name).filter((name): name is string => !!name);
 
   return (
     <View style={[styles.root, { backgroundColor: colours.body2 }]}>
@@ -110,7 +114,8 @@ export default function DialScreen() {
                     sky={sky}
                     variant="hub"
                     muted={muted}
-                    callerActivity={ringerIdx !== null ? t.callers[ringerIdx].activity : undefined}
+                    callerActivity={ringer?.activity}
+                    celebrating={callState !== 'idle' && isBirthdayOn(ringer?.birthday)}
                     accessibilityLabel={t.roomTitle}
                     onPress={() => router.dismissTo('/room')}
                   />

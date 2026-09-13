@@ -4,6 +4,7 @@ import { ScrollView, StyleSheet, Text } from 'react-native';
 import { ContactRow } from '../src/components/ContactRow/ContactRow';
 import { ScreenShell } from '../src/components/ScreenShell/ScreenShell';
 import type { Dictionary, RecentCall } from '../src/i18n/dictionaries';
+import { useContacts } from '../src/state/ContactsContext';
 import { LoggedCall, useKeeperState } from '../src/state/KeeperStateContext';
 import { useLang } from '../src/state/LangContext';
 import { useSettings } from '../src/state/SettingsContext';
@@ -17,12 +18,12 @@ function relativeTime(t: Dictionary, at: number, now: number) {
   return t.hoursAgo(Math.floor(minutes / 60));
 }
 
-function toRecent(t: Dictionary, entry: LoggedCall, now: number): RecentCall {
+function toRecent(t: Dictionary, entry: LoggedCall, now: number, meta: string): RecentCall {
   return {
-    callerIdx: entry.callerIdx,
+    contactId: entry.contactId,
     type: entry.type,
     time: relativeTime(t, entry.at, now),
-    meta: t.callers[entry.callerIdx].meta,
+    meta,
     durationSec: entry.durationSec,
   };
 }
@@ -31,6 +32,7 @@ export default function RecentsScreen() {
   const { t } = useLang();
   const { privacyMode } = useSettings();
   const { callLog, dismissMissedNotes } = useKeeperState();
+  const { contactById } = useContacts();
   const callContact = useCallContact();
   const [now, setNow] = useState(() => Date.now());
 
@@ -49,8 +51,12 @@ export default function RecentsScreen() {
     return () => clearInterval(id);
   }, []);
 
-  // This session's calls first, then the sample history.
-  const entries = [...callLog.map((entry) => toRecent(t, entry, now)), ...t.recents];
+  // This session's calls first, then the sample history — minus anyone
+  // who has since been deleted from Contacts.
+  const entries = [
+    ...callLog.map((entry) => toRecent(t, entry, now, contactById(entry.contactId)?.meta ?? '')),
+    ...t.recents,
+  ].filter((entry) => contactById(entry.contactId));
 
   return (
     <ScreenShell active="recents">
@@ -59,19 +65,20 @@ export default function RecentsScreen() {
           <Text style={styles.hint}>{t.privacyHidden}</Text>
         ) : (
           entries.map((entry, i) => {
-            const caller = t.callers[entry.callerIdx];
+            const caller = contactById(entry.contactId);
+            if (!caller) return null;
             // Missed calls never connected, so only answered calls show a length.
             const duration = entry.durationSec !== undefined ? t.formatCallDuration(entry.durationSec) : null;
             const when = duration ? `${entry.time} · ${duration}` : entry.time;
             return (
               <ContactRow
-                key={`${entry.callerIdx}-${i}`}
+                key={`${entry.contactId}-${i}`}
                 name={caller.name}
                 meta={when}
                 subMeta={entry.meta}
                 callType={entry.type}
                 accessibilityLabel={`${t.callTypeNames[entry.type]} · ${caller.name} · ${when} · ${entry.meta}`}
-                onPress={() => callContact(entry.callerIdx)}
+                onPress={() => callContact(entry.contactId)}
               />
             );
           })

@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
 import { useCallback } from 'react';
+import { useContacts } from './ContactsContext';
 import { useKeeperState } from './KeeperStateContext';
-import { useLang } from './LangContext';
 import { useSettings } from './SettingsContext';
 
 // Ported from the prototype's callContact(): switch to the caller's sky,
@@ -10,20 +10,20 @@ import { useSettings } from './SettingsContext';
 // call is already ringing or active, same as the prototype.
 export function useCallContact() {
   const router = useRouter();
-  const { t } = useLang();
+  const { contactById } = useContacts();
   const { callState, startCall, setSky } = useKeeperState();
   const { clunk } = useSettings();
 
   return useCallback(
-    (idx: number) => {
+    (id: string) => {
       if (callState !== 'idle') return;
-      const caller = t.callers[idx];
+      const caller = contactById(id);
       if (!caller) return;
       setSky(caller.sky);
-      startCall(idx);
+      startCall(id);
       clunk(true);
       router.dismissTo('/');
     },
-    [callState, t, setSky, startCall, clunk, router]
+    [callState, contactById, setSky, startCall, clunk, router]
   );
 }

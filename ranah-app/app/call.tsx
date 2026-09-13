@@ -7,6 +7,8 @@ import { BrandHeader } from '../src/components/BrandHeader/BrandHeader';
 import { CallInfoBar } from '../src/components/CallInfoBar/CallInfoBar';
 import { KeeperAvatar } from '../src/components/KeeperAvatar/KeeperAvatar';
 import { CALL_SCRIPT, ScriptLine, TextDir } from '../src/data/callScript';
+import { useContacts } from '../src/state/ContactsContext';
+import { isBirthdayOn } from '../src/state/decorations';
 import { useKeeperState } from '../src/state/KeeperStateContext';
 import { useLang } from '../src/state/LangContext';
 import { usePalette } from '../src/state/PaletteContext';
@@ -76,7 +78,8 @@ export default function CallScreen() {
   const router = useRouter();
   const { t, isRtl } = useLang();
   const { colours } = usePalette();
-  const { callState, setCallState, ringerIdx, mood, sky, muted, toggleMute } = useKeeperState();
+  const { callState, setCallState, ringerId, mood, sky, muted, toggleMute } = useKeeperState();
+  const { contactById } = useContacts();
   const { clunk } = useSettings();
 
   const [seconds, setSeconds] = useState(0);
@@ -87,8 +90,9 @@ export default function CallScreen() {
   const mutedRef = useRef(muted);
   mutedRef.current = muted;
 
-  const caller = ringerIdx !== null ? t.callers[ringerIdx] : null;
+  const caller = contactById(ringerId) ?? null;
   const live = callState === 'active' && caller !== null;
+  const birthday = caller !== null && isBirthdayOn(caller.birthday);
   const rowDir = isRtl ? 'row-reverse' : 'row';
   const uiAlign: TextStyle = { textAlign: isRtl ? 'right' : 'left' };
 
@@ -149,6 +153,9 @@ export default function CallScreen() {
           <View style={[styles.headText, { alignItems: isRtl ? 'flex-end' : 'flex-start' }]}>
             <Text style={[styles.name, uiAlign]}>{caller.name}</Text>
             <Text style={[styles.meta, uiAlign]}>{caller.meta}</Text>
+            {birthday && (
+              <Text style={[styles.birthday, uiAlign, { color: colours.highlight }]}>🎂 {t.birthdayGreeting(caller.name)}</Text>
+            )}
           </View>
           <Text style={[styles.timer, { color: colours.highlight }]} accessibilityLabel={formatDuration(seconds)}>
             {formatDuration(seconds)}
@@ -168,6 +175,7 @@ export default function CallScreen() {
             talking={talking}
             callerActivity={caller.activity}
             muted={muted}
+            celebrating={birthday}
           />
         </View>
 
@@ -253,6 +261,7 @@ const styles = StyleSheet.create({
   headText: { flex: 1, minWidth: 0 },
   name: { color: '#f3ecdd', fontSize: 17, fontWeight: '800' },
   meta: { color: 'rgba(239,230,211,.6)', fontSize: 10, fontFamily: 'monospace', marginTop: 2 },
+  birthday: { fontSize: 11, fontWeight: '700', marginTop: 4 },
   timer: { fontSize: 13, fontFamily: 'monospace', fontVariant: ['tabular-nums'] },
   stage: { alignItems: 'center', paddingTop: 2, paddingBottom: 8 },
   controls: { justifyContent: 'center', gap: 12, paddingHorizontal: 16, paddingTop: 6, paddingBottom: 10 },

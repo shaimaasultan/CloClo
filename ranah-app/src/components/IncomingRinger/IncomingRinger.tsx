@@ -10,11 +10,11 @@ const RING_INTERVAL_MS = 3400;
 // Mounted once at the root rather than in a screen, so the phone keeps
 // ringing no matter which screen the user wanders to while it rings.
 export function IncomingRinger() {
-  const { callState, ringerIdx } = useKeeperState();
+  const { callState, ringerId } = useKeeperState();
   const { soundEnabled, toneForContact } = useSettings();
 
-  const ringing = callState === 'ringing' && ringerIdx !== null;
-  const tone = ringerIdx !== null ? toneForContact(ringerIdx) : null;
+  const ringing = callState === 'ringing' && ringerId !== null;
+  const tone = ringerId !== null ? toneForContact(ringerId) : null;
 
   useEffect(() => {
     if (!ringing || !soundEnabled || !tone) return;

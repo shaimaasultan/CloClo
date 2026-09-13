@@ -4,6 +4,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import Svg from 'react-native-svg';
 import { KEEPSAKE_KINDS, Keepsake } from '../src/components/Keepsake/Keepsake';
 import { ScreenShell } from '../src/components/ScreenShell/ScreenShell';
+import { useContacts } from '../src/state/ContactsContext';
 import { useLang } from '../src/state/LangContext';
 import { usePalette } from '../src/state/PaletteContext';
 import { useSettings } from '../src/state/SettingsContext';
@@ -13,6 +14,7 @@ import { useSettings } from '../src/state/SettingsContext';
 export default function KeepsakesScreen() {
   const router = useRouter();
   const { t, isRtl } = useLang();
+  const { contacts } = useContacts();
   const { colours } = usePalette();
   const { keepsakeFor, setContactKeepsake, sfx } = useSettings();
   const rowDir = isRtl ? 'row-reverse' : 'row';
@@ -24,10 +26,10 @@ export default function KeepsakesScreen() {
     >
       <Text style={styles.hint}>{t.keepsakesHint}</Text>
       <ScrollView contentContainerStyle={styles.list}>
-        {t.callers.map((caller, idx) => {
-          const selected = keepsakeFor(idx, caller.keepsake);
+        {contacts.map((caller) => {
+          const selected = keepsakeFor(caller.id, caller.keepsake);
           return (
-            <View key={caller.number} style={styles.block}>
+            <View key={caller.id} style={styles.block}>
               <View style={[styles.head, { flexDirection: rowDir }]}>
                 <View style={[styles.avatar, { backgroundColor: colours.metal2 }]}>
                   <Text style={[styles.avatarLetter, { color: colours.ink }]}>{caller.name.charAt(0)}</Text>
@@ -42,7 +44,7 @@ export default function KeepsakesScreen() {
                     <Pressable
                       key={kind}
                       onPress={() => {
-                        setContactKeepsake(idx, kind);
+                        setContactKeepsake(caller.id, kind);
                         sfx('bump');
                       }}
                       role="radio"

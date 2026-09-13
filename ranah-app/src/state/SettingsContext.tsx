@@ -4,16 +4,16 @@ import type { DecorChoice } from './decorations';
 import { KeepsakeKind, ToneId } from '../i18n/dictionaries';
 
 // Mirrors the prototype's soundEnabled / privacyMode flags and its
-// contactTones map (caller index -> ringtone id, defaulting to 'classic').
-const DEFAULT_CONTACT_TONES: Record<number, ToneId> = { 0: 'classic', 1: 'chime', 2: 'buzz' };
+// contactTones map (contact id -> ringtone id, defaulting to 'classic').
+const DEFAULT_CONTACT_TONES: Record<string, ToneId> = { nadia: 'classic', omar: 'chime', mama: 'buzz' };
 
 interface SettingsValue {
   soundEnabled: boolean;
   toggleSound: () => void;
   privacyMode: boolean;
   togglePrivacy: () => void;
-  toneForContact: (idx: number) => ToneId;
-  setContactTone: (idx: number, tone: ToneId) => void;
+  toneForContact: (id: string) => ToneId;
+  setContactTone: (id: string, tone: ToneId) => void;
   tick: () => void;
   clunk: (open: boolean) => void;
   // Room interaction sounds (giggles, lamp clicks, …), silent when sound is off.
@@ -22,9 +22,9 @@ interface SettingsValue {
   decorChoice: DecorChoice;
   setDecorChoice: (choice: DecorChoice) => void;
   // Which keepsake each caller leaves on the shelf (like contactTones);
-  // falls back to the caller's default from the dictionary.
-  keepsakeFor: (idx: number, fallback: KeepsakeKind) => KeepsakeKind;
-  setContactKeepsake: (idx: number, kind: KeepsakeKind) => void;
+  // falls back to the contact's own default.
+  keepsakeFor: (id: string, fallback: KeepsakeKind) => KeepsakeKind;
+  setContactKeepsake: (id: string, kind: KeepsakeKind) => void;
 }
 
 const SettingsContext = createContext<SettingsValue | null>(null);
@@ -34,14 +34,14 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const [privacyMode, setPrivacyMode] = useState(false);
   const [contactTones, setContactTones] = useState(DEFAULT_CONTACT_TONES);
   const [decorChoice, setDecorChoice] = useState<DecorChoice>('auto');
-  const [keepsakeOverrides, setKeepsakeOverrides] = useState<Record<number, KeepsakeKind>>({});
+  const [keepsakeOverrides, setKeepsakeOverrides] = useState<Record<string, KeepsakeKind>>({});
 
   const keepsakeFor = useCallback(
-    (idx: number, fallback: KeepsakeKind) => keepsakeOverrides[idx] ?? fallback,
+    (id: string, fallback: KeepsakeKind) => keepsakeOverrides[id] ?? fallback,
     [keepsakeOverrides]
   );
-  const setContactKeepsake = useCallback((idx: number, kind: KeepsakeKind) => {
-    setKeepsakeOverrides((prev) => ({ ...prev, [idx]: kind }));
+  const setContactKeepsake = useCallback((id: string, kind: KeepsakeKind) => {
+    setKeepsakeOverrides((prev) => ({ ...prev, [id]: kind }));
   }, []);
 
   const toggleSound = useCallback(() => {
@@ -54,11 +54,11 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
 
   const togglePrivacy = useCallback(() => setPrivacyMode((prev) => !prev), []);
 
-  const toneForContact = useCallback((idx: number) => contactTones[idx] ?? 'classic', [contactTones]);
+  const toneForContact = useCallback((id: string) => contactTones[id] ?? 'classic', [contactTones]);
 
   const setContactTone = useCallback(
-    (idx: number, tone: ToneId) => {
-      setContactTones((prev) => ({ ...prev, [idx]: tone }));
+    (id: string, tone: ToneId) => {
+      setContactTones((prev) => ({ ...prev, [id]: tone }));
       if (soundEnabled) playRingtone(tone);
     },
     [soundEnabled]

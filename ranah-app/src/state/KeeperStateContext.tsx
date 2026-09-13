@@ -19,7 +19,7 @@ const CALL_LOG_LIMIT = 30;
 
 // A call made or received in this session.
 export interface LoggedCall {
-  callerIdx: number;
+  contactId: string;
   type: CallType;
   at: number;
   durationSec?: number;
@@ -29,7 +29,7 @@ export interface LoggedCall {
 // dictionary works for counting it.
 const SAMPLE_RECENTS = DICTIONARIES.en.recents;
 // Seed the door note with the sample history's missed calls.
-const SAMPLE_MISSED = [...new Set(SAMPLE_RECENTS.filter((r) => r.type === 'missed').map((r) => r.callerIdx))];
+const SAMPLE_MISSED = [...new Set(SAMPLE_RECENTS.filter((r) => r.type === 'missed').map((r) => r.contactId))];
 
 interface KeeperStateValue {
   callState: CallState;
@@ -40,13 +40,13 @@ interface KeeperStateValue {
   momentIndex: number;
   roomProp: RoomProp;
   cycleMoment: () => void;
-  // Index into the dictionary's callers of whoever is ringing (or on the
-  // line after answering); null once the call is back to idle.
-  ringerIdx: number | null;
-  startRinging: (callerIdx: number) => void;
-  // Open the line straight to a known caller (Contacts / Recents), so the
+  // The contact who is ringing (or on the line after answering); null once
+  // the call is back to idle.
+  ringerId: string | null;
+  startRinging: (contactId: string) => void;
+  // Open the line straight to a known contact (Contacts / Recents), so the
   // Number readout can show who's on the line just as it does for rings.
-  startCall: (callerIdx: number) => void;
+  startCall: (contactId: string) => void;
   // The "Last dialed" readout lives here rather than in the dial screen so
   // the same info bar can show it on the Keeper's room too, as the
   // prototype's infobar sits above every scene.
@@ -55,13 +55,13 @@ interface KeeperStateValue {
   clearDialed: () => void;
   // This session's calls, newest first.
   callLog: LoggedCall[];
-  // Callers whose missed calls the keeper has pinned to the door, newest
+  // Contacts whose missed calls the keeper has pinned to the door, newest
   // first; cleared once Recents has been seen.
-  missedNotes: number[];
+  missedNotes: string[];
   dismissMissedNotes: () => void;
-  // Connected (answered or outgoing) calls with a caller, sample history
+  // Connected (answered or outgoing) calls with a contact, sample history
   // included — what unlocks their keepsake on the shelf.
-  connectedCallCount: (callerIdx: number) => number;
+  connectedCallCount: (contactId: string) => number;
   // Your microphone on a live call: muted keeps the line in use but stops
   // your side (and the transcript) until unmuted. Resets when the call ends.
   muted: boolean;
@@ -75,10 +75,10 @@ export function KeeperStateProvider({ children }: { children: React.ReactNode })
   const [sky, setSky] = useState<WeatherKind>('clear');
   const [mood, setMood] = useState<KeeperMood>('neutral');
   const [momentIndex, setMomentIndex] = useState(0);
-  const [ringerIdx, setRingerIdx] = useState<number | null>(null);
+  const [ringerId, setRingerId] = useState<string | null>(null);
   const [dialed, setDialed] = useState('');
   const [callLog, setCallLog] = useState<LoggedCall[]>([]);
-  const [missedNotes, setMissedNotes] = useState<number[]>(SAMPLE_MISSED);
+  const [missedNotes, setMissedNotes] = useState<string[]>(SAMPLE_MISSED);
   const [muted, setMuted] = useState(false);
 
   const lastCallEndTime = useRef(0);
@@ -86,7 +86,7 @@ export function KeeperStateProvider({ children }: { children: React.ReactNode })
   // Mirrors of state for transitions, which must read the current values
   // synchronously (a timeout and a tap can race).
   const callStateRef = useRef<CallState>('idle');
-  const ringerIdxRef = useRef<number | null>(null);
+  const ringerIdRef = useRef<string | null>(null);
   const callStartedAt = useRef(0);
   const callDirection = useRef<'incoming' | 'outgoing'>('outgoing');
 
@@ -114,7 +114,7 @@ export function KeeperStateProvider({ children }: { children: React.ReactNode })
     (next: CallState, unseenMiss = false) => {
       const prev = callStateRef.current;
       if (prev === next) return;
-      const who = ringerIdxRef.current;
+      const who = ringerIdRef.current;
       const now = Date.now();
 
       if (next === 'active') {
@@ -126,7 +126,7 @@ export function KeeperStateProvider({ children }: { children: React.ReactNode })
         callsCompleted.current += 1;
         if (who !== null) {
           logCall({
-            callerIdx: who,
+            contactId: who,
             type: callDirection.current,
             at: now,
             durationSec: Math.max(1, Math.round((now - callStartedAt.current) / 1000)),
@@ -134,14 +134,14 @@ export function KeeperStateProvider({ children }: { children: React.ReactNode })
         }
       }
       if (prev === 'ringing' && next === 'idle' && who !== null) {
-        logCall({ callerIdx: who, type: 'missed', at: now });
+        logCall({ contactId: who, type: 'missed', at: now });
         if (unseenMiss) setMissedNotes((notes) => [who, ...notes.filter((i) => i !== who)]);
       }
 
       callStateRef.current = next;
       if (next === 'idle') {
-        ringerIdxRef.current = null;
-        setRingerIdx(null);
+        ringerIdRef.current = null;
+        setRingerId(null);
         setMuted(false);
       }
       setCallStateRaw(next);
@@ -164,18 +164,18 @@ export function KeeperStateProvider({ children }: { children: React.ReactNode })
   }, []);
 
   const startRinging = useCallback(
-    (callerIdx: number) => {
-      ringerIdxRef.current = callerIdx;
-      setRingerIdx(callerIdx);
+    (contactId: string) => {
+      ringerIdRef.current = contactId;
+      setRingerId(contactId);
       transition('ringing');
     },
     [transition]
   );
 
   const startCall = useCallback(
-    (callerIdx: number) => {
-      ringerIdxRef.current = callerIdx;
-      setRingerIdx(callerIdx);
+    (contactId: string) => {
+      ringerIdRef.current = contactId;
+      setRingerId(contactId);
       transition('active');
     },
     [transition]
@@ -192,9 +192,9 @@ export function KeeperStateProvider({ children }: { children: React.ReactNode })
   const toggleMute = useCallback(() => setMuted((m) => !m), []);
 
   const connectedCallCount = useCallback(
-    (callerIdx: number) =>
-      SAMPLE_RECENTS.filter((r) => r.callerIdx === callerIdx && r.type !== 'missed').length +
-      callLog.filter((c) => c.callerIdx === callerIdx && c.type !== 'missed').length,
+    (contactId: string) =>
+      SAMPLE_RECENTS.filter((r) => r.contactId === contactId && r.type !== 'missed').length +
+      callLog.filter((c) => c.contactId === contactId && c.type !== 'missed').length,
     [callLog]
   );
 
@@ -208,7 +208,7 @@ export function KeeperStateProvider({ children }: { children: React.ReactNode })
       momentIndex,
       roomProp: ROOM_PROPS[momentIndex],
       cycleMoment,
-      ringerIdx,
+      ringerId,
       startRinging,
       startCall,
       dialed,
@@ -228,7 +228,7 @@ export function KeeperStateProvider({ children }: { children: React.ReactNode })
       mood,
       momentIndex,
       cycleMoment,
-      ringerIdx,
+      ringerId,
       startRinging,
       startCall,
       dialed,

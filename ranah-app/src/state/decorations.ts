@@ -9,8 +9,14 @@ export type DecorChoice = 'auto' | 'none' | Season | Holiday;
 export interface RoomDecor {
   season: Season | null;
   holiday: Holiday | null;
-  // For birthdays: which caller it is (index into the dictionary's callers).
-  birthdayIdx: number | null;
+  // For birthdays: which contact it is.
+  birthdayId: string | null;
+}
+
+// Anyone whose birthday might be celebrated: id and "MM-DD" (or empty).
+export interface BirthdayEntry {
+  id: string;
+  birthday: string;
 }
 
 export const DECOR_CHOICES: DecorChoice[] = [
@@ -54,41 +60,45 @@ function islamicMonthDay(date: Date): { month: number; day: number } | null {
 
 const pad = (n: number) => String(n).padStart(2, '0');
 
-// The holiday on a given date, if any. `birthdays` are callers' "MM-DD".
-export function holidayOn(date: Date, birthdays: (string | undefined)[]): { holiday: Holiday; birthdayIdx: number | null } | null {
-  const today = `${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
-  const birthdayIdx = birthdays.indexOf(today);
-  if (birthdayIdx >= 0) return { holiday: 'birthday', birthdayIdx };
+// Is "MM-DD" today's date?
+export function isBirthdayOn(birthday: string | undefined, date: Date = new Date()): boolean {
+  return !!birthday && birthday === `${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+// The holiday on a given date, if any.
+export function holidayOn(date: Date, birthdays: BirthdayEntry[]): { holiday: Holiday; birthdayId: string | null } | null {
+  const celebrant = birthdays.find((b) => isBirthdayOn(b.birthday, date));
+  if (celebrant) return { holiday: 'birthday', birthdayId: celebrant.id };
 
   const hijri = islamicMonthDay(date);
   if (hijri) {
     // Ramadan is the 9th month; Eid al-Fitr opens Shawwal (10th) and Eid
     // al-Adha falls on 10–13 Dhu al-Hijjah (12th).
-    if (hijri.month === 9) return { holiday: 'ramadan', birthdayIdx: null };
+    if (hijri.month === 9) return { holiday: 'ramadan', birthdayId: null };
     if ((hijri.month === 10 && hijri.day <= 3) || (hijri.month === 12 && hijri.day >= 10 && hijri.day <= 13)) {
-      return { holiday: 'eid', birthdayIdx: null };
+      return { holiday: 'eid', birthdayId: null };
     }
   }
 
   if ((date.getMonth() === 11 && date.getDate() === 31) || (date.getMonth() === 0 && date.getDate() === 1)) {
-    return { holiday: 'newYear', birthdayIdx: null };
+    return { holiday: 'newYear', birthdayId: null };
   }
   return null;
 }
 
-export function resolveDecor(choice: DecorChoice, date: Date, birthdays: (string | undefined)[]): RoomDecor {
-  if (choice === 'none') return { season: null, holiday: null, birthdayIdx: null };
+export function resolveDecor(choice: DecorChoice, date: Date, birthdays: BirthdayEntry[]): RoomDecor {
+  if (choice === 'none') return { season: null, holiday: null, birthdayId: null };
   const season = seasonOf(date);
   if (choice === 'auto') {
     const found = holidayOn(date, birthdays);
-    return { season, holiday: found?.holiday ?? null, birthdayIdx: found?.birthdayIdx ?? null };
+    return { season, holiday: found?.holiday ?? null, birthdayId: found?.birthdayId ?? null };
   }
-  if ((SEASONS as string[]).includes(choice)) return { season: choice as Season, holiday: null, birthdayIdx: null };
-  // Previewing a holiday: a birthday preview celebrates the first caller who has one.
-  const firstBirthday = birthdays.findIndex(Boolean);
+  if ((SEASONS as string[]).includes(choice)) return { season: choice as Season, holiday: null, birthdayId: null };
+  // Previewing a holiday: a birthday preview celebrates the first contact who has one.
+  const first = birthdays.find((b) => b.birthday);
   return {
     season,
     holiday: choice as Holiday,
-    birthdayIdx: choice === 'birthday' && firstBirthday >= 0 ? firstBirthday : null,
+    birthdayId: choice === 'birthday' && first ? first.id : null,
   };
 }
