@@ -15,7 +15,7 @@ import { useContacts } from '../../state/ContactsContext';
 import { useKeeperState } from '../../state/KeeperStateContext';
 import { useLang } from '../../state/LangContext';
 import { usePalette } from '../../state/PaletteContext';
-import { dayKey, useReminders } from '../../state/RemindersContext';
+import { dayKey, occursOn, useReminders } from '../../state/RemindersContext';
 import { useSettings } from '../../state/SettingsContext';
 import { useCallContact } from '../../state/useCallContact';
 import { pointer } from '../../theme/pointer';
@@ -60,7 +60,7 @@ export function ReminderNotifier() {
   const { t, lang, isRtl } = useLang();
   const { colours } = usePalette();
   const { reminders, toggleDone, markDone } = useReminders();
-  const { callState } = useKeeperState();
+  const { callState, ringerId } = useKeeperState();
   const { contactById } = useContacts();
   const { sfx } = useSettings();
   const callContact = useCallContact();
@@ -113,6 +113,18 @@ export function ReminderNotifier() {
     return () => clearInterval(id);
   }, [openReminders, sfx]);
 
+  // Talking to someone ticks off today's reminders about them, however the
+  // call started: from Contacts, Recents, a reminder, the birthday card, or
+  // answering their call. Declined and missed calls don't count.
+  useEffect(() => {
+    if (callState !== 'active' || !ringerId) return;
+    const now = new Date();
+    const today = dayKey(now);
+    latest.current.reminders
+      .filter((r) => r.contactId === ringerId && occursOn(r, now) && !r.doneDates.includes(today))
+      .forEach((r) => markDone(r.id, today));
+  }, [callState, ringerId, markDone]);
+
   const dismiss = (key: string) => setBanners((prev) => prev.filter((b) => b.key !== key));
 
   // A banner goes away by itself once its reminder is ticked off or deleted.
@@ -150,8 +162,6 @@ export function ReminderNotifier() {
             <Pressable
               onPress={() => {
                 dismiss(alert.key);
-                // Calling about it ticks the reminder off, if the call starts.
-                if (callState === 'idle') markDone(alert.reminderId, dayKey(alert.fireAt));
                 callContact(alert.contactId as string);
               }}
               role="button"

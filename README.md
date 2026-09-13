@@ -67,7 +67,9 @@ This repository holds two things:
   confirmation.
 - **Tick them off** – check today's reminders as done; ones whose time has
   come are marked *Due now*, and linked contacts get a **Call** button.
-  Calling about a reminder ticks it off too.
+  Talking to someone ticks off today's reminders about them, however the
+  call started – from Contacts, Recents, a reminder, the birthday card, or
+  answering their call (missed and declined calls don't count).
 - **Notifications** – when a reminder's time comes you get a notification
   (reminders without a time nudge you at 9:00 AM). On iOS and Android they're
   scheduled with the system, so they arrive even when CloClo is closed; tap

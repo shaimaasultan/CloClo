@@ -8,7 +8,6 @@ import { ScreenShell } from '../src/components/ScreenShell/ScreenShell';
 import { useNotificationPermission } from '../src/notifications/permission';
 import { useContacts } from '../src/state/ContactsContext';
 import { isBirthdayOn } from '../src/state/decorations';
-import { useKeeperState } from '../src/state/KeeperStateContext';
 import { useLang } from '../src/state/LangContext';
 import { usePalette } from '../src/state/PaletteContext';
 import {
@@ -31,8 +30,7 @@ export default function RemindersScreen() {
   const router = useRouter();
   const { t, lang, isRtl } = useLang();
   const { colours } = usePalette();
-  const { reminders, toggleDone, markDone } = useReminders();
-  const { callState } = useKeeperState();
+  const { reminders, toggleDone } = useReminders();
   const { contacts, contactById } = useContacts();
   const callContact = useCallContact();
   const [permission, requestPermission] = useNotificationPermission();
@@ -62,14 +60,10 @@ export default function RemindersScreen() {
     .sort((a, b) => a.next.getTime() - b.next.getTime() || byTime(a.r, b.r));
   const earlier = reminders.filter((r) => r.repeat === 'none' && r.date < today);
 
-  // `onCalled` runs only if the call actually starts (not while another call
-  // is ringing or live) — calling about a reminder ticks it off.
-  const callButton = (id: string, name: string, onCalled?: () => void) => (
+  // Calling someone ticks off today's reminders about them (see ReminderNotifier).
+  const callButton = (id: string, name: string) => (
     <Pressable
-      onPress={() => {
-        if (callState === 'idle') onCalled?.();
-        callContact(id);
-      }}
+      onPress={() => callContact(id)}
       role="button"
       aria-label={t.callNameAria(name)}
       style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
@@ -137,7 +131,7 @@ export default function RemindersScreen() {
             {meta}
           </Text>
         </Pressable>
-        {contact && callButton(contact.id, contact.name, isToday ? () => markDone(r.id, today) : undefined)}
+        {contact && callButton(contact.id, contact.name)}
       </View>
     );
   };
