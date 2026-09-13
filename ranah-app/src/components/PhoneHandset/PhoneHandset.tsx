@@ -2,6 +2,7 @@ import React, { useEffect, useId, useRef } from 'react';
 import { Animated, Easing, Pressable, View } from 'react-native';
 import Svg, { Defs, Ellipse, LinearGradient, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { USE_NATIVE_DRIVER } from '../../theme/animation';
+import { pointer } from '../../theme/pointer';
 import { CaseColours } from '../../theme/tokens';
 
 interface PhoneHandsetProps {
@@ -105,9 +106,9 @@ export function PhoneHandset({
   const glowScale = glow.interpolate({ inputRange: [0, 1], outputRange: [1, 1.12] });
 
   return (
-    <View style={{ pointerEvents: 'box-none', width, height: handsetHeight }}>
+    <View style={[pointer.boxNone, { width, height: handsetHeight }]}>
       <View
-        style={{ pointerEvents: 'none', position: 'absolute', top: pegTop, left: 0, width, flexDirection: 'row', justifyContent: 'center', gap: cradleGap }}
+        style={[pointer.none, { position: 'absolute', top: pegTop, left: 0, width, flexDirection: 'row', justifyContent: 'center', gap: cradleGap }]}
       >
         {[0, 1].map((i) => (
           <Svg key={i} width={pegWidth} height={pegHeight} viewBox="0 0 11 23">
@@ -122,28 +123,32 @@ export function PhoneHandset({
         ))}
       </View>
       <Animated.View
-        style={{
-          pointerEvents: 'none',
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          width,
-          height: handsetHeight,
-          transform: [{ translateY: liftY }, { rotate: isRinging ? rotate : liftRotate }],
-        }}
+        style={[
+          pointer.none,
+          {
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width,
+            height: handsetHeight,
+            transform: [{ translateY: liftY }, { rotate: isRinging ? rotate : liftRotate }],
+          },
+        ]}
       >
           {isRinging && (
             <Animated.View
-              style={{
-                pointerEvents: 'none',
-                position: 'absolute',
-                width: glowWidth,
-                height: glowHeight,
-                left: (width - glowWidth) / 2,
-                top: (handsetHeight - glowHeight) / 2,
-                opacity: glowOpacity,
-                transform: [{ scale: glowScale }],
-              }}
+              style={[
+                pointer.none,
+                {
+                  position: 'absolute',
+                  width: glowWidth,
+                  height: glowHeight,
+                  left: (width - glowWidth) / 2,
+                  top: (handsetHeight - glowHeight) / 2,
+                  opacity: glowOpacity,
+                  transform: [{ scale: glowScale }],
+                },
+              ]}
             >
               <Svg width={glowWidth} height={glowHeight} viewBox="0 0 100 100">
                 <Defs>

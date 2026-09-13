@@ -15,6 +15,7 @@ import { useLang } from '../src/state/LangContext';
 import { usePalette } from '../src/state/PaletteContext';
 import { useSettings } from '../src/state/SettingsContext';
 import { useIncomingCall } from '../src/state/useIncomingCall';
+import { pointer } from '../src/theme/pointer';
 
 const CHROME_HEIGHT = 225; // rough budget for the header (logo + settings pill) + dock + readout row above the stage
 
@@ -98,7 +99,7 @@ export default function DialScreen() {
             </View>
             {/* Rendered after the dial so it layers over the bezel, as the
                 prototype's .handset-hit (z-index 7) does over .dial-wrap. */}
-            <View style={{ pointerEvents: 'box-none', position: 'absolute', top: 0, left: (dialSize - handsetWidth) / 2 }}>
+            <View style={[pointer.boxNone, { position: 'absolute', top: 0, left: (dialSize - handsetWidth) / 2 }]}>
               <PhoneHandset
                 width={handsetWidth}
                 colours={colours}

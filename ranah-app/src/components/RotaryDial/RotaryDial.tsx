@@ -2,6 +2,7 @@ import React, { useCallback, useId, useMemo, useRef, useState } from 'react';
 import { View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Svg, { Circle, Defs, G, Path, RadialGradient, Stop, Text as SvgText } from 'react-native-svg';
+import { pointer } from '../../theme/pointer';
 import { CaseColours } from '../../theme/tokens';
 import {
   DIGIT_LETTERS,
@@ -283,16 +284,18 @@ export function RotaryDial({ size, colours, onDigit, onDragStateChange, centerCo
 
       {centerContent ? (
         <View
-          style={{
-            pointerEvents: 'box-none',
-            position: 'absolute',
-            left: 0,
-            top: 0,
-            width: size,
-            height: size,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
+          style={[
+            pointer.boxNone,
+            {
+              position: 'absolute',
+              left: 0,
+              top: 0,
+              width: size,
+              height: size,
+              alignItems: 'center',
+              justifyContent: 'center',
+            },
+          ]}
         >
           {centerContent}
         </View>

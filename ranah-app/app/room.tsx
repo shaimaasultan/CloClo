@@ -28,6 +28,7 @@ import { useLang } from '../src/state/LangContext';
 import { usePalette } from '../src/state/PaletteContext';
 import { useSettings } from '../src/state/SettingsContext';
 import { useReducedMotion } from '../src/state/useReducedMotion';
+import { pointer } from '../src/theme/pointer';
 import { CaseColours } from '../src/theme/tokens';
 
 const VB_W = 400;
@@ -313,13 +314,13 @@ export default function KeeperRoomScreen() {
             accessibilityLabel={t.roomTitle}
           />
           {boxW > 0 && (
-            <View style={{ pointerEvents: 'box-none', width: boxW, height: boxH, position: 'relative' }}>
+            <View style={[pointer.boxNone, { width: boxW, height: boxH, position: 'relative' }]}>
               <Svg
                 width="100%"
                 height="100%"
                 viewBox={`0 0 ${VB_W} ${VB_H}`}
                 preserveAspectRatio="xMidYMid meet"
-                style={{ pointerEvents: 'none' }}
+                style={pointer.none}
               >
                 <Defs>
                   <RadialGradient id={wallGradientId} cx="50%" cy="28%" r="85%">
@@ -368,7 +369,7 @@ export default function KeeperRoomScreen() {
                 )}
               </Svg>
 
-              <View style={{ pointerEvents: 'none', position: 'absolute', top: keeperTop, left: (boxW - keeperW) / 2 }}>
+              <View style={[pointer.none, { position: 'absolute', top: keeperTop, left: (boxW - keeperW) / 2 }]}>
                 <KeeperAvatar
                   size={keeperH}
                   colours={colours}
@@ -383,11 +384,11 @@ export default function KeeperRoomScreen() {
               {/* Incoming call card, ported from the prototype's .incoming:
                   tag, caller name, their status line, and Decline. */}
               {ringing && ringer && (
-                <View style={[styles.incomingCard, { top: boxH * 0.03, pointerEvents: 'box-none' }]}>
+                <View style={[styles.incomingCard, pointer.boxNone, { top: boxH * 0.03 }]}>
                   {/* Soft dark backdrop: the prototype's light text sat on a
                       night-dark room, but by day the window behind the card
                       is pale cream and would swallow the status line. */}
-                  <View style={[styles.incomingBackdrop, { pointerEvents: 'box-none' }]}>
+                  <View style={[styles.incomingBackdrop, pointer.boxNone]}>
                     <Text style={[styles.incomingTag, { color: `${colours.metal1}d9` }]}>{t.incomingTag}</Text>
                     <Text style={styles.incomingName}>{ringer.name}</Text>
                     <Text style={styles.incomingMeta}>{ringer.meta}</Text>
@@ -403,7 +404,7 @@ export default function KeeperRoomScreen() {
           {/* The vibrating handset — tap it to answer. */}
           {ringing && boxW > 0 && (
             <View
-              style={[styles.ringingHandset, { pointerEvents: 'box-none', top: handsetTop, left: (stageSize.width - handsetWidth) / 2 }]}
+              style={[styles.ringingHandset, pointer.boxNone, { top: handsetTop, left: (stageSize.width - handsetWidth) / 2 }]}
             >
               <PhoneHandset
                 width={handsetWidth}

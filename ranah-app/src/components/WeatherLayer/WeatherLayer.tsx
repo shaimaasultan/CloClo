@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import { Animated, Easing } from 'react-native';
 import Svg, { Circle, G, Line, Rect } from 'react-native-svg';
+import { pointer } from '../../theme/pointer';
 
 export type WeatherKind = 'clear' | 'rain' | 'snow' | 'storm';
 
@@ -170,7 +171,7 @@ export function WeatherLayer({ width, height, kind, topInset = 0 }: WeatherLayer
   if (width <= 0 || height <= 0) return null;
 
   return (
-    <Svg width={width} height={height} style={{ position: 'absolute', left: 0, top: 0, pointerEvents: 'none' }}>
+    <Svg width={width} height={height} style={[pointer.none, { position: 'absolute', left: 0, top: 0 }]}>
       {kind === 'clear' && <Sun width={width} topInset={topInset} />}
       {rainDrops.map((d, i) => (
         <Raindrop key={i} width={width} height={height} x={d.x} len={d.len} duration={d.duration} opacity={d.opacity} />
