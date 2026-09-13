@@ -1,7 +1,7 @@
 import React from 'react';
 import Svg, { Circle, Path } from 'react-native-svg';
 
-export type DockKey = 'dial' | 'contacts' | 'recents' | 'keeper' | 'sounds' | 'settings';
+export type DockKey = 'dial' | 'contacts' | 'recents' | 'reminders' | 'keeper' | 'sounds' | 'settings';
 
 interface DockIconProps {
   name: DockKey;
@@ -41,6 +41,14 @@ export function DockIcon({ name, size = 20, color }: DockIconProps) {
         <Svg width={size} height={size} viewBox="0 0 24 24">
           <Circle cx={12} cy={12} r={8} {...strokeProps} />
           <Path d="M12 7.5V12l3 2" {...strokeProps} />
+        </Svg>
+      );
+    case 'reminders':
+      // A bell.
+      return (
+        <Svg width={size} height={size} viewBox="0 0 24 24">
+          <Path d="M6.5 16.5V11a5.5 5.5 0 0 1 11 0v5.5l1.5 1.5H5z" {...strokeProps} />
+          <Path d="M10.2 20.2a2 2 0 0 0 3.6 0" {...strokeProps} />
         </Svg>
       );
     case 'keeper':

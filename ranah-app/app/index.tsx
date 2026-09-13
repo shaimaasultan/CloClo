@@ -18,6 +18,7 @@ import { isBirthdayOn } from '../src/state/decorations';
 import { useKeeperState } from '../src/state/KeeperStateContext';
 import { useLang } from '../src/state/LangContext';
 import { usePalette } from '../src/state/PaletteContext';
+import { dayKey, occursOn, useReminders } from '../src/state/RemindersContext';
 import { useSettings } from '../src/state/SettingsContext';
 import { useIncomingCall } from '../src/state/useIncomingCall';
 import { pointer } from '../src/theme/pointer';
@@ -33,6 +34,11 @@ export default function DialScreen() {
   const ringer = contactById(ringerId);
   // Everyone whose birthday is today, for the reminder beside the dial.
   const birthdayNames = contacts.filter((c) => isBirthdayOn(c.birthday)).map((c) => c.name);
+  // Today's reminders, and how many are still to do.
+  const { reminders } = useReminders();
+  const now = new Date();
+  const todaysReminders = reminders.filter((r) => occursOn(r, now));
+  const pendingReminders = todaysReminders.filter((r) => !r.doneDates.includes(dayKey(now))).length;
   const { tick, clunk } = useSettings();
   const startIncomingCall = useIncomingCall();
   const { width: winWidth, height: winHeight } = useWindowDimensions();
@@ -100,22 +106,36 @@ export default function DialScreen() {
               <MissedCallNote names={missedNames} onPress={() => router.dismissTo('/recents')} />
             </View>
           )}
-          {/* Birthday reminder in the opposite corner; opens the Birthdays card on Contacts. */}
-          {callState === 'idle' && birthdayNames.length > 0 && (
-            <Pressable
-              onPress={() => router.dismissTo('/contacts')}
-              role="button"
-              style={[
-                styles.birthdayReminder,
-                { borderColor: `${colours.metal2}8c`, flexDirection: rowDir },
-                isRtl ? { left: 16 } : { right: 16 },
-              ]}
-            >
-              <Text style={styles.birthdayCake}>🎂</Text>
-              <Text style={[styles.birthdayText, { color: colours.highlight }]} numberOfLines={2}>
-                {t.birthdayReminder(birthdayNames.join(isRtl ? '، ' : ', '), birthdayNames.length)}
-              </Text>
-            </Pressable>
+          {/* Today's birthdays and reminders in the opposite corner: the
+              birthday note opens the Birthdays card on Contacts, the bell
+              opens Reminders. */}
+          {callState === 'idle' && (birthdayNames.length > 0 || todaysReminders.length > 0) && (
+            <View style={[styles.cornerStack, isRtl ? { left: 16, alignItems: 'flex-start' } : { right: 16, alignItems: 'flex-end' }]}>
+              {birthdayNames.length > 0 && (
+                <Pressable
+                  onPress={() => router.dismissTo('/contacts')}
+                  role="button"
+                  style={[styles.cornerPill, { borderColor: `${colours.metal2}8c`, flexDirection: rowDir }]}
+                >
+                  <Text style={styles.cornerEmoji}>🎂</Text>
+                  <Text style={[styles.cornerText, { color: colours.highlight }]} numberOfLines={2}>
+                    {t.birthdayReminder(birthdayNames.join(isRtl ? '، ' : ', '), birthdayNames.length)}
+                  </Text>
+                </Pressable>
+              )}
+              {todaysReminders.length > 0 && (
+                <Pressable
+                  onPress={() => router.dismissTo('/reminders')}
+                  role="button"
+                  style={[styles.cornerPill, { borderColor: `${colours.metal2}8c`, flexDirection: rowDir }]}
+                >
+                  <Text style={styles.cornerEmoji}>🔔</Text>
+                  <Text style={[styles.cornerText, { color: colours.highlight }]} numberOfLines={2}>
+                    {pendingReminders > 0 ? t.remindersToday(pendingReminders) : t.allDoneToday}
+                  </Text>
+                </Pressable>
+              )}
+            </View>
           )}
           <View style={{ width: dialSize, height: dialSize + handsetRise }}>
             <View style={{ position: 'absolute', top: handsetRise, left: 0 }}>
@@ -174,10 +194,8 @@ const styles = StyleSheet.create({
   demoBtnLabel: { color: 'rgba(239,230,211,.8)', fontSize: 10, fontWeight: '600' },
   stage: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   missedNote: { position: 'absolute', top: 8, zIndex: 2 },
-  birthdayReminder: {
-    position: 'absolute',
-    top: 8,
-    zIndex: 2,
+  cornerStack: { position: 'absolute', top: 8, zIndex: 2, gap: 6 },
+  cornerPill: {
     maxWidth: 170,
     alignItems: 'center',
     gap: 6,
@@ -187,6 +205,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     backgroundColor: 'rgba(11,10,8,.55)',
   },
-  birthdayCake: { fontSize: 16 },
-  birthdayText: { flexShrink: 1, fontSize: 11, fontWeight: '700' },
+  cornerEmoji: { fontSize: 16 },
+  cornerText: { flexShrink: 1, fontSize: 11, fontWeight: '700' },
 });

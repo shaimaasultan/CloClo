@@ -2,6 +2,7 @@
 // (the prototype's dev-harness copy like eyebrow/lede/steps is dropped; it was never app UI).
 
 import type { DecorChoice } from '../state/decorations';
+import type { Repeat } from '../state/RemindersContext';
 
 export type Lang = 'en' | 'ar';
 
@@ -12,7 +13,7 @@ export const APP_NAME = 'CloClo';
 export interface Dictionary {
   dir: 'ltr' | 'rtl';
   slogan: string;
-  dockNames: Record<'dial' | 'contacts' | 'recents' | 'keeper' | 'sounds' | 'settings', string>;
+  dockNames: Record<'dial' | 'contacts' | 'recents' | 'reminders' | 'keeper' | 'sounds' | 'settings', string>;
   readoutLabel: string;
   callingLabel: string;
   clearAria: string;
@@ -95,6 +96,39 @@ export interface Dictionary {
   birthdayReminder: (names: string, count: number) => string;
   // Credit line in every screen's footer.
   madeBy: (name: string) => string;
+  // Reminders.
+  clockTime: (hour: number, minute: number) => string;
+  addReminder: string;
+  editReminder: string;
+  editReminderAria: (title: string) => string;
+  reminderTitleLabel: string;
+  reminderTitlePlaceholder: string;
+  reminderDateLabel: string;
+  reminderYear: string;
+  reminderToday: string;
+  reminderTomorrow: string;
+  reminderTimeLabel: string;
+  reminderHour: string;
+  reminderMinute: string;
+  reminderInvalidDate: string;
+  reminderInvalidTime: string;
+  repeatLabel: string;
+  repeatNames: Record<Repeat, string>;
+  reminderContactLabel: string;
+  reminderNoContact: string;
+  deleteReminder: string;
+  deleteReminderConfirm: (title: string) => string;
+  todayHeading: string;
+  upcomingHeading: string;
+  earlierHeading: string;
+  nothingToday: string;
+  nothingUpcoming: string;
+  birthdayOf: (name: string) => string;
+  reminderDue: string;
+  callNameAria: (name: string) => string;
+  // The "today's reminders" button on the dial.
+  remindersToday: (count: number) => string;
+  allDoneToday: string;
   // Short spoken-style call length, e.g. "4m 12s" / "4 د 12 ث".
   formatCallDuration: (seconds: number) => string;
   justNow: string;
@@ -181,6 +215,7 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
       dial: 'Dial',
       contacts: 'Contacts',
       recents: 'Recents',
+      reminders: 'Reminders',
       keeper: 'Keeper',
       sounds: 'Sounds',
       settings: 'Settings',
@@ -266,6 +301,37 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
     birthdayCall: 'Call',
     birthdayReminder: (names, count) => `${count === 1 ? 'Birthday today' : 'Birthdays today'} · ${names}`,
     madeBy: (name) => `CloClo · Made by ${name}`,
+    clockTime: (hour, minute) => `${hour % 12 || 12}:${String(minute).padStart(2, '0')} ${hour < 12 ? 'AM' : 'PM'}`,
+    addReminder: 'Add reminder',
+    editReminder: 'Edit reminder',
+    editReminderAria: (title) => `Edit reminder: ${title}`,
+    reminderTitleLabel: 'What to remember',
+    reminderTitlePlaceholder: 'e.g. Call the dentist',
+    reminderDateLabel: 'Date',
+    reminderYear: 'YYYY',
+    reminderToday: 'Today',
+    reminderTomorrow: 'Tomorrow',
+    reminderTimeLabel: 'Time (optional)',
+    reminderHour: 'HH',
+    reminderMinute: 'MM',
+    reminderInvalidDate: 'Enter a real date',
+    reminderInvalidTime: 'Enter a time like 09:30 (24-hour), or leave it empty',
+    repeatLabel: 'Repeat',
+    repeatNames: { none: 'Once', daily: 'Every day', weekly: 'Every week', monthly: 'Every month', yearly: 'Every year' },
+    reminderContactLabel: 'Someone to call',
+    reminderNoContact: 'No one',
+    deleteReminder: 'Delete reminder',
+    deleteReminderConfirm: (title) => `Delete “${title}”? This can’t be undone.`,
+    todayHeading: 'Today',
+    upcomingHeading: 'Upcoming',
+    earlierHeading: 'Earlier',
+    nothingToday: 'Nothing to remember today',
+    nothingUpcoming: 'No upcoming reminders',
+    birthdayOf: (name) => `${name}’s birthday`,
+    reminderDue: 'Due now',
+    callNameAria: (name) => `Call ${name}`,
+    remindersToday: (count) => (count === 1 ? '1 reminder today' : `${count} reminders today`),
+    allDoneToday: 'All done for today',
     formatCallDuration: (seconds) => {
       const m = Math.floor(seconds / 60);
       const s = seconds % 60;
@@ -331,6 +397,7 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
       dial: 'القرص',
       contacts: 'جهات الاتصال',
       recents: 'الأخيرة',
+      reminders: 'تذكيرات',
       keeper: 'الحارس',
       sounds: 'نغمات',
       settings: 'الإعدادات',
@@ -421,6 +488,37 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
     birthdayCall: 'اتصلي',
     birthdayReminder: (names, count) => `${count === 1 ? 'عيد ميلاد النهارده' : 'أعياد ميلاد النهارده'} · ${names}`,
     madeBy: (name) => `CloClo · من صنع ${name}`,
+    clockTime: (hour, minute) => `${hour % 12 || 12}:${String(minute).padStart(2, '0')} ${hour < 12 ? 'صباحاً' : 'مساءً'}`,
+    addReminder: 'إضافة تذكير',
+    editReminder: 'تعديل التذكير',
+    editReminderAria: (title) => `تعديل التذكير: ${title}`,
+    reminderTitleLabel: 'تفتكري إيه',
+    reminderTitlePlaceholder: 'مثلاً: اتصلي بالدكتور',
+    reminderDateLabel: 'التاريخ',
+    reminderYear: 'سنة',
+    reminderToday: 'النهارده',
+    reminderTomorrow: 'بكرة',
+    reminderTimeLabel: 'الساعة (اختياري)',
+    reminderHour: 'ساعة',
+    reminderMinute: 'دقيقة',
+    reminderInvalidDate: 'اكتبي تاريخ صحيح',
+    reminderInvalidTime: 'اكتبي ساعة زي 09:30 (نظام 24 ساعة)، أو سيبيها فاضية',
+    repeatLabel: 'التكرار',
+    repeatNames: { none: 'مرة واحدة', daily: 'كل يوم', weekly: 'كل أسبوع', monthly: 'كل شهر', yearly: 'كل سنة' },
+    reminderContactLabel: 'حد تتصلي بيه',
+    reminderNoContact: 'مفيش',
+    deleteReminder: 'مسح التذكير',
+    deleteReminderConfirm: (title) => `تمسحي «${title}»؟ مش هينفع ترجعيه.`,
+    todayHeading: 'النهارده',
+    upcomingHeading: 'الجاية',
+    earlierHeading: 'اللي فات',
+    nothingToday: 'مفيش حاجة تفتكريها النهارده',
+    nothingUpcoming: 'مفيش تذكيرات جاية',
+    birthdayOf: (name) => `عيد ميلاد ${name}`,
+    reminderDue: 'جه وقته',
+    callNameAria: (name) => `اتصلي بـ${name}`,
+    remindersToday: (count) => (count === 1 ? 'تذكير واحد النهارده' : `${count} تذكيرات النهارده`),
+    allDoneToday: 'خلصتي كل حاجة النهارده',
     formatCallDuration: (seconds) => {
       const m = Math.floor(seconds / 60);
       const s = seconds % 60;

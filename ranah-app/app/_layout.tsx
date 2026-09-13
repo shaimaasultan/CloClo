@@ -7,6 +7,7 @@ import { KeeperStateProvider } from '../src/state/KeeperStateContext';
 import { LangProvider } from '../src/state/LangContext';
 import { PaletteProvider } from '../src/state/PaletteContext';
 import { PersistGate } from '../src/state/PersistGate';
+import { RemindersProvider } from '../src/state/RemindersContext';
 import { SettingsProvider } from '../src/state/SettingsContext';
 
 export default function RootLayout() {
@@ -16,6 +17,7 @@ export default function RootLayout() {
         <PersistGate>
         <LangProvider>
           <ContactsProvider>
+          <RemindersProvider>
             <PaletteProvider>
               <SettingsProvider>
                 <KeeperStateProvider>
@@ -24,6 +26,7 @@ export default function RootLayout() {
                 </KeeperStateProvider>
               </SettingsProvider>
             </PaletteProvider>
+          </RemindersProvider>
           </ContactsProvider>
         </LangProvider>
         </PersistGate>

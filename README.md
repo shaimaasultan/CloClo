@@ -56,6 +56,20 @@ This repository holds two things:
   keeper's shelf (mug, postcard, snow globe, book, photo, or shell). It
   appears once you've talked with them.
 
+### Reminders
+
+- **Reminders tab** – a bell in the dock opens your reminders: *Today*
+  (including contacts' birthdays), *Upcoming* with each reminder's next date,
+  and *Earlier* for one-off reminders whose day has passed.
+- **Add and edit** – what to remember, a date (with Today / Tomorrow
+  shortcuts), an optional time, how often it repeats (once, daily, weekly,
+  monthly, yearly), and optionally someone to call. Delete asks for
+  confirmation.
+- **Tick them off** – check today's reminders as done; ones whose time has
+  come are marked *Due now*, and linked contacts get a **Call** button.
+- **Today's reminders on the dial** – a 🔔 button shows how many are left
+  today (or *All done for today*) and opens the Reminders tab.
+
 ### The keeper
 
 - **A little person in the phone** – they doze in the dial's hub between
@@ -102,8 +116,8 @@ This repository holds two things:
 ### Remembered between launches
 
 Contacts, settings (sound, privacy mode, ringtones, keepsakes, decorations),
-language, case colour, and call history are saved on the device and restored
-when the app opens.
+language, case colour, call history, and reminders are saved on the device and
+restored when the app opens.
 
 ## Project status
 
@@ -117,6 +131,8 @@ CloClo is a working prototype, not a telephony app yet:
   iOS / Android until recorded sound assets are added.
 - Ramadan and Eid decorations need a JavaScript engine with Islamic-calendar
   support; where it's missing, those holidays are skipped.
+- Reminders show inside the app only; there are no system notifications when
+  a reminder's time comes.
 - The dialled number and the current call don't survive a restart.
 
 ## Getting started
@@ -168,6 +184,8 @@ The app is built on **Expo SDK 57**, **React Native 0.86**, and
     │   ├── contacts.tsx
     │   ├── contact.tsx         # add / edit / delete a contact
     │   ├── recents.tsx
+    │   ├── reminders.tsx       # today's, upcoming and earlier reminders
+    │   ├── reminder.tsx        # add / edit / delete a reminder
     │   ├── sounds.tsx
     │   ├── settings.tsx
     │   ├── keepsakes.tsx       # shelf object per contact

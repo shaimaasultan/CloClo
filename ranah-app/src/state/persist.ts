@@ -2,15 +2,19 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect } from 'react';
 
 // What survives a restart: contacts, settings, language, case colour and
-// call history (Recents and the missed-call note).
+// call history (Recents and the missed-call note), and reminders.
 // Everything is read once before the app renders (see PersistGate), so each
 // provider can start from its saved value without a flash of defaults.
-export type PersistKey = 'contacts' | 'settings' | 'lang' | 'palette' | 'callLog' | 'missedNotes';
+export type PersistKey = 'contacts' | 'settings' | 'lang' | 'palette' | 'callLog' | 'missedNotes' | 'reminders';
 
-const KEYS: PersistKey[] = ['contacts', 'settings', 'lang', 'palette', 'callLog', 'missedNotes'];
+const KEYS: PersistKey[] = ['contacts', 'settings', 'lang', 'palette', 'callLog', 'missedNotes', 'reminders'];
 const PREFIX = 'cloclo:';
 const cache = new Map<string, unknown>();
 let hydration: Promise<void> | null = null;
+// True once saved data has been read (or found unavailable). Until then
+// nothing is written, so a provider that starts from its defaults — e.g.
+// after a hot reload resets this module — can't overwrite what's saved.
+let hydrated = false;
 
 export function hydratePersisted(): Promise<void> {
   if (!hydration) {
@@ -27,6 +31,9 @@ export function hydratePersisted(): Promise<void> {
       })
       .catch(() => {
         // Storage unavailable (e.g. a private browser window): run with defaults.
+      })
+      .finally(() => {
+        hydrated = true;
       });
   }
   return hydration;
@@ -41,6 +48,7 @@ export function readPersisted<T>(key: PersistKey, fallback: T, isValid: (value: 
 // Saves `value` whenever it changes.
 export function usePersist(key: PersistKey, value: unknown) {
   useEffect(() => {
+    if (!hydrated) return;
     const raw = JSON.stringify(value);
     cache.set(key, value);
     AsyncStorage.setItem(PREFIX + key, raw).catch(() => {});

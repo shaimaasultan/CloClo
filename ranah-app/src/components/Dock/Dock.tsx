@@ -5,12 +5,13 @@ import { useLang } from '../../state/LangContext';
 import { usePalette } from '../../state/PaletteContext';
 import { DockIcon, DockKey } from '../DockIcon/DockIcon';
 
-const DOCK_KEYS: DockKey[] = ['dial', 'contacts', 'recents', 'keeper', 'sounds', 'settings'];
+const DOCK_KEYS: DockKey[] = ['dial', 'contacts', 'recents', 'reminders', 'keeper', 'sounds', 'settings'];
 
 const DOCK_ROUTES: Record<DockKey, string> = {
   dial: '/',
   contacts: '/contacts',
   recents: '/recents',
+  reminders: '/reminders',
   keeper: '/room',
   sounds: '/sounds',
   settings: '/settings',
@@ -59,12 +60,12 @@ export function Dock({ active }: DockProps) {
 const styles = StyleSheet.create({
   dock: {
     justifyContent: 'space-between',
-    paddingHorizontal: 10,
+    paddingHorizontal: 6,
     paddingVertical: 16,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255,255,255,.06)',
   },
-  dockBtn: { alignItems: 'center', gap: 5, paddingVertical: 6, paddingHorizontal: 4, borderRadius: 12 },
+  dockBtn: { alignItems: 'center', gap: 5, paddingVertical: 6, paddingHorizontal: 3, borderRadius: 12 },
   dockBtnActive: { backgroundColor: 'rgba(201,162,75,.18)' },
-  dockLabel: { color: '#c9bfa9', fontSize: 9, letterSpacing: 0.5, textTransform: 'uppercase' },
+  dockLabel: { color: '#c9bfa9', fontSize: 9, letterSpacing: 0.3, textTransform: 'uppercase' },
 });
