@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useMemo, useState } from 'react';
 import { DICTIONARIES, Dictionary, Lang } from '../i18n/dictionaries';
+import { readPersisted, usePersist } from './persist';
 
 interface LangContextValue {
   lang: Lang;
@@ -11,7 +12,8 @@ interface LangContextValue {
 const LangContext = createContext<LangContextValue | null>(null);
 
 export function LangProvider({ children }: { children: React.ReactNode }) {
-  const [lang, setLang] = useState<Lang>('en');
+  const [lang, setLang] = useState<Lang>(() => readPersisted<Lang>('lang', 'en', (v) => v === 'en' || v === 'ar'));
+  usePersist('lang', lang);
   const value = useMemo<LangContextValue>(
     () => ({
       lang,

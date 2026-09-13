@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useMemo, useState } from 'react';
 import { CaseColours, PALETTES, PaletteName } from '../theme/tokens';
+import { readPersisted, usePersist } from './persist';
 
 interface PaletteContextValue {
   paletteName: PaletteName;
@@ -10,7 +11,10 @@ interface PaletteContextValue {
 const PaletteContext = createContext<PaletteContextValue | null>(null);
 
 export function PaletteProvider({ children }: { children: React.ReactNode }) {
-  const [paletteName, setPalette] = useState<PaletteName>('oxblood');
+  const [paletteName, setPalette] = useState<PaletteName>(() =>
+    readPersisted<PaletteName>('palette', 'oxblood', (v) => typeof v === 'string' && v in PALETTES)
+  );
+  usePersist('palette', paletteName);
   const value = useMemo<PaletteContextValue>(
     () => ({ paletteName, colours: PALETTES[paletteName], setPalette }),
     [paletteName]

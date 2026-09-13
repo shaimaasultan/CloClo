@@ -600,8 +600,10 @@ export default function KeeperRoomScreen() {
 
   // Seasonal and holiday decorations from today's date — or whatever is
   // being previewed in Advanced settings. Rechecked as the hour changes.
+  // By date, birthdays only get the party while that person is on the line
+  // (below); a birthday preview still borrows the first contact with one.
   const baseDecor = useMemo(
-    () => resolveDecor(decorChoice, new Date(), contacts),
+    () => resolveDecor(decorChoice, new Date(), decorChoice === 'auto' ? [] : contacts),
     [decorChoice, deviceHour, contacts]
   );
   // A birthday call throws the party whatever the decorations are set to.

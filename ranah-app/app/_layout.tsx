@@ -6,12 +6,14 @@ import { ContactsProvider } from '../src/state/ContactsContext';
 import { KeeperStateProvider } from '../src/state/KeeperStateContext';
 import { LangProvider } from '../src/state/LangContext';
 import { PaletteProvider } from '../src/state/PaletteContext';
+import { PersistGate } from '../src/state/PersistGate';
 import { SettingsProvider } from '../src/state/SettingsContext';
 
 export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
+        <PersistGate>
         <LangProvider>
           <ContactsProvider>
             <PaletteProvider>
@@ -24,6 +26,7 @@ export default function RootLayout() {
             </PaletteProvider>
           </ContactsProvider>
         </LangProvider>
+        </PersistGate>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

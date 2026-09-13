@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
 import { playClunk, playRingtone, playSfx, playTick, Sfx } from '../audio/tones';
 import type { DecorChoice } from './decorations';
+import { readPersisted, usePersist } from './persist';
 import { KeepsakeKind, ToneId } from '../i18n/dictionaries';
 
 // Mirrors the prototype's soundEnabled / privacyMode flags and its
@@ -27,14 +28,32 @@ interface SettingsValue {
   setContactKeepsake: (id: string, kind: KeepsakeKind) => void;
 }
 
+interface SavedSettings {
+  soundEnabled: boolean;
+  privacyMode: boolean;
+  contactTones: Record<string, ToneId>;
+  decorChoice: DecorChoice;
+  keepsakeOverrides: Record<string, KeepsakeKind>;
+}
+
 const SettingsContext = createContext<SettingsValue | null>(null);
 
 export function SettingsProvider({ children }: { children: React.ReactNode }) {
-  const [soundEnabled, setSoundEnabled] = useState(true);
-  const [privacyMode, setPrivacyMode] = useState(false);
-  const [contactTones, setContactTones] = useState(DEFAULT_CONTACT_TONES);
-  const [decorChoice, setDecorChoice] = useState<DecorChoice>('auto');
-  const [keepsakeOverrides, setKeepsakeOverrides] = useState<Record<string, KeepsakeKind>>({});
+  // Saved from the last session, if any.
+  const [saved] = useState(() =>
+    readPersisted<Partial<SavedSettings>>('settings', {}, (v) => typeof v === 'object' && v !== null)
+  );
+  const [soundEnabled, setSoundEnabled] = useState(saved.soundEnabled ?? true);
+  const [privacyMode, setPrivacyMode] = useState(saved.privacyMode ?? false);
+  const [contactTones, setContactTones] = useState({ ...DEFAULT_CONTACT_TONES, ...saved.contactTones });
+  const [decorChoice, setDecorChoice] = useState<DecorChoice>(saved.decorChoice ?? 'auto');
+  const [keepsakeOverrides, setKeepsakeOverrides] = useState<Record<string, KeepsakeKind>>(saved.keepsakeOverrides ?? {});
+
+  const toSave = useMemo<SavedSettings>(
+    () => ({ soundEnabled, privacyMode, contactTones, decorChoice, keepsakeOverrides }),
+    [soundEnabled, privacyMode, contactTones, decorChoice, keepsakeOverrides]
+  );
+  usePersist('settings', toSave);
 
   const keepsakeFor = useCallback(
     (id: string, fallback: KeepsakeKind) => keepsakeOverrides[id] ?? fallback,

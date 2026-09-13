@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { Caller, CallerActivity, KeepsakeKind, Lang } from '../i18n/dictionaries';
 import { useLang } from './LangContext';
+import { readPersisted, usePersist } from './persist';
 
 // A contact as stored. The starting contacts carry a name per language until
 // they're edited; anyone added or renamed keeps the name as typed.
@@ -39,7 +40,8 @@ const ContactsContext = createContext<ContactsValue | null>(null);
 
 export function ContactsProvider({ children }: { children: React.ReactNode }) {
   const { t, lang } = useLang();
-  const [stored, setStored] = useState<Contact[]>(SEED_CONTACTS);
+  const [stored, setStored] = useState<Contact[]>(() => readPersisted('contacts', SEED_CONTACTS, Array.isArray));
+  usePersist('contacts', stored);
 
   // "… 9:42 PM their time" uses the device's minutes, so tick each minute.
   const [minute, setMinute] = useState(() => new Date().getMinutes());
