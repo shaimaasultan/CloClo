@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useKeeperState } from '../../state/KeeperStateContext';
 import { useLang } from '../../state/LangContext';
 import { usePalette } from '../../state/PaletteContext';
+import { AuthorFooter } from '../AuthorFooter/AuthorFooter';
 import { BrandHeader } from '../BrandHeader/BrandHeader';
 import { Dock } from '../Dock/Dock';
 import { DockKey } from '../DockIcon/DockIcon';
@@ -59,6 +60,7 @@ export function ScreenShell({ active, back, children }: ScreenShellProps) {
         )}
 
         <View style={styles.body}>{children}</View>
+        <AuthorFooter />
       </SafeAreaView>
     </View>
   );

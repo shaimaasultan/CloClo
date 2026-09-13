@@ -2,6 +2,7 @@ import { useRouter } from 'expo-router';
 import React from 'react';
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { AuthorFooter } from '../src/components/AuthorFooter/AuthorFooter';
 import { BrandHeader } from '../src/components/BrandHeader/BrandHeader';
 import { CallInfoBar } from '../src/components/CallInfoBar/CallInfoBar';
 import { DeclineButton } from '../src/components/DeclineButton/DeclineButton';
@@ -21,7 +22,7 @@ import { useSettings } from '../src/state/SettingsContext';
 import { useIncomingCall } from '../src/state/useIncomingCall';
 import { pointer } from '../src/theme/pointer';
 
-const CHROME_HEIGHT = 225; // rough budget for the header (logo + settings pill) + dock + readout row above the stage
+const CHROME_HEIGHT = 245; // rough budget for the header (logo + settings pill) + dock + readout row above the stage, plus the author footer
 
 export default function DialScreen() {
   const router = useRouter();
@@ -154,6 +155,7 @@ export default function DialScreen() {
             </View>
           </View>
         </View>
+        <AuthorFooter />
       </SafeAreaView>
     </View>
   );

@@ -4,6 +4,7 @@ import { Animated, Easing, LayoutChangeEvent, Pressable, StyleSheet, Text, useWi
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { setRainLevel } from '../src/audio/tones';
+import { AuthorFooter } from '../src/components/AuthorFooter/AuthorFooter';
 import { BrandHeader } from '../src/components/BrandHeader/BrandHeader';
 import { CallInfoBar } from '../src/components/CallInfoBar/CallInfoBar';
 import { DeclineButton } from '../src/components/DeclineButton/DeclineButton';
@@ -1165,6 +1166,7 @@ export default function KeeperRoomScreen() {
           )}
           <Text style={styles.caption}>{shelfCaption ?? spotCaption ?? t.moments[momentIndex]}</Text>
         </View>
+        <AuthorFooter />
       </SafeAreaView>
     </View>
   );

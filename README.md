@@ -182,6 +182,10 @@ The app is built on **Expo SDK 57**, **React Native 0.86**, and
         └── theme/              # case-colour palettes
 ```
 
+## Author
+
+CloClo is designed and built by **Shaimaa Said Soltan**.
+
 ## License
 
 CloClo is released under the [MIT License](LICENSE). `ranah-app/LICENSE` is

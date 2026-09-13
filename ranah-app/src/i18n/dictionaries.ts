@@ -93,6 +93,8 @@ export interface Dictionary {
   birthdaysHint: string;
   birthdayCall: string;
   birthdayReminder: (names: string, count: number) => string;
+  // Credit line in every screen's footer.
+  madeBy: (name: string) => string;
   // Short spoken-style call length, e.g. "4m 12s" / "4 د 12 ث".
   formatCallDuration: (seconds: number) => string;
   justNow: string;
@@ -263,6 +265,7 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
     birthdaysHint: 'Give them a call to wish them a happy birthday',
     birthdayCall: 'Call',
     birthdayReminder: (names, count) => `${count === 1 ? 'Birthday today' : 'Birthdays today'} · ${names}`,
+    madeBy: (name) => `CloClo · Made by ${name}`,
     formatCallDuration: (seconds) => {
       const m = Math.floor(seconds / 60);
       const s = seconds % 60;
@@ -417,6 +420,7 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
     birthdaysHint: 'كلميهم وقوليلهم كل سنة وانتوا طيبين',
     birthdayCall: 'اتصلي',
     birthdayReminder: (names, count) => `${count === 1 ? 'عيد ميلاد النهارده' : 'أعياد ميلاد النهارده'} · ${names}`,
+    madeBy: (name) => `CloClo · من صنع ${name}`,
     formatCallDuration: (seconds) => {
       const m = Math.floor(seconds / 60);
       const s = seconds % 60;

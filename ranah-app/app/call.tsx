@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextStyle, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Line, Path } from 'react-native-svg';
+import { AuthorFooter } from '../src/components/AuthorFooter/AuthorFooter';
 import { BrandHeader } from '../src/components/BrandHeader/BrandHeader';
 import { CallInfoBar } from '../src/components/CallInfoBar/CallInfoBar';
 import { KeeperAvatar } from '../src/components/KeeperAvatar/KeeperAvatar';
@@ -234,6 +235,7 @@ export default function CallScreen() {
             );
           })}
         </ScrollView>
+        <AuthorFooter />
       </SafeAreaView>
     </View>
   );
