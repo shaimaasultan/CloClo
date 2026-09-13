@@ -1,2 +1,5 @@
 # Screen recordings captured while demoing the app (Windows Snipping Tool names)
 Recording *.mp4
+
+# Local Claude Code settings and launch configuration
+.claude/
