@@ -79,7 +79,8 @@ export default function DialScreen() {
   };
 
   // The same unseen missed calls the keeper pins to the room's door.
-  const missedNames = missedNotes.map((id) => contactById(id)?.name).filter((name): name is string => !!name);
+  // Each caller once, even if they missed you several times.
+  const missedNames = [...new Set(missedNotes)].map((id) => contactById(id)?.name).filter((name): name is string => !!name);
 
   return (
     <View style={[styles.root, { backgroundColor: colours.body2 }]}>

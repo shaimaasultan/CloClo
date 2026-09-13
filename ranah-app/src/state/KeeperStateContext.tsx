@@ -56,8 +56,9 @@ interface KeeperStateValue {
   clearDialed: () => void;
   // Calls made in the app (saved across restarts), newest first.
   callLog: LoggedCall[];
-  // Contacts whose missed calls the keeper has pinned to the door, newest
-  // first; cleared once Recents has been seen.
+  // Unseen missed calls the keeper has pinned to the door, one contact id per
+  // call (so the same caller can appear more than once), newest first;
+  // cleared once Recents has been seen.
   missedNotes: string[];
   dismissMissedNotes: () => void;
   // Connected (answered or outgoing) calls with a contact, sample history
@@ -110,11 +111,11 @@ export function KeeperStateProvider({ children }: { children: React.ReactNode })
   }, []);
 
   // Every call-state change goes through here so the call log stays right:
-  // a ring that ends without being answered is missed (and, if nobody saw
-  // it, pinned to the door); an answered or outgoing call is logged with
-  // its length when it ends.
+  // a ring that ends without being answered — declined or left to ring out —
+  // is missed and pinned to the door; an answered or outgoing call is logged
+  // with its length when it ends.
   const transition = useCallback(
-    (next: CallState, unseenMiss = false) => {
+    (next: CallState) => {
       const prev = callStateRef.current;
       if (prev === next) return;
       const who = ringerIdRef.current;
@@ -138,7 +139,7 @@ export function KeeperStateProvider({ children }: { children: React.ReactNode })
       }
       if (prev === 'ringing' && next === 'idle' && who !== null) {
         logCall({ contactId: who, type: 'missed', at: now });
-        if (unseenMiss) setMissedNotes((notes) => [who, ...notes.filter((i) => i !== who)]);
+        setMissedNotes((notes) => [who, ...notes].slice(0, 99));
       }
 
       callStateRef.current = next;
@@ -158,7 +159,7 @@ export function KeeperStateProvider({ children }: { children: React.ReactNode })
   // Nobody picked up: stop ringing and leave a note.
   useEffect(() => {
     if (callState !== 'ringing') return;
-    const id = setTimeout(() => transition('idle', true), RING_TIMEOUT_MS);
+    const id = setTimeout(() => transition('idle'), RING_TIMEOUT_MS);
     return () => clearTimeout(id);
   }, [callState, transition]);
 

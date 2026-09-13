@@ -37,8 +37,10 @@ This repository holds two things:
 - **Live call screen** – answering opens a call view with a running timer,
   Mute / Clarity / End controls, and a transcript where each line appears in
   the speaker's own language with a live translation underneath.
-- **Missed-call note** – the keeper pins a sticky note to the room's door and
-  beside the dial; tap it to open Recents, which takes the note down.
+- **Missed-call note** – when a call rings out or you decline it, the keeper
+  pins a sticky note to the room's door and beside the dial, and the Recents
+  tab shows a red badge with the number of missed calls. Tap the note to open
+  Recents, which takes the note and the badge down.
 
 ### Contacts and Recents
 

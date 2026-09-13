@@ -834,7 +834,8 @@ export default function KeeperRoomScreen() {
     .filter((k) => k.calls > 0)
     .slice(0, CALLER_SHELF_X.length)
     .map((k, slot) => ({ ...k, slot }));
-  const missedNames = missedNotes.map((id) => contactById(id)?.name).filter((name): name is string => !!name);
+  // Each caller once, even if they missed you several times.
+  const missedNames = [...new Set(missedNotes)].map((id) => contactById(id)?.name).filter((name): name is string => !!name);
   const noteInitials = missedNames
     .slice(0, 2)
     .map((name) => name.charAt(0))

@@ -145,6 +145,9 @@ export interface Dictionary {
   snoozedUntil: (time: string) => string;
   // The blue sticker on the dial while reminders are snoozed.
   snoozeStickerLabel: (count: number, time: string) => string;
+  // Spoken with the dock's count badges.
+  missedCallsCount: (count: number) => string;
+  snoozedCount: (count: number) => string;
   // Short spoken-style call length, e.g. "4m 12s" / "4 د 12 ث".
   formatCallDuration: (seconds: number) => string;
   justNow: string;
@@ -364,6 +367,8 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
       count === 1
         ? `Snoozed reminder, back at ${time}. Open Reminders`
         : `${count} snoozed reminders, next at ${time}. Open Reminders`,
+    missedCallsCount: (count) => (count === 1 ? '1 missed call' : `${count} missed calls`),
+    snoozedCount: (count) => (count === 1 ? '1 snoozed reminder' : `${count} snoozed reminders`),
     formatCallDuration: (seconds) => {
       const m = Math.floor(seconds / 60);
       const s = seconds % 60;
@@ -567,6 +572,8 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
       count === 1
         ? `تذكير متأجل، راجع الساعة ${time}. افتحي التذكيرات`
         : `${count} تذكيرات متأجلة، أقربها الساعة ${time}. افتحي التذكيرات`,
+    missedCallsCount: (count) => (count === 1 ? 'مكالمة فايتة' : `${count} مكالمات فايتة`),
+    snoozedCount: (count) => (count === 1 ? 'تذكير متأجل' : `${count} تذكيرات متأجلة`),
     formatCallDuration: (seconds) => {
       const m = Math.floor(seconds / 60);
       const s = seconds % 60;
