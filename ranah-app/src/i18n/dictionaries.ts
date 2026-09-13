@@ -71,6 +71,11 @@ export interface Dictionary {
   // Accessibility label for the missed-call sticky note on the room's door.
   missedNoteLabel: (names: string) => string;
   keepsakeNames: Record<KeepsakeKind, string>;
+  // Settings › Keepsakes: choose the object each caller leaves on the shelf.
+  keepsakeShortNames: Record<KeepsakeKind, string>;
+  keepsakesTitle: string;
+  keepsakesHint: string;
+  keepsakesLinkHint: string;
   // Shown in the room caption when a shelf keepsake is tapped.
   keepsakeCaption: (item: string, name: string, calls: number) => string;
   // Things you can tap in the Keeper's room.
@@ -102,7 +107,7 @@ export interface Dictionary {
 }
 
 // The little object each caller leaves on the keeper's shelf.
-export type KeepsakeKind = 'postcard' | 'mug' | 'snowGlobe';
+export type KeepsakeKind = 'postcard' | 'mug' | 'snowGlobe' | 'book' | 'photo' | 'shell';
 
 export type CallerActivity = 'driving' | 'work' | 'home';
 
@@ -210,7 +215,18 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
     minutesAgo: (minutes) => `${minutes}m ago`,
     hoursAgo: (hours) => `${hours}h ago`,
     missedNoteLabel: (names) => `Missed call from ${names}. Open Recents`,
-    keepsakeNames: { postcard: 'A postcard', mug: 'A coffee mug', snowGlobe: 'A snow globe' },
+    keepsakeNames: {
+      postcard: 'A postcard',
+      mug: 'A coffee mug',
+      snowGlobe: 'A snow globe',
+      book: 'A little book',
+      photo: 'A photo frame',
+      shell: 'A seashell',
+    },
+    keepsakeShortNames: { mug: 'Mug', postcard: 'Postcard', snowGlobe: 'Snow globe', book: 'Book', photo: 'Photo', shell: 'Shell' },
+    keepsakesTitle: 'Keepsakes',
+    keepsakesHint: 'Choose what each caller leaves on the keeper’s shelf',
+    keepsakesLinkHint: 'The object each caller leaves on the shelf',
     keepsakeCaption: (item, name, calls) => `${item} from ${name} · ${calls} ${calls === 1 ? 'call' : 'calls'}`,
     lampOffLabel: 'Turn the lamp off',
     lampOnLabel: 'Turn the lamp on',
@@ -329,7 +345,18 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
     minutesAgo: (minutes) => `من ${minutes} دقيقة`,
     hoursAgo: (hours) => `من ${hours} ساعة`,
     missedNoteLabel: (names) => `مكالمة فايتة من ${names}. افتحي الأخيرة`,
-    keepsakeNames: { postcard: 'كارت بوستال', mug: 'مج قهوة', snowGlobe: 'كرة تلج' },
+    keepsakeNames: {
+      postcard: 'كارت بوستال',
+      mug: 'مج قهوة',
+      snowGlobe: 'كرة تلج',
+      book: 'كتاب صغير',
+      photo: 'برواز صورة',
+      shell: 'صدفة',
+    },
+    keepsakeShortNames: { mug: 'مج', postcard: 'كارت', snowGlobe: 'كرة تلج', book: 'كتاب', photo: 'صورة', shell: 'صدفة' },
+    keepsakesTitle: 'التذكارات',
+    keepsakesHint: 'اختاري اللي كل حد بيسيبه على رف الحارس',
+    keepsakesLinkHint: 'الحاجة اللي كل حد بيسيبها على الرف',
     keepsakeCaption: (item, name, calls) => `${item} من ${name} · ${calls === 1 ? 'مكالمة واحدة' : `${calls} مكالمات`}`,
     lampOffLabel: 'اطفي النور',
     lampOnLabel: 'نوّري النور',

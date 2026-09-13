@@ -7,6 +7,7 @@ import { setRainLevel } from '../src/audio/tones';
 import { BrandHeader } from '../src/components/BrandHeader/BrandHeader';
 import { CallInfoBar } from '../src/components/CallInfoBar/CallInfoBar';
 import { DeclineButton } from '../src/components/DeclineButton/DeclineButton';
+import { Keepsake } from '../src/components/Keepsake/Keepsake';
 import { MuteButton } from '../src/components/MuteButton/MuteButton';
 import { Dock } from '../src/components/Dock/Dock';
 import { KeeperAvatar, keeperPose, KeeperReaction, KeeperSpot } from '../src/components/KeeperAvatar/KeeperAvatar';
@@ -117,21 +118,14 @@ const BOOK_SLOT: Slot = { x: 327, y: 18, w: 26, h: 30 };
 const PLANT_SLOT: Slot = { x: 122, y: 200, w: 34, h: 70 };
 const CAKE_SLOT: Slot = { x: 40, y: 224, w: 42, h: 46 };
 const SEAT_SLOT: Slot = { x: 16, y: 98, w: 120, h: 26 };
-// Tap areas for each keepsake on the shelf, around the book.
-const SHELF_SLOTS: Record<KeepsakeKind, Slot> = {
-  mug: { x: 279, y: 18, w: 25, h: 30 },
-  postcard: { x: 303, y: 20, w: 24, h: 28 },
-  snowGlobe: { x: 352, y: 16, w: 24, h: 32 },
-};
+// Each caller's place on the shelf (centre x, by caller index), around the
+// keeper's own book at x≈340. Whatever keepsake they've been given sits there.
+const CALLER_SHELF_X = [316, 291, 364];
+const shelfSlot = (idx: number): Slot => ({ x: CALLER_SHELF_X[idx] - 12, y: 16, w: 24, h: 32 });
 // The door note's tap area.
 const NOTE_SLOT: Slot = { x: 332, y: 126, w: 46, h: 48 };
 
-// What each shelf item and the plant wobble around (their base).
-const KEEPSAKE_PIVOT: Record<KeepsakeKind, [number, number]> = {
-  mug: [290, 46],
-  postcard: [316, 45],
-  snowGlobe: [364, 46],
-};
+// What the book and the plant wobble around (their base).
 const BOOK_PIVOT: [number, number] = [340, 46];
 const PLANT_PIVOT: [number, number] = [139, 268];
 
@@ -388,57 +382,6 @@ function RoomWeather({ colours, sky, phase }: { colours: CaseColours; sky: Weath
   );
 }
 
-// Little things callers leave behind, drawn on the shelf. `excited` is the
-// moment after a tap: the mug steams harder, the snow globe swirls.
-function Keepsake({ kind, colours, excited }: { kind: KeepsakeKind; colours: CaseColours; excited: boolean }) {
-  switch (kind) {
-    case 'mug':
-      return (
-        <G>
-          <Rect x={284} y={32} width={13} height={14} rx={2} fill={colours.face} stroke={colours.metal3} strokeWidth={0.8} />
-          <Path d="M297 35 q5 0 5 4.5 q0 4.5 -5 4.5" stroke={colours.metal3} strokeWidth={1.6} fill="none" />
-          <Path
-            d={excited ? 'M288 29 q-2 -4 0 -8 M290.5 28 q-2 -5 0 -10 M293 29 q-2 -4 0 -8' : 'M288 29 q-2 -3 0 -6 M293 29 q-2 -3 0 -6'}
-            stroke={colours.face}
-            strokeOpacity={excited ? 0.9 : 0.55}
-            strokeWidth={1}
-            fill="none"
-            strokeLinecap="round"
-          />
-        </G>
-      );
-    case 'postcard':
-      return (
-        <G transform="rotate(8 316 38)">
-          <Rect x={305} y={30} width={22} height={15} rx={1.5} fill="#e9f1f4" stroke={colours.metal3} strokeWidth={0.8} />
-          <Rect x={320} y={32} width={5} height={6} fill="#c0463c" />
-          <Line x1={308} y1={37} x2={317} y2={37} stroke={colours.metal3} strokeOpacity={0.6} strokeWidth={0.7} />
-          <Line x1={308} y1={40.5} x2={315} y2={40.5} stroke={colours.metal3} strokeOpacity={0.6} strokeWidth={0.7} />
-        </G>
-      );
-    case 'snowGlobe':
-      return (
-        <G>
-          <Circle cx={364} cy={33} r={9} fill="#dbe9f1" fillOpacity={0.85} stroke={colours.metal1} strokeWidth={0.8} />
-          <Path d="M364 27 L359.5 36 H368.5 Z" fill="#3f7a5a" />
-          <Circle cx={359} cy={30} r={0.9} fill="#ffffff" />
-          <Circle cx={368.5} cy={28.5} r={0.9} fill="#ffffff" />
-          <Circle cx={366.5} cy={36} r={0.9} fill="#ffffff" />
-          {excited && (
-            <G fill="#ffffff">
-              <Circle cx={361} cy={34} r={0.8} />
-              <Circle cx={367} cy={31} r={0.8} />
-              <Circle cx={360} cy={38} r={0.8} />
-              <Circle cx={365} cy={26} r={0.8} />
-              <Circle cx={369.5} cy={35} r={0.8} />
-            </G>
-          )}
-          <Rect x={355} y={40} width={18} height={6} rx={2} fill={colours.metal3} />
-        </G>
-      );
-  }
-}
-
 // A potted plant by the bed. Each tap it perks up and grows, then flowers.
 function Plant({ growth }: { growth: number }) {
   return (
@@ -578,7 +521,7 @@ export default function KeeperRoomScreen() {
     connectedCallCount,
     muted,
   } = useKeeperState();
-  const { clunk, sfx, soundEnabled, decorChoice } = useSettings();
+  const { clunk, sfx, soundEnabled, decorChoice, keepsakeFor } = useSettings();
   const callContact = useCallContact();
 
   // Briefly replaces the moment caption after something in the room is tapped.
@@ -603,7 +546,8 @@ export default function KeeperRoomScreen() {
   const [reaction, setReaction] = useState<KeeperReaction | null>(null);
   const [lookUp, setLookUp] = useState(false);
   const [plantGrowth, setPlantGrowth] = useState(0);
-  const [excitedItem, setExcitedItem] = useState<KeepsakeKind | null>(null);
+  // Which caller's keepsake was just tapped (by caller index).
+  const [excitedItem, setExcitedItem] = useState<number | null>(null);
   const pokeTimes = useRef<number[]>([]);
 
   useEffect(() => {
@@ -622,16 +566,13 @@ export default function KeeperRoomScreen() {
     return () => clearTimeout(id);
   }, [excitedItem]);
 
-  const mugWiggle = useWiggle();
-  const postcardWiggle = useWiggle();
-  const globeWiggle = useWiggle();
+  // One wobble per caller's shelf spot (three callers).
+  const shelfWiggle0 = useWiggle();
+  const shelfWiggle1 = useWiggle();
+  const shelfWiggle2 = useWiggle();
+  const shelfWiggles = [shelfWiggle0, shelfWiggle1, shelfWiggle2];
   const bookWiggle = useWiggle();
   const plantWiggle = useWiggle();
-  const keepsakeWiggle: Record<KeepsakeKind, ReturnType<typeof useWiggle>> = {
-    mug: mugWiggle,
-    postcard: postcardWiggle,
-    snowGlobe: globeWiggle,
-  };
 
   const { width: winWidth, height: winHeight } = useWindowDimensions();
   const [stageSize, setStageSize] = useState({ width: 0, height: 0 });
@@ -864,17 +805,23 @@ export default function KeeperRoomScreen() {
     setShelfCaption(t.plantCaption);
     sfx('rustle');
   };
-  const tapKeepsake = (kind: KeepsakeKind, label: string) => {
-    keepsakeWiggle[kind].play();
-    setExcitedItem(kind);
+  const tapKeepsake = (idx: number, kind: KeepsakeKind, label: string) => {
+    shelfWiggles[idx]?.play();
+    setExcitedItem(idx);
     setShelfCaption(label);
     sfx(kind === 'snowGlobe' ? 'shimmer' : 'bump');
   };
 
   // A keepsake appears once you've actually talked with that caller.
   const keepsakes = t.callers
-    .map((caller, idx) => ({ idx, kind: caller.keepsake, name: caller.name, calls: connectedCallCount(idx) }))
-    .filter((k) => k.calls > 0);
+    .map((caller, idx) => ({
+      idx,
+      // The object picked in Settings › Keepsakes, or the caller's default.
+      kind: keepsakeFor(idx, caller.keepsake),
+      name: caller.name,
+      calls: connectedCallCount(idx),
+    }))
+    .filter((k) => k.calls > 0 && k.idx < CALLER_SHELF_X.length);
   const missedNames = missedNotes.map((idx) => t.callers[idx]?.name).filter((name): name is string => !!name);
   const noteInitials = missedNames
     .slice(0, 2)
@@ -1011,8 +958,10 @@ export default function KeeperRoomScreen() {
                   <Rect x={330} y={22} width={20} height={26} rx={2} transform="rotate(-6 340 35)" fill={colours.metal1} stroke={colours.metal3} strokeWidth={1} />
                 </Wobble>
                 {keepsakes.map((k) => (
-                  <Wobble key={k.kind} pivot={KEEPSAKE_PIVOT[k.kind]} rotate={keepsakeWiggle[k.kind].rotate}>
-                    <Keepsake kind={k.kind} colours={colours} excited={excitedItem === k.kind} />
+                  <Wobble key={k.idx} pivot={[CALLER_SHELF_X[k.idx], 46]} rotate={shelfWiggles[k.idx].rotate}>
+                    <G transform={`translate(${CALLER_SHELF_X[k.idx]} 0)`}>
+                      <Keepsake kind={k.kind} colours={colours} excited={excitedItem === k.idx} />
+                    </G>
                   </Wobble>
                 ))}
 
@@ -1088,7 +1037,7 @@ export default function KeeperRoomScreen() {
               {hotspot('plant', PLANT_SLOT, t.plantCaption, tapPlant)}
               {keepsakes.map((k) => {
                 const label = t.keepsakeCaption(t.keepsakeNames[k.kind], k.name, k.calls);
-                return hotspot(`keepsake-${k.kind}`, SHELF_SLOTS[k.kind], label, () => tapKeepsake(k.kind, label));
+                return hotspot(`keepsake-${k.idx}`, shelfSlot(k.idx), label, () => tapKeepsake(k.idx, k.kind, label));
               })}
               {idle && hotspot('bed', BED_SLOT, t.napLabel, () => moveKeeper(keeperSpot === 'bed' ? 'center' : 'bed'))}
               {idle && hotspot('seat', SEAT_SLOT, t.seatLabel, () => moveKeeper(keeperSpot === 'seat' ? 'center' : 'seat'))}

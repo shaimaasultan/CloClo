@@ -1,7 +1,7 @@
 import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
 import { playClunk, playRingtone, playSfx, playTick, Sfx } from '../audio/tones';
 import type { DecorChoice } from './decorations';
-import { ToneId } from '../i18n/dictionaries';
+import { KeepsakeKind, ToneId } from '../i18n/dictionaries';
 
 // Mirrors the prototype's soundEnabled / privacyMode flags and its
 // contactTones map (caller index -> ringtone id, defaulting to 'classic').
@@ -21,6 +21,10 @@ interface SettingsValue {
   // Keeper's room decorations: follow the date, or preview a season/holiday.
   decorChoice: DecorChoice;
   setDecorChoice: (choice: DecorChoice) => void;
+  // Which keepsake each caller leaves on the shelf (like contactTones);
+  // falls back to the caller's default from the dictionary.
+  keepsakeFor: (idx: number, fallback: KeepsakeKind) => KeepsakeKind;
+  setContactKeepsake: (idx: number, kind: KeepsakeKind) => void;
 }
 
 const SettingsContext = createContext<SettingsValue | null>(null);
@@ -30,6 +34,15 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const [privacyMode, setPrivacyMode] = useState(false);
   const [contactTones, setContactTones] = useState(DEFAULT_CONTACT_TONES);
   const [decorChoice, setDecorChoice] = useState<DecorChoice>('auto');
+  const [keepsakeOverrides, setKeepsakeOverrides] = useState<Record<number, KeepsakeKind>>({});
+
+  const keepsakeFor = useCallback(
+    (idx: number, fallback: KeepsakeKind) => keepsakeOverrides[idx] ?? fallback,
+    [keepsakeOverrides]
+  );
+  const setContactKeepsake = useCallback((idx: number, kind: KeepsakeKind) => {
+    setKeepsakeOverrides((prev) => ({ ...prev, [idx]: kind }));
+  }, []);
 
   const toggleSound = useCallback(() => {
     setSoundEnabled((prev) => {
@@ -82,8 +95,23 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       sfx,
       decorChoice,
       setDecorChoice,
+      keepsakeFor,
+      setContactKeepsake,
     }),
-    [soundEnabled, toggleSound, privacyMode, togglePrivacy, toneForContact, setContactTone, tick, clunk, sfx, decorChoice]
+    [
+      soundEnabled,
+      toggleSound,
+      privacyMode,
+      togglePrivacy,
+      toneForContact,
+      setContactTone,
+      tick,
+      clunk,
+      sfx,
+      decorChoice,
+      keepsakeFor,
+      setContactKeepsake,
+    ]
   );
 
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;

@@ -46,6 +46,18 @@ export default function SettingsScreen() {
           </View>
           <ChevronIcon color="rgba(239,230,211,.4)" size={16} direction="forward" isRtl={isRtl} />
         </Pressable>
+
+        <Pressable
+          onPress={() => router.push('/keepsakes')}
+          accessibilityRole="button"
+          style={[styles.link, styles.linkFollowing, { flexDirection: rowDir }]}
+        >
+          <View style={[styles.text, textCol]}>
+            <Text style={[styles.label, { textAlign }]}>{t.keepsakesTitle}</Text>
+            <Text style={[styles.hint, { textAlign }]}>{t.keepsakesLinkHint}</Text>
+          </View>
+          <ChevronIcon color="rgba(239,230,211,.4)" size={16} direction="forward" isRtl={isRtl} />
+        </Pressable>
       </ScrollView>
     </ScreenShell>
   );
@@ -72,6 +84,8 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: 'rgba(255,255,255,.06)',
   },
+  // A second link directly under the first: no extra gap above it.
+  linkFollowing: { marginTop: 0 },
   text: { flex: 1, minWidth: 0, gap: 2 },
   label: { color: '#f3ecdd', fontSize: 13, fontWeight: '600' },
   hint: { color: 'rgba(239,230,211,.5)', fontSize: 10, fontFamily: 'monospace' },
