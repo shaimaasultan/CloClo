@@ -12,6 +12,7 @@ import { WeatherLayer } from '../src/components/WeatherLayer/WeatherLayer';
 import { useKeeperState } from '../src/state/KeeperStateContext';
 import { useLang } from '../src/state/LangContext';
 import { usePalette } from '../src/state/PaletteContext';
+import { useSettings } from '../src/state/SettingsContext';
 
 const CHROME_HEIGHT = 275; // rough budget for the brand header + topBar + dock + readout row above the stage
 
@@ -21,6 +22,7 @@ export default function DialScreen() {
   const { colours } = usePalette();
   const [dialed, setDialed] = useState('');
   const { callState, setCallState, sky, mood } = useKeeperState();
+  const { privacyMode, tick, clunk } = useSettings();
   const { width: winWidth, height: winHeight } = useWindowDimensions();
 
   const rowDir = isRtl ? 'row-reverse' : 'row';
@@ -36,10 +38,20 @@ export default function DialScreen() {
   const handsetWidth = dialSize * (220 / 400);
   const handsetRise = dialSize * (42 / 400);
   const handleHandsetPress = () => {
+    const opening = callState !== 'active';
+    clunk(opening);
     if (callState === 'ringing') setCallState('active'); // answer
     else if (callState === 'active') setCallState('idle'); // hang up
-    else setCallState('active'); // tap-to-call, until Contacts/dialing wires a real target
+    else setCallState('active'); // tap-to-call a dialled number
   };
+
+  const handleDigit = (digit: string) => {
+    tick();
+    setDialed((prev) => (prev + digit).slice(0, 15));
+  };
+
+  // Privacy mode masks the readout digit-for-digit, as the prototype does.
+  const readout = dialed ? (privacyMode ? '•'.repeat(dialed.length) : dialed) : '—';
 
   return (
     <View style={[styles.root, { backgroundColor: colours.body2 }]}>
@@ -55,7 +67,7 @@ export default function DialScreen() {
           <View style={styles.readout}>
             <Text style={styles.readoutLabel}>{t.readoutLabel}</Text>
             <Text style={[styles.readoutDigits, { color: colours.highlight }]}>
-              {dialed || '—'}
+              {readout}
             </Text>
             {dialed.length > 0 && (
               <Pressable onPress={() => setDialed('')} style={styles.clearBtn}>
@@ -82,7 +94,7 @@ export default function DialScreen() {
               <RotaryDial
                 size={dialSize}
                 colours={colours}
-                onDigit={(d) => setDialed((prev) => (prev + d).slice(0, 15))}
+                onDigit={handleDigit}
                 centerContent={
                   <KeeperAvatar
                     // 48-unit avatar at the prototype's 2.32x hub scale

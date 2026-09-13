@@ -7,11 +7,13 @@ import { DockIcon, DockKey } from '../DockIcon/DockIcon';
 
 const DOCK_KEYS: DockKey[] = ['dial', 'contacts', 'recents', 'keeper', 'sounds', 'settings'];
 
-// Only Dial and Keeper have real screens so far — the rest render inert,
-// same as on the prototype's dock before their screens existed.
-const DOCK_ROUTES: Partial<Record<DockKey, string>> = {
+const DOCK_ROUTES: Record<DockKey, string> = {
   dial: '/',
+  contacts: '/contacts',
+  recents: '/recents',
   keeper: '/room',
+  sounds: '/sounds',
+  settings: '/settings',
 };
 
 interface DockProps {

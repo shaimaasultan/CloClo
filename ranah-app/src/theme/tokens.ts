@@ -71,6 +71,16 @@ export const PALETTES: Record<PaletteName, CaseColours> = {
   },
 };
 
+export const PALETTE_ORDER: PaletteName[] = ['oxblood', 'verdigris', 'ivory', 'graphite'];
+
+// Swatch fill for each palette picker button — the palette's body1 colour.
+export const PALETTE_SWATCH_HEX: Record<PaletteName, string> = {
+  oxblood: '#6b2b26',
+  verdigris: '#1f3d34',
+  ivory: '#cbb994',
+  graphite: '#2b2b2e',
+};
+
 // Neutral app chrome (the light "prototype harness" page background is dropped —
 // the app itself is always the dark phone-screen look, since that's the product).
 export const APP_INK = '#efe6d3';

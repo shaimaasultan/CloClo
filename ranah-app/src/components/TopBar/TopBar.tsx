@@ -3,19 +3,11 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import { useKeeperState } from '../../state/KeeperStateContext';
 import { useLang } from '../../state/LangContext';
 import { usePalette } from '../../state/PaletteContext';
-import { PaletteName } from '../../theme/tokens';
+import { PALETTE_ORDER, PALETTE_SWATCH_HEX } from '../../theme/tokens';
 import { SkyIcon } from '../SkyIcon/SkyIcon';
 import { WeatherKind } from '../WeatherLayer/WeatherLayer';
 
-const PALETTE_ORDER: PaletteName[] = ['oxblood', 'verdigris', 'ivory', 'graphite'];
 const SKY_ORDER: WeatherKind[] = ['clear', 'rain', 'snow', 'storm'];
-
-const PALETTE_SWATCH_HEX: Record<PaletteName, string> = {
-  oxblood: '6b2b26',
-  verdigris: '1f3d34',
-  ivory: 'cbb994',
-  graphite: '2b2b2e',
-};
 
 // The caller's-sky and case-colour pickers sit right under the dock, so
 // they're reachable from every screen the dock renders on, same as the
@@ -51,7 +43,7 @@ export function TopBar() {
             onPress={() => setPalette(name)}
             style={[
               styles.swatch,
-              { backgroundColor: `#${PALETTE_SWATCH_HEX[name]}` },
+              { backgroundColor: PALETTE_SWATCH_HEX[name] },
               paletteName === name && styles.swatchActive,
             ]}
           />

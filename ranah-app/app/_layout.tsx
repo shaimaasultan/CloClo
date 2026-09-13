@@ -4,6 +4,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { KeeperStateProvider } from '../src/state/KeeperStateContext';
 import { LangProvider } from '../src/state/LangContext';
 import { PaletteProvider } from '../src/state/PaletteContext';
+import { SettingsProvider } from '../src/state/SettingsContext';
 
 export default function RootLayout() {
   return (
@@ -11,9 +12,11 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <LangProvider>
           <PaletteProvider>
-            <KeeperStateProvider>
-              <Stack screenOptions={{ headerShown: false }} />
-            </KeeperStateProvider>
+            <SettingsProvider>
+              <KeeperStateProvider>
+                <Stack screenOptions={{ headerShown: false }} />
+              </KeeperStateProvider>
+            </SettingsProvider>
           </PaletteProvider>
         </LangProvider>
       </SafeAreaProvider>

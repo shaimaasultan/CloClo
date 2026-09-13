@@ -26,6 +26,42 @@ export interface Dictionary {
   moments: string[];
   skyPrefix: string;
   skyNames: Record<'clear' | 'rain' | 'snow' | 'storm', string>;
+  contactsTitle: string;
+  recentsTitle: string;
+  callTypeNames: Record<CallType, string>;
+  soundsTitle: string;
+  soundsHint: string;
+  toneNames: Record<ToneId, string>;
+  settingsTitle: string;
+  soundLabel: string;
+  soundHint: string;
+  privacyLabel: string;
+  privacyHint: string;
+  privacyHidden: string;
+  advancedTitle: string;
+  advancedHint: string;
+  languageLabel: string;
+  paletteLabel: string;
+  paletteNames: Record<'oxblood' | 'verdigris' | 'ivory' | 'graphite', string>;
+  callers: Caller[];
+  recents: RecentCall[];
+}
+
+export type CallType = 'incoming' | 'outgoing' | 'missed';
+export type ToneId = 'classic' | 'chime' | 'buzz' | 'pulse';
+
+export interface Caller {
+  name: string;
+  meta: string;
+  sky: 'clear' | 'rain' | 'snow' | 'storm';
+  number: string;
+}
+
+export interface RecentCall {
+  callerIdx: number;
+  type: CallType;
+  time: string;
+  meta: string;
 }
 
 export const DICTIONARIES: Record<Lang, Dictionary> = {
@@ -55,6 +91,34 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
     moments: ['Reading quietly', 'Humming a tune', 'Waving hello'],
     skyPrefix: 'Caller’s sky',
     skyNames: { clear: 'Clear', rain: 'Rain', snow: 'Snow', storm: 'Storm' },
+    contactsTitle: 'Contacts',
+    recentsTitle: 'Recents',
+    callTypeNames: { incoming: 'Incoming', outgoing: 'Outgoing', missed: 'Missed' },
+    soundsTitle: 'Sounds',
+    soundsHint: 'Choose how each caller sounds',
+    toneNames: { classic: 'Classic', chime: 'Chime', buzz: 'Retro buzz', pulse: 'Digital pulse' },
+    settingsTitle: 'Settings',
+    soundLabel: 'Sound effects',
+    soundHint: 'Dial ticks, clunks, and ringtones',
+    privacyLabel: 'Privacy mode',
+    privacyHint: 'Hides dialled numbers and recent calls',
+    privacyHidden: 'Hidden while Privacy mode is on',
+    advancedTitle: 'Advanced settings',
+    advancedHint: 'Language and case colour',
+    languageLabel: 'Language',
+    paletteLabel: 'Case colour',
+    paletteNames: { oxblood: 'Oxblood', verdigris: 'Verdigris', ivory: 'Ivory', graphite: 'Graphite' },
+    callers: [
+      { name: 'Nadia', meta: 'Driving · light rain · 9:42 PM their time', sky: 'rain', number: '0100 214 7788' },
+      { name: 'Omar', meta: 'At work · clear skies · 2:15 PM their time', sky: 'clear', number: '0122 356 4190' },
+      { name: 'Mama', meta: 'At home · snow falling · 11:05 PM their time', sky: 'snow', number: '0111 908 2234' },
+    ],
+    recents: [
+      { callerIdx: 0, type: 'incoming', time: '2m ago', meta: 'Driving · light rain · 9:42 PM their time' },
+      { callerIdx: 1, type: 'outgoing', time: 'Yesterday', meta: 'At the gym · clear skies · 6:30 PM their time' },
+      { callerIdx: 2, type: 'missed', time: 'Yesterday', meta: 'At home · snow falling · 11:20 PM their time' },
+      { callerIdx: 0, type: 'outgoing', time: 'Monday', meta: 'At home · clear skies · 8:00 AM their time' },
+    ],
   },
   ar: {
     dir: 'rtl',
@@ -87,5 +151,33 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
       snow: 'تلج',
       storm: 'عاصفة',
     },
+    contactsTitle: 'جهات الاتصال',
+    recentsTitle: 'الأخيرة',
+    callTypeNames: { incoming: 'واردة', outgoing: 'صادرة', missed: 'فايتة' },
+    soundsTitle: 'نغمات',
+    soundsHint: 'اختاري نغمة كل حد بيتصل',
+    toneNames: { classic: 'كلاسيك', chime: 'رنة خفيفة', buzz: 'رنة قديمة', pulse: 'نبضة رقمية' },
+    settingsTitle: 'الإعدادات',
+    soundLabel: 'المؤثرات الصوتية',
+    soundHint: 'صوت القرص، السماعة، والنغمات',
+    privacyLabel: 'وضع الخصوصية',
+    privacyHint: 'بيخفي الأرقام اللي اتطلبت والمكالمات الأخيرة',
+    privacyHidden: 'مخفية أثناء وضع الخصوصية',
+    advancedTitle: 'إعدادات متقدمة',
+    advancedHint: 'اللغة ولون الجسم',
+    languageLabel: 'اللغة',
+    paletteLabel: 'لون الجسم',
+    paletteNames: { oxblood: 'عنّابي', verdigris: 'أخضر نحاسي', ivory: 'عاجي', graphite: 'غرافيت' },
+    callers: [
+      { name: 'نادية', meta: 'بتسوق · مطر خفيف · 9:42 مساءً عندها', sky: 'rain', number: '0100 214 7788' },
+      { name: 'عمر', meta: 'في الشغل · جو صافي · 2:15 الضهر عنده', sky: 'clear', number: '0122 356 4190' },
+      { name: 'ماما', meta: 'في البيت · بينزل تلج · 11:05 بالليل عندها', sky: 'snow', number: '0111 908 2234' },
+    ],
+    recents: [
+      { callerIdx: 0, type: 'incoming', time: 'من دقيقتين', meta: 'بتسوق · مطر خفيف · 9:42 مساءً عندها' },
+      { callerIdx: 1, type: 'outgoing', time: 'إمبارح', meta: 'في الجيم · جو صافي · 6:30 المغرب عنده' },
+      { callerIdx: 2, type: 'missed', time: 'إمبارح', meta: 'في البيت · بينزل تلج · 11:20 بالليل عندها' },
+      { callerIdx: 0, type: 'outgoing', time: 'الإتنين', meta: 'في البيت · جو صافي · 8:00 الصبح عندها' },
+    ],
   },
 };
