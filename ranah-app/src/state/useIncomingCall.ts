@@ -16,6 +16,6 @@ export function useIncomingCall() {
     const idx = Math.floor(Math.random() * t.callers.length);
     setSky(t.callers[idx].sky);
     startRinging(idx);
-    router.navigate('/room');
+    router.dismissTo('/room');
   }, [callState, t, setSky, startRinging, router]);
 }

@@ -40,11 +40,12 @@ export function Dock({ active }: DockProps) {
         const route = DOCK_ROUTES[key];
         if (route && !isActive) {
           return (
-            // navigate (not push): if the target screen is already sitting
-            // in the stack, this pops back to that instance instead of
-            // stacking a duplicate — two mounted copies of the same screen
-            // would double up on that screen's <Defs> element ids.
-            <Pressable key={key} onPress={() => router.navigate(route as never)} accessibilityRole="button">
+            // dismissTo, not navigate: in this Expo Router, navigate pushes a
+            // new copy every time, so each dock tap stacked another mounted
+            // screen. dismissTo pops back to the screen if it's already in the
+            // stack and otherwise replaces the current one — the dock behaves
+            // like tabs and the stack can't grow.
+            <Pressable key={key} onPress={() => router.dismissTo(route as never)} accessibilityRole="button">
               {content}
             </Pressable>
           );

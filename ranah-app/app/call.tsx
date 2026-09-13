@@ -1,4 +1,4 @@
-import { Redirect } from 'expo-router';
+import { useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, TextStyle, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -73,6 +73,7 @@ function CallControl({ label, accessibilityLabel, onPress, checked, variant, chi
 // Clarity / End controls, and a live transcript where every line shows the
 // original speech and its translation. Only reachable by answering a call.
 export default function CallScreen() {
+  const router = useRouter();
   const { t, isRtl } = useLang();
   const { colours } = usePalette();
   const { callState, setCallState, ringerIdx, mood, sky } = useKeeperState();
@@ -123,7 +124,12 @@ export default function CallScreen() {
 
   // Hanging up (or landing here without a live call) sends you back to the
   // dial — this screen only exists for the length of an answered call.
-  if (!live || !caller) return <Redirect href="/" />;
+  // dismissTo rather than a <Redirect>: a redirect replaces this screen with
+  // a fresh dial, which stacks a second dial on top of the one underneath.
+  useEffect(() => {
+    if (!live || !caller) router.dismissTo('/');
+  }, [live, caller, router]);
+  if (!live || !caller) return null;
 
   const endCall = () => {
     clunk(false);

@@ -693,7 +693,7 @@ export default function KeeperRoomScreen() {
   const answerCall = () => {
     clunk(true);
     setCallState('active');
-    router.navigate('/call');
+    router.push('/call');
   };
 
   const declineCall = () => setCallState('idle');
@@ -1038,7 +1038,7 @@ export default function KeeperRoomScreen() {
                 birthdayName &&
                 hotspot('cake', CAKE_SLOT, t.birthdayCakeLabel(birthdayName), () => callContact(decor.birthdayIdx as number))}
               {!doorOpen && missedNames.length > 0 &&
-                hotspot('missed-note', NOTE_SLOT, t.missedNoteLabel(missedNames.join(', ')), () => router.navigate('/recents'))}
+                hotspot('missed-note', NOTE_SLOT, t.missedNoteLabel(missedNames.join(', ')), () => router.dismissTo('/recents'))}
 
               <GestureDetector gesture={keeperGesture}>
                 <Animated.View

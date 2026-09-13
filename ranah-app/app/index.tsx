@@ -44,7 +44,7 @@ export default function DialScreen() {
     if (callState === 'ringing') {
       // answer — straight into the live call screen with its transcript
       setCallState('active');
-      router.navigate('/call');
+      router.push('/call');
     }
     else if (callState === 'active') setCallState('idle'); // hang up
     else setCallState('active'); // tap-to-call a dialled number
@@ -93,7 +93,7 @@ export default function DialScreen() {
                     variant="hub"
                     callerActivity={ringerIdx !== null ? t.callers[ringerIdx].activity : undefined}
                     accessibilityLabel={t.roomTitle}
-                    onPress={() => router.navigate('/room')}
+                    onPress={() => router.dismissTo('/room')}
                   />
                 }
               />

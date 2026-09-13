@@ -22,7 +22,7 @@ export function useCallContact() {
       setSky(caller.sky);
       startCall(idx);
       clunk(true);
-      router.navigate('/');
+      router.dismissTo('/');
     },
     [callState, t, setSky, startCall, clunk, router]
   );

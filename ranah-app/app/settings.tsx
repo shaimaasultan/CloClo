@@ -35,7 +35,8 @@ export default function SettingsScreen() {
         </View>
 
         <Pressable
-          onPress={() => router.navigate('/advanced')}
+          // A child screen on top of Settings; its back link dismisses it.
+          onPress={() => router.push('/advanced')}
           accessibilityRole="button"
           style={[styles.link, { flexDirection: rowDir }]}
         >
