@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { WeatherKind } from '../components/WeatherLayer/WeatherLayer';
 import { CallType, DICTIONARIES } from '../i18n/dictionaries';
+import { readPersisted, usePersist } from './persist';
 
 export type CallState = 'idle' | 'ringing' | 'active';
 export type KeeperMood = 'neutral' | 'bored' | 'happy';
@@ -17,7 +18,7 @@ const MOOD_POLL_MS = 4000;
 const RING_TIMEOUT_MS = 20000;
 const CALL_LOG_LIMIT = 30;
 
-// A call made or received in this session.
+// A call made or received in the app (kept across restarts).
 export interface LoggedCall {
   contactId: string;
   type: CallType;
@@ -53,7 +54,7 @@ interface KeeperStateValue {
   dialed: string;
   appendDigit: (digit: string) => void;
   clearDialed: () => void;
-  // This session's calls, newest first.
+  // Calls made in the app (saved across restarts), newest first.
   callLog: LoggedCall[];
   // Contacts whose missed calls the keeper has pinned to the door, newest
   // first; cleared once Recents has been seen.
@@ -77,8 +78,10 @@ export function KeeperStateProvider({ children }: { children: React.ReactNode })
   const [momentIndex, setMomentIndex] = useState(0);
   const [ringerId, setRingerId] = useState<string | null>(null);
   const [dialed, setDialed] = useState('');
-  const [callLog, setCallLog] = useState<LoggedCall[]>([]);
-  const [missedNotes, setMissedNotes] = useState<string[]>(SAMPLE_MISSED);
+  const [callLog, setCallLog] = useState<LoggedCall[]>(() => readPersisted('callLog', [], Array.isArray));
+  const [missedNotes, setMissedNotes] = useState<string[]>(() => readPersisted('missedNotes', SAMPLE_MISSED, Array.isArray));
+  usePersist('callLog', callLog);
+  usePersist('missedNotes', missedNotes);
   const [muted, setMuted] = useState(false);
 
   const lastCallEndTime = useRef(0);

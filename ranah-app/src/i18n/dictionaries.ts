@@ -93,6 +93,7 @@ export interface Dictionary {
   justNow: string;
   minutesAgo: (minutes: number) => string;
   hoursAgo: (hours: number) => string;
+  daysAgo: (days: number) => string;
   // Accessibility label for the missed-call sticky note on the room's door.
   missedNoteLabel: (names: string) => string;
   keepsakeNames: Record<KeepsakeKind, string>;
@@ -261,6 +262,7 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
     justNow: 'Just now',
     minutesAgo: (minutes) => `${minutes}m ago`,
     hoursAgo: (hours) => `${hours}h ago`,
+    daysAgo: (days) => (days === 1 ? 'Yesterday' : `${days}d ago`),
     missedNoteLabel: (names) => `Missed call from ${names}. Open Recents`,
     keepsakeNames: {
       postcard: 'A postcard',
@@ -410,6 +412,7 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
     justNow: 'دلوقتي',
     minutesAgo: (minutes) => `من ${minutes} دقيقة`,
     hoursAgo: (hours) => `من ${hours} ساعة`,
+    daysAgo: (days) => (days === 1 ? 'إمبارح' : `من ${days} يوم`),
     missedNoteLabel: (names) => `مكالمة فايتة من ${names}. افتحي الأخيرة`,
     keepsakeNames: {
       postcard: 'كارت بوستال',

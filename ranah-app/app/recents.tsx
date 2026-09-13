@@ -10,12 +10,13 @@ import { useLang } from '../src/state/LangContext';
 import { useSettings } from '../src/state/SettingsContext';
 import { useCallContact } from '../src/state/useCallContact';
 
-// "Just now" / "5m ago" / "2h ago" for this session's calls.
+// "Just now" / "5m ago" / "2h ago" / "3d ago" for calls made in the app.
 function relativeTime(t: Dictionary, at: number, now: number) {
   const minutes = Math.floor((now - at) / 60000);
   if (minutes < 1) return t.justNow;
   if (minutes < 60) return t.minutesAgo(minutes);
-  return t.hoursAgo(Math.floor(minutes / 60));
+  if (minutes < 24 * 60) return t.hoursAgo(Math.floor(minutes / 60));
+  return t.daysAgo(Math.floor(minutes / (24 * 60)));
 }
 
 function toRecent(t: Dictionary, entry: LoggedCall, now: number, meta: string): RecentCall {
@@ -51,7 +52,7 @@ export default function RecentsScreen() {
     return () => clearInterval(id);
   }, []);
 
-  // This session's calls first, then the sample history — minus anyone
+  // Calls made in the app first, then the sample history — minus anyone
   // who has since been deleted from Contacts.
   const entries = [
     ...callLog.map((entry) => toRecent(t, entry, now, contactById(entry.contactId)?.meta ?? '')),

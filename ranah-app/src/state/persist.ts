@@ -1,12 +1,13 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect } from 'react';
 
-// What survives a restart: contacts, settings, language and case colour.
+// What survives a restart: contacts, settings, language, case colour and
+// call history (Recents and the missed-call note).
 // Everything is read once before the app renders (see PersistGate), so each
 // provider can start from its saved value without a flash of defaults.
-export type PersistKey = 'contacts' | 'settings' | 'lang' | 'palette';
+export type PersistKey = 'contacts' | 'settings' | 'lang' | 'palette' | 'callLog' | 'missedNotes';
 
-const KEYS: PersistKey[] = ['contacts', 'settings', 'lang', 'palette'];
+const KEYS: PersistKey[] = ['contacts', 'settings', 'lang', 'palette', 'callLog', 'missedNotes'];
 const PREFIX = 'cloclo:';
 const cache = new Map<string, unknown>();
 let hydration: Promise<void> | null = null;

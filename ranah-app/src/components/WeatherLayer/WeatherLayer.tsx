@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import { Animated, Easing } from 'react-native';
 import Svg, { Circle, G, Line, Rect } from 'react-native-svg';
+import { useLang } from '../../state/LangContext';
 import { pointer } from '../../theme/pointer';
 
 export type WeatherKind = 'clear' | 'rain' | 'snow' | 'storm';
@@ -126,7 +127,10 @@ function Sun({ width, topInset }: { width: number; topInset: number }) {
   // window's top-right corner (which lands on the nav chrome on short
   // screens). A little right-of-centre reads as "sun over the phone's
   // shoulder" rather than dead-centre, which would compete with the dial.
-  const cx = width * 0.68;
+  // In Arabic it moves to the left, clear of the right-aligned names and
+  // status lines on the list screens.
+  const { isRtl } = useLang();
+  const cx = width * (isRtl ? 0.32 : 0.68);
   const cy = topInset + 36;
   const rays = Array.from({ length: 8 });
   return (
