@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, Pressable, View } from 'react-native';
 import Svg, { Circle, Ellipse, G, Line, Path, Rect, Text as SvgText } from 'react-native-svg';
+import type { CallerActivity } from '../../i18n/dictionaries';
 import type { CallState, KeeperMood, RoomProp } from '../../state/KeeperStateContext';
 import { useReducedMotion } from '../../state/useReducedMotion';
 import { USE_NATIVE_DRIVER } from '../../theme/animation';
@@ -23,8 +24,23 @@ const RAINCOAT_SHADE = '#b98f25';
 const WOOL = '#b8463e';
 const WOOL_LIGHT = '#ede5d4';
 const SHIVER = '#cfe3f7';
+const SLIPPER = '#e9c3d2';
+const SLIPPER_FLUFF = '#f7e6ec';
+const TIE = '#3d5a8a';
+const TIE_KNOT = '#2f4870';
+const WHEEL = '#2e2a2e';
 
-export type KeeperPose = 'sleep' | 'book' | 'music' | 'wave' | 'alert' | 'onCall';
+export type KeeperPose = 'sleep' | 'book' | 'music' | 'wave' | 'alert' | 'onCall' | 'peek';
+
+// Where the keeper is in their room: the middle, napping on the bed, or
+// peeking out of the front door.
+export type KeeperSpot = 'center' | 'bed' | 'door';
+
+// A short-lived reaction to being poked; `at` lets the same reaction replay.
+export interface KeeperReaction {
+  kind: 'giggle' | 'grumpy';
+  at: number;
+}
 
 // What the keeper is doing, from the call first, then mood, then the room's
 // current moment. On the dial it dozes in the hub between calls; in its room
@@ -33,10 +49,13 @@ export function keeperPose(
   variant: 'hub' | 'room',
   callState: CallState,
   mood: KeeperMood,
-  activity: RoomProp
+  activity: RoomProp,
+  spot: KeeperSpot = 'center'
 ): KeeperPose {
   if (callState === 'ringing') return 'alert';
   if (callState === 'active') return 'onCall';
+  if (spot === 'bed') return 'sleep';
+  if (spot === 'door') return 'peek';
   if (mood === 'happy') return 'wave';
   if (variant === 'hub') return 'sleep';
   if (activity === 'book') return 'book';
@@ -65,6 +84,17 @@ interface KeeperAvatarProps {
   // On a call: drive the mouth from outside (e.g. as transcript lines
   // arrive). Left undefined, the keeper chatters on its own.
   talking?: boolean;
+  // While a call rings or is live, the keeper mirrors what the caller is
+  // doing: slippers for home, a tie for work, a steering wheel for driving.
+  callerActivity?: CallerActivity;
+  // Late at night the keeper's eyes droop between calls.
+  sleepy?: boolean;
+  // Room interactions: where the keeper is, a poke reaction, glancing up at
+  // the lamp, and how hard they shiver (an open window lets the storm in).
+  spot?: KeeperSpot;
+  reaction?: KeeperReaction | null;
+  lookUp?: boolean;
+  shiverStrength?: number;
   onPress?: () => void;
   accessibilityLabel?: string;
 }
@@ -81,16 +111,23 @@ export function KeeperAvatar({
   activity = 'book',
   variant,
   talking,
+  callerActivity,
+  sleepy = false,
+  spot = 'center',
+  reaction = null,
+  lookUp = false,
+  shiverStrength = 1,
   onPress,
   accessibilityLabel,
 }: KeeperAvatarProps) {
   const reduceMotion = useReducedMotion();
-  const pose = keeperPose(variant, callState, mood, activity);
+  const pose = keeperPose(variant, callState, mood, activity, spot);
   const width = (size * VB_W) / VB_H;
 
   const bob = useRef(new Animated.Value(0)).current;
   const shiver = useRef(new Animated.Value(0)).current;
   const wave = useRef(new Animated.Value(0.5)).current;
+  const hop = useRef(new Animated.Value(0)).current;
   const [blink, setBlink] = useState(false);
   const [mouthOpen, setMouthOpen] = useState(false);
 
@@ -128,10 +165,23 @@ export function KeeperAvatar({
       return;
     }
     const step = (toValue: number) => Animated.timing(shiver, { toValue, duration: 55, useNativeDriver: USE_NATIVE_DRIVER });
-    const loop = Animated.loop(Animated.sequence([step(-1), step(1), step(-1), step(1), step(0), Animated.delay(700)]));
+    // Stronger shivers come more often, not just wider.
+    const loop = Animated.loop(
+      Animated.sequence([step(-1), step(1), step(-1), step(1), step(0), Animated.delay(Math.round(700 / shiverStrength))])
+    );
     loop.start();
     return () => loop.stop();
-  }, [isStorm, reduceMotion, shiver]);
+  }, [isStorm, reduceMotion, shiver, shiverStrength]);
+
+  // A little hop each time they're poked.
+  const reactionAt = reaction?.at;
+  useEffect(() => {
+    if (reactionAt === undefined || reduceMotion) return;
+    Animated.sequence([
+      Animated.timing(hop, { toValue: 1, duration: 120, easing: Easing.out(Easing.quad), useNativeDriver: USE_NATIVE_DRIVER }),
+      Animated.timing(hop, { toValue: 0, duration: 180, easing: Easing.in(Easing.quad), useNativeDriver: USE_NATIVE_DRIVER }),
+    ]).start();
+  }, [reactionAt, reduceMotion, hop]);
 
   // Waving arm.
   useEffect(() => {
@@ -185,11 +235,20 @@ export function KeeperAvatar({
   }, [pose, reduceMotion, talking]);
 
   const bobY = bob.interpolate({ inputRange: [0, 1], outputRange: [0, isAlert ? -size * 0.07 : -size * 0.012] });
-  const shiverX = shiver.interpolate({ inputRange: [-1, 1], outputRange: [-size * 0.01, size * 0.01] });
+  const shiverX = shiver.interpolate({
+    inputRange: [-1, 1],
+    outputRange: [-size * 0.01 * shiverStrength, size * 0.01 * shiverStrength],
+  });
+  const hopY = hop.interpolate({ inputRange: [0, 1], outputRange: [0, -size * 0.05] });
   const waveRotate = wave.interpolate({ inputRange: [0, 1], outputRange: ['rotate(-20)', 'rotate(16)'] });
 
   const clothing = sky === 'rain' ? RAINCOAT : isStorm ? colours.body1 : colours.metal2;
-  const umbrellaHeld = sky === 'rain' && (pose === 'sleep' || pose === 'onCall');
+  // Driving callers put a steering wheel in the keeper's free hand, which
+  // then can't also hold the umbrella (it leans beside them instead).
+  const drivingWheel = callerActivity === 'driving' && pose === 'onCall';
+  const umbrellaHeld = sky === 'rain' && (pose === 'sleep' || (pose === 'onCall' && !drivingWheel));
+  const shoeFill = callerActivity === 'home' ? SLIPPER : SHOES;
+  const shoeRx = callerActivity === 'home' ? 7.5 : 6.5;
   const umbrellaLeaning = sky === 'rain' && !umbrellaHeld;
 
   const arm = (d: string, hand: [number, number]) => (
@@ -202,9 +261,13 @@ export function KeeperAvatar({
   const restRight = () => arm('M65 80 Q72 92 69 102', [69, 102]);
 
   const eyeKind = (() => {
+    if (reaction?.kind === 'giggle') return 'happy';
+    if (reaction?.kind === 'grumpy') return 'droopy';
+    if (lookUp && pose !== 'sleep') return 'up';
     if (pose === 'sleep' || blink) return 'closed';
+    if (pose === 'peek') return 'side';
     if (pose === 'alert') return 'wide';
-    if (mood === 'bored' && callState === 'idle') return 'droopy';
+    if ((mood === 'bored' || sleepy) && callState === 'idle') return 'droopy';
     if (pose === 'book') return 'down';
     return 'open';
   })();
@@ -238,6 +301,32 @@ export function KeeperAvatar({
             <Line x1={55} y1={53} x2={61} y2={53} stroke={HAIR} strokeWidth={1.2} strokeLinecap="round" />
           </G>
         );
+      case 'happy':
+        // Giggling: eyes squeezed into little arches.
+        return (
+          <G stroke={HAIR} strokeWidth={1.6} fill="none" strokeLinecap="round">
+            <Path d="M38.5 53.5 q3.5 -4 7 0" />
+            <Path d="M54.5 53.5 q3.5 -4 7 0" />
+          </G>
+        );
+      case 'up':
+        // Glancing up at the lamp.
+        return (
+          <G>
+            <Circle cx={42} cy={48.8} r={2.5} fill={INK} />
+            <Circle cx={58} cy={48.8} r={2.5} fill={INK} />
+            <Circle cx={42.8} cy={48} r={0.8} fill="#fff" />
+            <Circle cx={58.8} cy={48} r={0.8} fill="#fff" />
+          </G>
+        );
+      case 'side':
+        // Looking out of the door.
+        return (
+          <G>
+            <Circle cx={44.5} cy={51.5} r={2.5} fill={INK} />
+            <Circle cx={60.5} cy={51.5} r={2.5} fill={INK} />
+          </G>
+        );
       case 'down':
         return (
           <G>
@@ -258,7 +347,15 @@ export function KeeperAvatar({
   };
 
   const renderBrows = () => {
-    if (pose === 'alert') {
+    if (reaction?.kind === 'grumpy') {
+      return (
+        <G stroke={HAIR} strokeWidth={1.6} strokeLinecap="round">
+          <Line x1={37} y1={43.5} x2={45} y2={46.5} />
+          <Line x1={55} y1={46.5} x2={63} y2={43.5} />
+        </G>
+      );
+    }
+    if (pose === 'alert' || (lookUp && pose !== 'sleep')) {
       return (
         <G stroke={HAIR} strokeWidth={1.4} fill="none" strokeLinecap="round">
           <Path d="M37 45 q5 -3 10 0" />
@@ -279,6 +376,8 @@ export function KeeperAvatar({
 
   const renderMouth = () => {
     const stroke = { stroke: HAIR, strokeWidth: 1.3, fill: 'none', strokeLinecap: 'round' as const };
+    if (reaction?.kind === 'giggle') return <Path d="M43 60 q7 8 14 0 Z" fill={INK} />;
+    if (reaction?.kind === 'grumpy') return <Path d="M45.5 65 q4.5 -3.5 9 0" {...stroke} />;
     switch (pose) {
       case 'sleep':
         return <Path d="M47 62 q3 2 6 0" {...stroke} />;
@@ -349,6 +448,13 @@ export function KeeperAvatar({
         <G>
           <Path d="M31 106 Q29 78 50 73 Q71 78 69 106 Z" fill={colours.metal2} />
           <Path d="M43 74 q7 6 14 0" stroke={colours.metal3} strokeWidth={1.2} fill="none" strokeLinecap="round" />
+          {callerActivity === 'work' && !isStorm && (
+            // Dressed for the office, like the caller.
+            <G>
+              <Path d="M47.5 77 L52.5 77 L54 81 L51.6 96 L50 98.5 L48.4 96 L46 81 Z" fill={TIE} />
+              <Rect x={47.2} y={75.5} width={5.6} height={4} rx={1.2} fill={TIE_KNOT} />
+            </G>
+          )}
         </G>
       )}
       {sky === 'snow' && (
@@ -412,7 +518,24 @@ export function KeeperAvatar({
               <Circle cx={26} cy={60} r={1.4} fill={colours.metal1} />
             </G>
             {arm('M35 80 Q22 74 27 60', [28, 58])}
+            {drivingWheel && (
+              <G>
+                <Circle cx={60} cy={101} r={12} fill="none" stroke={WHEEL} strokeWidth={3} />
+                <Circle cx={60} cy={101} r={3} fill={WHEEL} />
+                <Line x1={60} y1={101} x2={49} y2={104} stroke={WHEEL} strokeWidth={2} />
+                <Line x1={60} y1={101} x2={71} y2={104} stroke={WHEEL} strokeWidth={2} />
+                <Line x1={60} y1={101} x2={60} y2={113} stroke={WHEEL} strokeWidth={2} />
+              </G>
+            )}
             {restRight()}
+          </G>
+        );
+      case 'peek':
+        // Shading their eyes to look out of the door.
+        return (
+          <G>
+            {restLeft()}
+            {arm('M65 80 Q79 68 66 51', [64, 47])}
           </G>
         );
       case 'wave':
@@ -471,7 +594,7 @@ export function KeeperAvatar({
         <Ellipse cx={50} cy={134} rx={sitting ? 30 : 22} ry={4} fill="#000" opacity={0.22} />
       </Svg>
       <Animated.View style={{ width, height: size, transform: [{ translateX: shiverX }] }}>
-        <Animated.View style={{ width, height: size, transform: [{ translateY: bobY }] }}>
+        <Animated.View style={{ width, height: size, transform: [{ translateY: Animated.add(bobY, hopY) }] }}>
           <Svg width={width} height={size} viewBox={`0 0 ${VB_W} ${VB_H}`}>
             {umbrellaLeaning && (
               <G>
@@ -486,15 +609,28 @@ export function KeeperAvatar({
               <G>
                 <Rect x={24} y={118} width={30} height={10} rx={5} fill={TROUSERS} transform="rotate(6 39 123)" />
                 <Rect x={46} y={120} width={30} height={10} rx={5} fill={TROUSERS} transform="rotate(-6 61 125)" />
-                <Ellipse cx={22} cy={125} rx={5} ry={4.5} fill={SHOES} />
-                <Ellipse cx={78} cy={125} rx={5} ry={4.5} fill={SHOES} />
+                <Ellipse cx={22} cy={125} rx={shoeRx - 1.5} ry={4.5} fill={shoeFill} />
+                <Ellipse cx={78} cy={125} rx={shoeRx - 1.5} ry={4.5} fill={shoeFill} />
+                {callerActivity === 'home' && (
+                  <G>
+                    <Circle cx={22} cy={122} r={2.4} fill={SLIPPER_FLUFF} />
+                    <Circle cx={78} cy={122} r={2.4} fill={SLIPPER_FLUFF} />
+                  </G>
+                )}
               </G>
             ) : (
               <G>
                 <Rect x={40.5} y={104} width={8.5} height={25} rx={4} fill={TROUSERS} />
                 <Rect x={51} y={104} width={8.5} height={25} rx={4} fill={TROUSERS} />
-                <Ellipse cx={44.5} cy={130} rx={6.5} ry={3.8} fill={SHOES} />
-                <Ellipse cx={55.5} cy={130} rx={6.5} ry={3.8} fill={SHOES} />
+                <Ellipse cx={44.5} cy={130} rx={shoeRx} ry={3.8} fill={shoeFill} />
+                <Ellipse cx={55.5} cy={130} rx={shoeRx} ry={3.8} fill={shoeFill} />
+                {callerActivity === 'home' && (
+                  // Fuzzy slippers — the caller's at home, so the keeper is too.
+                  <G>
+                    <Circle cx={43.5} cy={127.8} r={2.6} fill={SLIPPER_FLUFF} />
+                    <Circle cx={56.5} cy={127.8} r={2.6} fill={SLIPPER_FLUFF} />
+                  </G>
+                )}
               </G>
             )}
 
@@ -527,6 +663,22 @@ export function KeeperAvatar({
                 </SvgText>
                 <SvgText x={umbrellaHeld ? 6 : 84} y={24} fontSize={8} fontWeight="700" fill={colours.face} opacity={0.4}>
                   z
+                </SvgText>
+              </G>
+            )}
+            {reaction?.kind === 'grumpy' && (
+              // A little cross-shaped "vein" — the cartoon sign for annoyed.
+              <G stroke="#c0463c" strokeWidth={1.8} fill="none" strokeLinecap="round">
+                <Path d="M76 24 q3 3 0 6 M82 24 q-3 3 0 6 M76 24 q3 -2 6 0 M76 30 q3 2 6 0" />
+              </G>
+            )}
+            {reaction?.kind === 'giggle' && (
+              <G fill={colours.highlight}>
+                <SvgText x={80} y={34} fontSize={10} fontWeight="700">
+                  ✦
+                </SvgText>
+                <SvgText x={12} y={40} fontSize={8} fontWeight="700" opacity={0.8}>
+                  ✦
                 </SvgText>
               </G>
             )}

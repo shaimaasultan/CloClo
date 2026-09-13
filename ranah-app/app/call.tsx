@@ -164,6 +164,7 @@ export default function CallScreen() {
             sky={sky}
             variant="room"
             talking={talking}
+            callerActivity={caller.activity}
           />
         </View>
 

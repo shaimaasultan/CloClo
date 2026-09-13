@@ -66,10 +66,26 @@ export interface Dictionary {
   keepsakeNames: Record<KeepsakeKind, string>;
   // Shown in the room caption when a shelf keepsake is tapped.
   keepsakeCaption: (item: string, name: string, calls: number) => string;
+  // Things you can tap in the Keeper's room.
+  lampOffLabel: string;
+  lampOnLabel: string;
+  windowOpenLabel: string;
+  windowCloseLabel: string;
+  pokeLabel: string;
+  napLabel: string;
+  peekLabel: string;
+  bookCaption: string;
+  plantCaption: string;
+  giggleCaption: string;
+  grumpyCaption: string;
+  napCaption: string;
+  peekCaption: (weather: string) => string;
 }
 
 // The little object each caller leaves on the keeper's shelf.
 export type KeepsakeKind = 'postcard' | 'mug' | 'snowGlobe';
+
+export type CallerActivity = 'driving' | 'work' | 'home';
 
 export type CallType = 'incoming' | 'outgoing' | 'missed';
 export type ToneId = 'classic' | 'chime' | 'buzz' | 'pulse';
@@ -80,6 +96,10 @@ export interface Caller {
   sky: 'clear' | 'rain' | 'snow' | 'storm';
   number: string;
   keepsake: KeepsakeKind;
+  // What they're up to and their local hour (0–23) — mirrors the "… their
+  // time" in `meta`, and drives the keeper's props and the room's lighting.
+  activity: CallerActivity;
+  localHour: number;
 }
 
 export interface RecentCall {
@@ -147,9 +167,9 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
     paletteLabel: 'Case colour',
     paletteNames: { oxblood: 'Oxblood', verdigris: 'Verdigris', ivory: 'Ivory', graphite: 'Graphite' },
     callers: [
-      { name: 'Nadia', meta: 'Driving · light rain · 9:42 PM their time', sky: 'rain', number: '0100 214 7788', keepsake: 'postcard' },
-      { name: 'Omar', meta: 'At work · clear skies · 2:15 PM their time', sky: 'clear', number: '0122 356 4190', keepsake: 'mug' },
-      { name: 'Mama', meta: 'At home · snow falling · 11:05 PM their time', sky: 'snow', number: '0111 908 2234', keepsake: 'snowGlobe' },
+      { name: 'Nadia', meta: 'Driving · light rain · 9:42 PM their time', sky: 'rain', number: '0100 214 7788', keepsake: 'postcard', activity: 'driving', localHour: 21 },
+      { name: 'Omar', meta: 'At work · clear skies · 2:15 PM their time', sky: 'clear', number: '0122 356 4190', keepsake: 'mug', activity: 'work', localHour: 14 },
+      { name: 'Mama', meta: 'At home · snow falling · 11:05 PM their time', sky: 'snow', number: '0111 908 2234', keepsake: 'snowGlobe', activity: 'home', localHour: 23 },
     ],
     recents: [
       { callerIdx: 0, type: 'incoming', time: '2m ago', meta: 'Driving · light rain · 9:42 PM their time', durationSec: 252 },
@@ -168,6 +188,19 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
     missedNoteLabel: (names) => `Missed call from ${names}. Open Recents`,
     keepsakeNames: { postcard: 'A postcard', mug: 'A coffee mug', snowGlobe: 'A snow globe' },
     keepsakeCaption: (item, name, calls) => `${item} from ${name} · ${calls} ${calls === 1 ? 'call' : 'calls'}`,
+    lampOffLabel: 'Turn the lamp off',
+    lampOnLabel: 'Turn the lamp on',
+    windowOpenLabel: 'Open the window',
+    windowCloseLabel: 'Close the window',
+    pokeLabel: 'Poke the keeper',
+    napLabel: 'Send the keeper to nap on the bed',
+    peekLabel: 'Peek outside the door',
+    bookCaption: 'The keeper’s favourite book',
+    plantCaption: 'The plant perks up',
+    giggleCaption: 'Hehe!',
+    grumpyCaption: 'Hmph! Enough poking.',
+    napCaption: 'Napping on the bed',
+    peekCaption: (weather) => `Peeking outside · ${weather}`,
   },
   ar: {
     dir: 'rtl',
@@ -229,9 +262,9 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
     paletteLabel: 'لون الجسم',
     paletteNames: { oxblood: 'عنّابي', verdigris: 'أخضر نحاسي', ivory: 'عاجي', graphite: 'غرافيت' },
     callers: [
-      { name: 'نادية', meta: 'بتسوق · مطر خفيف · 9:42 مساءً عندها', sky: 'rain', number: '0100 214 7788', keepsake: 'postcard' },
-      { name: 'عمر', meta: 'في الشغل · جو صافي · 2:15 الضهر عنده', sky: 'clear', number: '0122 356 4190', keepsake: 'mug' },
-      { name: 'ماما', meta: 'في البيت · بينزل تلج · 11:05 بالليل عندها', sky: 'snow', number: '0111 908 2234', keepsake: 'snowGlobe' },
+      { name: 'نادية', meta: 'بتسوق · مطر خفيف · 9:42 مساءً عندها', sky: 'rain', number: '0100 214 7788', keepsake: 'postcard', activity: 'driving', localHour: 21 },
+      { name: 'عمر', meta: 'في الشغل · جو صافي · 2:15 الضهر عنده', sky: 'clear', number: '0122 356 4190', keepsake: 'mug', activity: 'work', localHour: 14 },
+      { name: 'ماما', meta: 'في البيت · بينزل تلج · 11:05 بالليل عندها', sky: 'snow', number: '0111 908 2234', keepsake: 'snowGlobe', activity: 'home', localHour: 23 },
     ],
     recents: [
       { callerIdx: 0, type: 'incoming', time: 'من دقيقتين', meta: 'بتسوق · مطر خفيف · 9:42 مساءً عندها', durationSec: 252 },
@@ -250,5 +283,18 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
     missedNoteLabel: (names) => `مكالمة فايتة من ${names}. افتحي الأخيرة`,
     keepsakeNames: { postcard: 'كارت بوستال', mug: 'مج قهوة', snowGlobe: 'كرة تلج' },
     keepsakeCaption: (item, name, calls) => `${item} من ${name} · ${calls === 1 ? 'مكالمة واحدة' : `${calls} مكالمات`}`,
+    lampOffLabel: 'اطفي النور',
+    lampOnLabel: 'نوّري النور',
+    windowOpenLabel: 'افتحي الشباك',
+    windowCloseLabel: 'اقفلي الشباك',
+    pokeLabel: 'زغزغي الحارس',
+    napLabel: 'خلّي الحارس ينام على السرير',
+    peekLabel: 'بصّي برا الباب',
+    bookCaption: 'الكتاب المفضل للحارس',
+    plantCaption: 'النبتة فرحانة',
+    giggleCaption: 'هيهي!',
+    grumpyCaption: 'هممف! كفاية زغزغة.',
+    napCaption: 'نايم على السرير',
+    peekCaption: (weather) => `بيبص برا · ${weather}`,
   },
 };

@@ -1,12 +1,14 @@
-import { useRouter } from 'expo-router';
-import React, { useEffect, useId, useRef, useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import React, { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { Animated, Easing, LayoutChangeEvent, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { setRainLevel } from '../src/audio/tones';
 import { BrandHeader } from '../src/components/BrandHeader/BrandHeader';
 import { CallInfoBar } from '../src/components/CallInfoBar/CallInfoBar';
 import { DeclineButton } from '../src/components/DeclineButton/DeclineButton';
 import { Dock } from '../src/components/Dock/Dock';
-import { KeeperAvatar } from '../src/components/KeeperAvatar/KeeperAvatar';
+import { KeeperAvatar, KeeperReaction, KeeperSpot } from '../src/components/KeeperAvatar/KeeperAvatar';
 import { PhoneHandset } from '../src/components/PhoneHandset/PhoneHandset';
 import { WeatherKind, WeatherLayer } from '../src/components/WeatherLayer/WeatherLayer';
 import Svg, {
@@ -29,15 +31,47 @@ import { usePalette } from '../src/state/PaletteContext';
 import { useSettings } from '../src/state/SettingsContext';
 import { useReducedMotion } from '../src/state/useReducedMotion';
 import type { KeepsakeKind } from '../src/i18n/dictionaries';
+import { USE_NATIVE_DRIVER } from '../src/theme/animation';
 import { pointer } from '../src/theme/pointer';
 import { CaseColours } from '../src/theme/tokens';
 
 const VB_W = 400;
 const VB_H = 300;
-// Static daytime window sky — the prototype paints this from a live clock
-// (dawn/day/dusk/night); that time-of-day system doesn't exist yet here,
-// so the window shows a fixed daytime gradient regardless of hour.
-const WINDOW_SKY = ['#cfe3e2', '#eee4c8', '#e7d9ad'];
+// Time of day, from the prototype's paintSky(): dawn 5–7, day 7–17, dusk
+// 17–20, night otherwise.
+type DayPhase = 'dawn' | 'day' | 'dusk' | 'night';
+
+function dayPhase(hour: number): DayPhase {
+  if (hour >= 5 && hour < 7) return 'dawn';
+  if (hour >= 7 && hour < 17) return 'day';
+  if (hour >= 17 && hour < 20) return 'dusk';
+  return 'night';
+}
+
+// The prototype's window gradients for each phase.
+const WINDOW_SKIES: Record<DayPhase, [string, string, string]> = {
+  dawn: ['#2c2440', '#6a4a53', '#caa06a'],
+  day: ['#cfe3e2', '#eee4c8', '#e7d9ad'],
+  dusk: ['#3a2436', '#8a4a52', '#caa24b'],
+  night: ['#0c0f1a', '#161018', '#221a1e'],
+};
+
+// A tint laid over the room art for each phase. The keeper and the lamp sit
+// above it, so at night they read as lit by the lamp in a dark room.
+const ROOM_TINT: Record<DayPhase, string | null> = {
+  dawn: 'rgba(60,40,90,0.16)',
+  day: null,
+  dusk: 'rgba(110,50,20,0.16)',
+  night: 'rgba(8,12,36,0.45)',
+};
+
+// Light falling through the window onto the floor.
+const WINDOW_BEAM: Record<DayPhase, { color: string; opacity: number }> = {
+  dawn: { color: '#e8a060', opacity: 0.08 },
+  day: { color: '#f3d78b', opacity: 0.07 },
+  dusk: { color: '#e8a060', opacity: 0.08 },
+  night: { color: '#b8c8f0', opacity: 0.05 },
+};
 
 const WATER = '#8fb4cc';
 const WATER_LIGHT = '#d6e8f2';
@@ -48,6 +82,50 @@ const FLOOR_Y = 268;
 // Keeper height as a share of the room; small enough that the incoming-call
 // card at the top of the room never covers their head, even arms-up.
 const KEEPER_SHARE = 0.48;
+
+// Where the keeper stands (or sits) for each spot, in room units: x is their
+// centre, `ground` is where their feet rest.
+const SPOTS: Record<KeeperSpot, { x: number; ground: number }> = {
+  center: { x: 200, ground: FLOOR_Y },
+  bed: { x: 72, ground: 206 },
+  door: { x: 300, ground: FLOOR_Y },
+};
+
+// Three pokes inside this window make the keeper grumpy.
+const POKE_WINDOW_MS = 1800;
+// A press that moves further than this is a drag; a shorter, quicker one is a poke.
+const DRAG_THRESHOLD = 8;
+const POKE_MAX_MS = 400;
+
+// Rain loudness: a quiet patter through a shut window, much louder open.
+const RAIN_LEVEL = { closed: 0.015, open: 0.06, openStorm: 0.09 };
+
+type Slot = { x: number; y: number; w: number; h: number };
+
+// Tap areas, in room units.
+const LAMP_SLOT: Slot = { x: 178, y: 22, w: 44, h: 44 };
+const WINDOW_SLOT: Slot = { x: 22, y: 22, w: 108, h: 80 };
+const BED_SLOT: Slot = { x: 24, y: 182, w: 96, h: 54 };
+const DOOR_SLOT: Slot = { x: 322, y: 116, w: 64, h: 150 };
+const BOOK_SLOT: Slot = { x: 327, y: 18, w: 26, h: 30 };
+const PLANT_SLOT: Slot = { x: 122, y: 200, w: 34, h: 70 };
+// Tap areas for each keepsake on the shelf, around the book.
+const SHELF_SLOTS: Record<KeepsakeKind, Slot> = {
+  mug: { x: 279, y: 18, w: 25, h: 30 },
+  postcard: { x: 303, y: 20, w: 24, h: 28 },
+  snowGlobe: { x: 352, y: 16, w: 24, h: 32 },
+};
+// The door note's tap area.
+const NOTE_SLOT: Slot = { x: 332, y: 126, w: 46, h: 48 };
+
+// What each shelf item and the plant wobble around (their base).
+const KEEPSAKE_PIVOT: Record<KeepsakeKind, [number, number]> = {
+  mug: [290, 46],
+  postcard: [316, 45],
+  snowGlobe: [364, 46],
+};
+const BOOK_PIVOT: [number, number] = [340, 46];
+const PLANT_PIVOT: [number, number] = [139, 268];
 
 // react-native-svg's Animated wrapper injects `collapsable={false}` (a perf
 // hint meant for RN Views); on web it leaks straight to the DOM as a
@@ -102,12 +180,61 @@ function useLoop(active: boolean, duration: number) {
   return value;
 }
 
-function WindowWeather({ sky, clipId }: { sky: WeatherKind; clipId: string }) {
+// A quick back-and-forth wobble for things that react to a tap.
+function useWiggle() {
+  const reduceMotion = useReducedMotion();
+  const value = useRef(new Animated.Value(0)).current;
+  const play = useCallback(() => {
+    if (reduceMotion) return;
+    value.setValue(0);
+    const step = (toValue: number) => Animated.timing(value, { toValue, duration: 70, useNativeDriver: false });
+    Animated.sequence([step(1), step(-1), step(0.6), step(-0.4), step(0)]).start();
+  }, [reduceMotion, value]);
+  const rotate = value.interpolate({ inputRange: [-1, 1], outputRange: ['rotate(-12)', 'rotate(12)'] });
+  return { rotate, play };
+}
+
+// Rotates its children around `pivot` (react-native-svg only animates one
+// number per transform string reliably, so the pivot is static translates).
+function Wobble({
+  pivot,
+  rotate,
+  children,
+}: {
+  pivot: [number, number];
+  rotate: Animated.AnimatedInterpolation<string>;
+  children: React.ReactNode;
+}) {
+  return (
+    <G transform={`translate(${pivot[0]} ${pivot[1]})`}>
+      <AnimatedG transform={rotate}>
+        <G transform={`translate(${-pivot[0]} ${-pivot[1]})`}>{children}</G>
+      </AnimatedG>
+    </G>
+  );
+}
+
+function WindowWeather({ sky, clipId, phase }: { sky: WeatherKind; clipId: string; phase: DayPhase }) {
   const flash = useFlicker(sky === 'storm');
   const highlight = '#f3d78b';
   return (
     <G clipPath={`url(#${clipId})`}>
-      {sky === 'clear' && (
+      {sky === 'clear' && phase === 'night' && (
+        // A clear night: crescent moon and stars.
+        <G>
+          <Circle cx={96} cy={44} r={11} fill="#f1ead0" />
+          <Circle cx={101} cy={40} r={10} fill="#11131f" />
+          <G fill="#ffffff" opacity={0.8}>
+            <Circle cx={40} cy={36} r={1.1} />
+            <Circle cx={58} cy={50} r={0.9} />
+            <Circle cx={46} cy={78} r={1} />
+            <Circle cx={68} cy={34} r={0.8} />
+            <Circle cx={110} cy={80} r={1} />
+            <Circle cx={66} cy={86} r={0.9} />
+          </G>
+        </G>
+      )}
+      {sky === 'clear' && phase !== 'night' && (
         <G opacity={0.85}>
           <Circle cx={76} cy={58} r={15} fill={highlight} />
           <Line x1={76} y1={32} x2={76} y2={24} stroke={highlight} strokeWidth={2} strokeLinecap="round" />
@@ -153,33 +280,51 @@ function WindowWeather({ sky, clipId }: { sky: WeatherKind; clipId: string }) {
   );
 }
 
-// The ceiling lamp; it stutters with each lightning strike in a storm.
-function CeilingLamp({ colours, storm }: { colours: CaseColours; storm: boolean }) {
-  const flicker = useFlicker(storm);
+// The ceiling lamp: tap to switch it. When on, it stutters with each
+// lightning strike in a storm and carries the room after dark.
+function CeilingLamp({ colours, storm, lit, on }: { colours: CaseColours; storm: boolean; lit: boolean; on: boolean }) {
+  const flicker = useFlicker(storm && on);
   return (
     <G>
+      {on && lit && (
+        // After dark the lamp carries the room: a wide glow and a warm pool
+        // of light on the floor where the keeper stands.
+        <G>
+          <Circle cx={200} cy={44} r={52} fill={colours.highlight} opacity={0.1} />
+          <Ellipse cx={200} cy={262} rx={112} ry={26} fill={colours.highlight} opacity={0.09} />
+        </G>
+      )}
       <Line x1={200} y1={0} x2={200} y2={34} stroke={colours.metal3} strokeWidth={2} />
-      <AnimatedCircle
-        cx={200}
-        cy={44}
-        r={20}
-        fill={colours.highlight}
-        opacity={flicker.interpolate({ inputRange: [0, 0.5], outputRange: [0.18, 0.03] })}
-      />
-      <AnimatedCircle
-        cx={200}
-        cy={44}
-        r={9}
-        fill={colours.highlight}
-        opacity={flicker.interpolate({ inputRange: [0, 0.5], outputRange: [0.85, 0.25] })}
-      />
+      {on ? (
+        <G>
+          <AnimatedCircle
+            cx={200}
+            cy={44}
+            r={20}
+            fill={colours.highlight}
+            opacity={flicker.interpolate({ inputRange: [0, 0.5], outputRange: [0.18, 0.03] })}
+          />
+          <AnimatedCircle
+            cx={200}
+            cy={44}
+            r={9}
+            fill={colours.highlight}
+            opacity={flicker.interpolate({ inputRange: [0, 0.5], outputRange: [0.85, 0.25] })}
+          />
+        </G>
+      ) : (
+        <G>
+          <Circle cx={200} cy={44} r={9} fill="#6b6250" />
+          <Path d="M195 42 q5 -4 10 0" stroke="#8a806a" strokeWidth={1} fill="none" />
+        </G>
+      )}
     </G>
   );
 }
 
 // What the weather brings indoors: a sunbeam, a rain puddle by the door with
 // a dripping umbrella, or snow blown in over the step with boots left out.
-function RoomWeather({ colours, sky }: { colours: CaseColours; sky: WeatherKind }) {
+function RoomWeather({ colours, sky, phase }: { colours: CaseColours; sky: WeatherKind; phase: DayPhase }) {
   const reduceMotion = useReducedMotion();
   const wet = sky === 'rain' || sky === 'storm';
   const ripple = useLoop(wet && !reduceMotion, 1800);
@@ -187,7 +332,9 @@ function RoomWeather({ colours, sky }: { colours: CaseColours; sky: WeatherKind 
 
   return (
     <G>
-      {sky === 'clear' && <Path d="M32 98 L120 98 L232 284 L70 284 Z" fill={colours.highlight} opacity={0.07} />}
+      {sky === 'clear' && (
+        <Path d="M32 98 L120 98 L232 284 L70 284 Z" fill={WINDOW_BEAM[phase].color} opacity={WINDOW_BEAM[phase].opacity} />
+      )}
 
       {wet && (
         <G>
@@ -233,18 +380,9 @@ function RoomWeather({ colours, sky }: { colours: CaseColours; sky: WeatherKind 
   );
 }
 
-// Tap areas for each keepsake on the shelf, in room units (around the book
-// that already lives there).
-const SHELF_SLOTS: Record<KeepsakeKind, { x: number; y: number; w: number; h: number }> = {
-  mug: { x: 279, y: 18, w: 25, h: 30 },
-  postcard: { x: 303, y: 20, w: 27, h: 28 },
-  snowGlobe: { x: 352, y: 16, w: 24, h: 32 },
-};
-// The door note's tap area.
-const NOTE_SLOT = { x: 332, y: 126, w: 46, h: 48 };
-
-// Little things callers leave behind, drawn on the shelf.
-function Keepsake({ kind, colours }: { kind: KeepsakeKind; colours: CaseColours }) {
+// Little things callers leave behind, drawn on the shelf. `excited` is the
+// moment after a tap: the mug steams harder, the snow globe swirls.
+function Keepsake({ kind, colours, excited }: { kind: KeepsakeKind; colours: CaseColours; excited: boolean }) {
   switch (kind) {
     case 'mug':
       return (
@@ -252,9 +390,9 @@ function Keepsake({ kind, colours }: { kind: KeepsakeKind; colours: CaseColours 
           <Rect x={284} y={32} width={13} height={14} rx={2} fill={colours.face} stroke={colours.metal3} strokeWidth={0.8} />
           <Path d="M297 35 q5 0 5 4.5 q0 4.5 -5 4.5" stroke={colours.metal3} strokeWidth={1.6} fill="none" />
           <Path
-            d="M288 29 q-2 -3 0 -6 M293 29 q-2 -3 0 -6"
+            d={excited ? 'M288 29 q-2 -4 0 -8 M290.5 28 q-2 -5 0 -10 M293 29 q-2 -4 0 -8' : 'M288 29 q-2 -3 0 -6 M293 29 q-2 -3 0 -6'}
             stroke={colours.face}
-            strokeOpacity={0.55}
+            strokeOpacity={excited ? 0.9 : 0.55}
             strokeWidth={1}
             fill="none"
             strokeLinecap="round"
@@ -278,10 +416,106 @@ function Keepsake({ kind, colours }: { kind: KeepsakeKind; colours: CaseColours 
           <Circle cx={359} cy={30} r={0.9} fill="#ffffff" />
           <Circle cx={368.5} cy={28.5} r={0.9} fill="#ffffff" />
           <Circle cx={366.5} cy={36} r={0.9} fill="#ffffff" />
+          {excited && (
+            <G fill="#ffffff">
+              <Circle cx={361} cy={34} r={0.8} />
+              <Circle cx={367} cy={31} r={0.8} />
+              <Circle cx={360} cy={38} r={0.8} />
+              <Circle cx={365} cy={26} r={0.8} />
+              <Circle cx={369.5} cy={35} r={0.8} />
+            </G>
+          )}
           <Rect x={355} y={40} width={18} height={6} rx={2} fill={colours.metal3} />
         </G>
       );
   }
+}
+
+// A potted plant by the bed. Each tap it perks up and grows, then flowers.
+function Plant({ growth }: { growth: number }) {
+  return (
+    <G>
+      <Path d="M139 250 Q137 232 139 214" stroke="#4f7a4a" strokeWidth={2} fill="none" />
+      <Ellipse cx={132} cy={236} rx={7} ry={3.5} fill="#5f9a55" transform="rotate(-30 132 236)" />
+      <Ellipse cx={146} cy={230} rx={7} ry={3.5} fill="#5f9a55" transform="rotate(30 146 230)" />
+      <Ellipse cx={133} cy={222} rx={6} ry={3} fill="#6fae62" transform="rotate(-35 133 222)" />
+      {growth >= 1 && <Ellipse cx={146} cy={217} rx={6} ry={3} fill="#6fae62" transform="rotate(35 146 217)" />}
+      {growth >= 2 && <Ellipse cx={134} cy={209} rx={5} ry={2.6} fill="#7cbf6d" transform="rotate(-40 134 209)" />}
+      {growth >= 3 && (
+        <G>
+          {[0, 72, 144, 216, 288].map((a) => (
+            <Circle
+              key={a}
+              cx={139 + 5 * Math.cos((a * Math.PI) / 180)}
+              cy={206 + 5 * Math.sin((a * Math.PI) / 180)}
+              r={2.6}
+              fill="#e8907c"
+            />
+          ))}
+          <Circle cx={139} cy={206} r={2.6} fill="#f3d78b" />
+        </G>
+      )}
+      <Path d="M128 250 L150 250 L146 268 L132 268 Z" fill="#b0643c" />
+      <Rect x={126} y={247} width={26} height={5} rx={2} fill="#c47a4c" />
+    </G>
+  );
+}
+
+// The front door swung open, showing the caller's weather outside.
+function OpenDoor({
+  colours,
+  sky,
+  phase,
+  skyGradientId,
+  clipId,
+}: {
+  colours: CaseColours;
+  sky: WeatherKind;
+  phase: DayPhase;
+  skyGradientId: string;
+  clipId: string;
+}) {
+  return (
+    <G>
+      <Rect x={326} y={120} width={56} height={142} fill={`url(#${skyGradientId})`} />
+      <G clipPath={`url(#${clipId})`}>
+        {sky === 'clear' && phase !== 'night' && <Circle cx={354} cy={150} r={10} fill="#f3d78b" opacity={0.9} />}
+        {sky === 'clear' && phase === 'night' && (
+          <G>
+            <Circle cx={360} cy={146} r={7} fill="#f1ead0" />
+            <Circle cx={363.5} cy={143.5} r={6.4} fill="#11131f" />
+          </G>
+        )}
+        {(sky === 'rain' || sky === 'storm') && (
+          <G stroke="#cfe3ea" strokeWidth={1.3} strokeLinecap="round" opacity={0.65}>
+            {[0, 1, 2, 3].flatMap((row) =>
+              [0, 1, 2, 3].map((col) => {
+                const x = 334 + col * 13 + (row % 2) * 6;
+                const y = 128 + row * 30;
+                return <Line key={`${row}-${col}`} x1={x} y1={y} x2={x - 3} y2={y + 12} />;
+              })
+            )}
+          </G>
+        )}
+        {sky === 'snow' && (
+          <G fill="#ffffff" opacity={0.9}>
+            {[0, 1, 2, 3, 4].flatMap((row) =>
+              [0, 1, 2].map((col) => (
+                <Circle key={`${row}-${col}`} cx={336 + col * 17 + (row % 2) * 8} cy={132 + row * 24} r={1.8} />
+              ))
+            )}
+          </G>
+        )}
+        {sky === 'storm' && <Path d="M360 126 L351 150 L358 150 L349 174" stroke="#f7f1c8" strokeWidth={2} fill="none" />}
+        {/* The ground just outside. */}
+        <Rect x={326} y={236} width={56} height={26} fill={sky === 'snow' ? SNOW : '#4a5a3e'} opacity={0.85} />
+      </G>
+      <Rect x={326} y={120} width={56} height={142} rx={2} fill="none" stroke={colours.metal2} strokeWidth={3} />
+      {/* The door itself, swung in against the wall. */}
+      <Path d="M382 120 L396 112 L396 270 L382 262 Z" fill={colours.body1} stroke={colours.metal3} strokeWidth={1} />
+      <Circle cx={392} cy={196} r={2.2} fill={colours.metal1} />
+    </G>
+  );
 }
 
 // A sticky note pinned to the door with the missed caller's initial, and a
@@ -329,14 +563,60 @@ export default function KeeperRoomScreen() {
     missedNotes,
     connectedCallCount,
   } = useKeeperState();
-  // Briefly replaces the moment caption after a keepsake is tapped.
+  const { clunk, sfx, soundEnabled } = useSettings();
+
+  // Briefly replaces the moment caption after something in the room is tapped.
   const [shelfCaption, setShelfCaption] = useState<string | null>(null);
   useEffect(() => {
     if (!shelfCaption) return;
     const id = setTimeout(() => setShelfCaption(null), 3500);
     return () => clearTimeout(id);
   }, [shelfCaption]);
-  const { clunk } = useSettings();
+
+  // The phone's own hour, refreshed each minute, for lighting between calls.
+  const [deviceHour, setDeviceHour] = useState(() => new Date().getHours());
+  useEffect(() => {
+    const id = setInterval(() => setDeviceHour(new Date().getHours()), 60000);
+    return () => clearInterval(id);
+  }, []);
+
+  // --- Things you can tap ---
+  const [lampOn, setLampOn] = useState(true);
+  const [windowOpen, setWindowOpen] = useState(false);
+  const [keeperSpot, setKeeperSpot] = useState<KeeperSpot>('center');
+  const [reaction, setReaction] = useState<KeeperReaction | null>(null);
+  const [lookUp, setLookUp] = useState(false);
+  const [plantGrowth, setPlantGrowth] = useState(0);
+  const [excitedItem, setExcitedItem] = useState<KeepsakeKind | null>(null);
+  const pokeTimes = useRef<number[]>([]);
+
+  useEffect(() => {
+    if (!reaction) return;
+    const id = setTimeout(() => setReaction(null), reaction.kind === 'grumpy' ? 2600 : 1100);
+    return () => clearTimeout(id);
+  }, [reaction]);
+  useEffect(() => {
+    if (!lookUp) return;
+    const id = setTimeout(() => setLookUp(false), 1400);
+    return () => clearTimeout(id);
+  }, [lookUp]);
+  useEffect(() => {
+    if (!excitedItem) return;
+    const id = setTimeout(() => setExcitedItem(null), 2000);
+    return () => clearTimeout(id);
+  }, [excitedItem]);
+
+  const mugWiggle = useWiggle();
+  const postcardWiggle = useWiggle();
+  const globeWiggle = useWiggle();
+  const bookWiggle = useWiggle();
+  const plantWiggle = useWiggle();
+  const keepsakeWiggle: Record<KeepsakeKind, ReturnType<typeof useWiggle>> = {
+    mug: mugWiggle,
+    postcard: postcardWiggle,
+    snowGlobe: globeWiggle,
+  };
+
   const { width: winWidth, height: winHeight } = useWindowDimensions();
   const [stageSize, setStageSize] = useState({ width: 0, height: 0 });
   // Unique per mount so a stale screen left in the navigation stack can never
@@ -345,9 +625,45 @@ export default function KeeperRoomScreen() {
   const wallGradientId = `roomWallGrad-${uid}`;
   const windowGradientId = `windowGrad-${uid}`;
   const winClipId = `roomWinClip-${uid}`;
+  const doorClipId = `roomDoorClip-${uid}`;
 
+  const idle = callState === 'idle';
   const ringing = callState === 'ringing';
   const ringer = ringerIdx !== null ? t.callers[ringerIdx] : null;
+  // While a call rings, the room takes on the caller's local time of day.
+  const phase = dayPhase(ringer ? ringer.localHour : deviceHour);
+  const windowSky = WINDOW_SKIES[phase];
+  const tint = ROOM_TINT[phase];
+  const wet = sky === 'rain' || sky === 'storm';
+
+  // A call always brings the keeper back to the middle of the room.
+  const spot: KeeperSpot = idle ? keeperSpot : 'center';
+  useEffect(() => {
+    if (!idle) setKeeperSpot('center');
+  }, [idle]);
+  const doorOpen = spot === 'door';
+
+  // Rain you can hear: a quiet patter with the window shut, louder open.
+  // Only while this screen is showing — it fades when you leave the room.
+  const [focused, setFocused] = useState(true);
+  useFocusEffect(
+    useCallback(() => {
+      setFocused(true);
+      return () => setFocused(false);
+    }, [])
+  );
+  const rainLevel =
+    focused && soundEnabled && wet
+      ? windowOpen
+        ? sky === 'storm'
+          ? RAIN_LEVEL.openStorm
+          : RAIN_LEVEL.open
+        : RAIN_LEVEL.closed
+      : 0;
+  useEffect(() => {
+    setRainLevel(rainLevel);
+  }, [rainLevel]);
+  useEffect(() => () => setRainLevel(0), []);
 
   // Answering opens the live call screen with its transcript.
   const answerCall = () => {
@@ -377,6 +693,7 @@ export default function KeeperRoomScreen() {
   const keeperW = (keeperH * 100) / 140;
   // The drawing's feet sit at y≈133 of its 140-unit height.
   const keeperTop = (boxH * FLOOR_Y) / VB_H - keeperH * (133 / 140);
+  const keeperLeft = (boxW - keeperW) / 2;
   // While ringing, the handset hangs over the room's top edge (half in the
   // sky above, half over the wall) like the prototype's cradle over
   // .keeper-room, leaving the top of the room itself for the caller card.
@@ -389,6 +706,126 @@ export default function KeeperRoomScreen() {
   const px = (x: number) => (x * boxW) / VB_W;
   const py = (y: number) => (y * boxH) / VB_H;
 
+  // --- Moving the keeper between spots ---
+  // The keeper is laid out at the centre spot and moved with a translate, so
+  // dragging and gliding to the bed or door are the same animation.
+  const posX = useRef(new Animated.Value(0)).current;
+  const posY = useRef(new Animated.Value(0)).current;
+  const offset = useRef({ x: 0, y: 0 });
+  const dragStart = useRef({ x: 0, y: 0 });
+  const dragging = useRef(false);
+
+  const spotOffset = (s: KeeperSpot) => ({
+    x: px(SPOTS[s].x - SPOTS.center.x),
+    y: py(SPOTS[s].ground - SPOTS.center.ground),
+  });
+  const glideTo = (s: KeeperSpot) => {
+    const target = spotOffset(s);
+    offset.current = target;
+    Animated.parallel([
+      Animated.spring(posX, { toValue: target.x, friction: 7, tension: 60, useNativeDriver: USE_NATIVE_DRIVER }),
+      Animated.spring(posY, { toValue: target.y, friction: 7, tension: 60, useNativeDriver: USE_NATIVE_DRIVER }),
+    ]).start();
+  };
+  useEffect(() => {
+    if (!dragging.current) glideTo(spot);
+    // glideTo only reads layout values, which are dependencies here.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [spot, boxW, boxH]);
+
+  const moveKeeper = (next: KeeperSpot) => {
+    if (next === keeperSpot) {
+      glideTo(next);
+      return;
+    }
+    if (next === 'door') sfx('creak');
+    setKeeperSpot(next);
+  };
+
+  const pokeKeeper = () => {
+    const now = Date.now();
+    pokeTimes.current = [...pokeTimes.current.filter((at) => now - at < POKE_WINDOW_MS), now];
+    const wokenFromNap = keeperSpot === 'bed';
+    if (pokeTimes.current.length >= 3 || wokenFromNap) {
+      pokeTimes.current = [];
+      setReaction({ kind: 'grumpy', at: now });
+      setShelfCaption(t.grumpyCaption);
+      sfx('grump');
+      if (wokenFromNap) setKeeperSpot('center');
+    } else {
+      setReaction({ kind: 'giggle', at: now });
+      setShelfCaption(t.giggleCaption);
+      sfx('giggle');
+    }
+  };
+
+  // Drag the keeper to the bed or the door; drop anywhere else and they
+  // wander back to the middle. A quick press that doesn't move pokes them.
+  //
+  // One Pan that begins on press (like the rotary dial's) rather than a
+  // Pan + Tap pair: on web the composed Pan never activated, so drags did
+  // nothing. Telling a poke from a drag by distance here is reliable.
+  const pressStartedAt = useRef(0);
+  const keeperGesture = Gesture.Pan()
+    .runOnJS(true)
+    .enabled(idle)
+    .minDistance(0)
+    // The finger leaves the keeper's own box almost as soon as a drag
+    // starts; without this the gesture cancels and they snap back.
+    .shouldCancelWhenOutside(false)
+    .onBegin(() => {
+      pressStartedAt.current = Date.now();
+      dragging.current = false;
+      posX.stopAnimation();
+      posY.stopAnimation();
+      dragStart.current = { ...offset.current };
+    })
+    .onUpdate((e) => {
+      if (!dragging.current && Math.hypot(e.translationX, e.translationY) < DRAG_THRESHOLD) return;
+      dragging.current = true;
+      const x = dragStart.current.x + e.translationX;
+      const y = dragStart.current.y + e.translationY;
+      offset.current = { x, y };
+      posX.setValue(x);
+      posY.setValue(y);
+    })
+    .onFinalize(() => {
+      if (dragging.current) {
+        dragging.current = false;
+        const feetX = ((keeperLeft + offset.current.x + keeperW / 2) * VB_W) / boxW;
+        moveKeeper(feetX < 125 ? 'bed' : feetX > 282 ? 'door' : 'center');
+        return;
+      }
+      if (Date.now() - pressStartedAt.current <= POKE_MAX_MS) pokeKeeper();
+    });
+
+  const toggleLamp = () => {
+    setLampOn((on) => !on);
+    setLookUp(true);
+    sfx('click');
+  };
+  const toggleWindow = () => {
+    setWindowOpen((open) => !open);
+    sfx('creak');
+  };
+  const tapBook = () => {
+    bookWiggle.play();
+    setShelfCaption(t.bookCaption);
+    sfx('bump');
+  };
+  const tapPlant = () => {
+    plantWiggle.play();
+    setPlantGrowth((g) => Math.min(3, g + 1));
+    setShelfCaption(t.plantCaption);
+    sfx('rustle');
+  };
+  const tapKeepsake = (kind: KeepsakeKind, label: string) => {
+    keepsakeWiggle[kind].play();
+    setExcitedItem(kind);
+    setShelfCaption(label);
+    sfx(kind === 'snowGlobe' ? 'shimmer' : 'bump');
+  };
+
   // A keepsake appears once you've actually talked with that caller.
   const keepsakes = t.callers
     .map((caller, idx) => ({ idx, kind: caller.keepsake, name: caller.name, calls: connectedCallCount(idx) }))
@@ -398,6 +835,18 @@ export default function KeeperRoomScreen() {
     .slice(0, 2)
     .map((name) => name.charAt(0))
     .join('');
+
+  const spotCaption = spot === 'bed' ? t.napCaption : spot === 'door' ? t.peekCaption(t.skyNames[sky]) : null;
+
+  const hotspot = (key: string, slot: Slot, label: string, onPress: () => void) => (
+    <Pressable
+      key={key}
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      style={{ position: 'absolute', left: px(slot.x), top: py(slot.y), width: px(slot.w), height: py(slot.h) }}
+    />
+  );
 
   return (
     <View style={[styles.root, { backgroundColor: colours.body2 }]}>
@@ -437,12 +886,15 @@ export default function KeeperRoomScreen() {
                     <Stop offset="100%" stopColor={colours.hub2} />
                   </RadialGradient>
                   <LinearGradient id={windowGradientId} x1="0" y1="0" x2="0" y2="1">
-                    <Stop offset="0%" stopColor={WINDOW_SKY[0]} />
-                    <Stop offset="55%" stopColor={WINDOW_SKY[1]} />
-                    <Stop offset="100%" stopColor={WINDOW_SKY[2]} />
+                    <Stop offset="0%" stopColor={windowSky[0]} />
+                    <Stop offset="55%" stopColor={windowSky[1]} />
+                    <Stop offset="100%" stopColor={windowSky[2]} />
                   </LinearGradient>
                   <ClipPath id={winClipId}>
                     <Rect x={28} y={26} width={96} height={72} rx={8} />
+                  </ClipPath>
+                  <ClipPath id={doorClipId}>
+                    <Rect x={326} y={120} width={56} height={142} />
                   </ClipPath>
                 </Defs>
 
@@ -450,78 +902,124 @@ export default function KeeperRoomScreen() {
                 <Ellipse cx={200} cy={270} rx={150} ry={20} fill={colours.body2} opacity={0.45} />
 
                 <Rect x={28} y={26} width={96} height={72} rx={8} fill={`url(#${windowGradientId})`} stroke={colours.metal2} strokeWidth={3} />
-                <WindowWeather sky={sky} clipId={winClipId} />
-                <Line x1={76} y1={26} x2={76} y2={98} stroke={colours.metal2} strokeWidth={2} />
-                <Line x1={28} y1={62} x2={124} y2={62} stroke={colours.metal2} strokeWidth={2} />
+                <WindowWeather sky={sky} clipId={winClipId} phase={phase} />
+                {windowOpen ? (
+                  <G>
+                    {/* Casements swung open outward. */}
+                    <Path d="M28 28 L14 36 L14 88 L28 96 Z" fill="rgba(207,227,226,0.25)" stroke={colours.metal2} strokeWidth={2} />
+                    <Path d="M124 28 L138 36 L138 88 L124 96 Z" fill="rgba(207,227,226,0.25)" stroke={colours.metal2} strokeWidth={2} />
+                    {wet && (
+                      // Rain coming in over the sill.
+                      <G fill={WATER}>
+                        <Rect x={40} y={99} width={70} height={3} rx={1.5} opacity={0.5} />
+                        <Circle cx={58} cy={105} r={1.6} />
+                        <Circle cx={92} cy={107} r={1.4} />
+                      </G>
+                    )}
+                  </G>
+                ) : (
+                  <G>
+                    <Line x1={76} y1={26} x2={76} y2={98} stroke={colours.metal2} strokeWidth={2} />
+                    <Line x1={28} y1={62} x2={124} y2={62} stroke={colours.metal2} strokeWidth={2} />
+                  </G>
+                )}
 
                 <Rect x={276} y={46} width={96} height={7} rx={2} fill={colours.metal2} />
-                <Rect x={330} y={22} width={20} height={26} rx={2} transform="rotate(-6 340 35)" fill={colours.metal1} stroke={colours.metal3} strokeWidth={1} />
+                <Wobble pivot={BOOK_PIVOT} rotate={bookWiggle.rotate}>
+                  <Rect x={330} y={22} width={20} height={26} rx={2} transform="rotate(-6 340 35)" fill={colours.metal1} stroke={colours.metal3} strokeWidth={1} />
+                </Wobble>
                 {keepsakes.map((k) => (
-                  <Keepsake key={k.kind} kind={k.kind} colours={colours} />
+                  <Wobble key={k.kind} pivot={KEEPSAKE_PIVOT[k.kind]} rotate={keepsakeWiggle[k.kind].rotate}>
+                    <Keepsake kind={k.kind} colours={colours} excited={excitedItem === k.kind} />
+                  </Wobble>
                 ))}
 
                 {/* Front door and mat, where the weather gets in. */}
-                <Rect x={326} y={120} width={56} height={142} rx={4} fill={colours.body1} stroke={colours.metal2} strokeWidth={3} />
-                <Rect x={336} y={132} width={36} height={44} rx={3} fill="none" stroke={colours.metal3} strokeOpacity={0.6} strokeWidth={1.2} />
-                <Rect x={336} y={190} width={36} height={58} rx={3} fill="none" stroke={colours.metal3} strokeOpacity={0.6} strokeWidth={1.2} />
-                <Circle cx={371} cy={196} r={3.2} fill={colours.metal1} />
+                {doorOpen ? (
+                  <OpenDoor colours={colours} sky={sky} phase={phase} skyGradientId={windowGradientId} clipId={doorClipId} />
+                ) : (
+                  <G>
+                    <Rect x={326} y={120} width={56} height={142} rx={4} fill={colours.body1} stroke={colours.metal2} strokeWidth={3} />
+                    <Rect x={336} y={132} width={36} height={44} rx={3} fill="none" stroke={colours.metal3} strokeOpacity={0.6} strokeWidth={1.2} />
+                    <Rect x={336} y={190} width={36} height={58} rx={3} fill="none" stroke={colours.metal3} strokeOpacity={0.6} strokeWidth={1.2} />
+                    <Circle cx={371} cy={196} r={3.2} fill={colours.metal1} />
+                  </G>
+                )}
                 <Rect x={318} y={262} width={72} height={7} rx={3} fill={colours.metal3} opacity={0.75} />
-                {missedNames.length > 0 && <MissedNote initials={noteInitials} count={missedNames.length} />}
+                {!doorOpen && missedNames.length > 0 && <MissedNote initials={noteInitials} count={missedNames.length} />}
 
-                {!ringing && <CeilingLamp colours={colours} storm={sky === 'storm'} />}
-
-                <RoomWeather colours={colours} sky={sky} />
+                <RoomWeather colours={colours} sky={sky} phase={phase} />
 
                 <Rect x={26} y={186} width={92} height={48} rx={11} fill={colours.metal2} />
                 <Ellipse cx={48} cy={194} rx={17} ry={11} fill={colours.face} />
+
+                <Wobble pivot={PLANT_PIVOT} rotate={plantWiggle.rotate}>
+                  <Plant growth={plantGrowth} />
+                </Wobble>
 
                 {!ringing && (
                   <SvgText x={200} y={18} textAnchor="middle" fontSize={9} fill={colours.inkMuted}>
                     {wallNote}
                   </SvgText>
                 )}
+
+                {tint && <Rect x={0} y={0} width={VB_W} height={VB_H} fill={tint} />}
+                {/* With the lamp off the room dims — a lot after dark, a little by day. */}
+                {!lampOn && (
+                  <Rect x={0} y={0} width={VB_W} height={VB_H} fill={phase === 'day' ? 'rgba(0,0,0,0.08)' : 'rgba(0,0,0,0.3)'} />
+                )}
+                {!ringing && (
+                  <CeilingLamp colours={colours} storm={sky === 'storm'} lit={phase === 'night' || phase === 'dusk'} on={lampOn} />
+                )}
               </Svg>
 
-              <View style={[pointer.none, { position: 'absolute', top: keeperTop, left: (boxW - keeperW) / 2 }]}>
-                <KeeperAvatar
-                  size={keeperH}
-                  colours={colours}
-                  callState={callState}
-                  mood={mood}
-                  sky={sky}
-                  activity={roomProp}
-                  variant="room"
-                />
-              </View>
-
+              {/* Tap areas sit under the keeper, so the keeper wins where they overlap. */}
+              {hotspot('window', WINDOW_SLOT, windowOpen ? t.windowCloseLabel : t.windowOpenLabel, toggleWindow)}
+              {!ringing && hotspot('lamp', LAMP_SLOT, lampOn ? t.lampOffLabel : t.lampOnLabel, toggleLamp)}
+              {hotspot('book', BOOK_SLOT, t.bookCaption, tapBook)}
+              {hotspot('plant', PLANT_SLOT, t.plantCaption, tapPlant)}
               {keepsakes.map((k) => {
-                const slot = SHELF_SLOTS[k.kind];
                 const label = t.keepsakeCaption(t.keepsakeNames[k.kind], k.name, k.calls);
-                return (
-                  <Pressable
-                    key={k.kind}
-                    onPress={() => setShelfCaption(label)}
-                    accessibilityRole="button"
-                    accessibilityLabel={label}
-                    style={{ position: 'absolute', left: px(slot.x), top: py(slot.y), width: px(slot.w), height: py(slot.h) }}
-                  />
-                );
+                return hotspot(`keepsake-${k.kind}`, SHELF_SLOTS[k.kind], label, () => tapKeepsake(k.kind, label));
               })}
+              {idle && hotspot('bed', BED_SLOT, t.napLabel, () => moveKeeper(keeperSpot === 'bed' ? 'center' : 'bed'))}
+              {idle && hotspot('door', DOOR_SLOT, t.peekLabel, () => moveKeeper(keeperSpot === 'door' ? 'center' : 'door'))}
+              {!doorOpen && missedNames.length > 0 &&
+                hotspot('missed-note', NOTE_SLOT, t.missedNoteLabel(missedNames.join(', ')), () => router.navigate('/recents'))}
 
-              {missedNames.length > 0 && (
-                <Pressable
-                  onPress={() => router.navigate('/recents')}
+              <GestureDetector gesture={keeperGesture}>
+                <Animated.View
                   accessibilityRole="button"
-                  accessibilityLabel={t.missedNoteLabel(missedNames.join(', '))}
-                  style={{
-                    position: 'absolute',
-                    left: px(NOTE_SLOT.x),
-                    top: py(NOTE_SLOT.y),
-                    width: px(NOTE_SLOT.w),
-                    height: py(NOTE_SLOT.h),
-                  }}
-                />
-              )}
+                  accessibilityLabel={t.pokeLabel}
+                  style={[
+                    idle ? null : pointer.none,
+                    {
+                      position: 'absolute',
+                      top: keeperTop,
+                      left: keeperLeft,
+                      width: keeperW,
+                      height: keeperH,
+                      transform: [{ translateX: posX }, { translateY: posY }],
+                    },
+                  ]}
+                >
+                  <KeeperAvatar
+                    size={keeperH}
+                    colours={colours}
+                    callState={callState}
+                    mood={mood}
+                    sky={sky}
+                    activity={roomProp}
+                    variant="room"
+                    callerActivity={ringer?.activity}
+                    sleepy={phase === 'night'}
+                    spot={spot}
+                    reaction={reaction}
+                    lookUp={lookUp}
+                    shiverStrength={windowOpen && sky === 'storm' ? 2.2 : 1}
+                  />
+                </Animated.View>
+              </GestureDetector>
 
               {/* Incoming call card, ported from the prototype's .incoming:
                   tag, caller name, their status line, and Decline. */}
@@ -569,7 +1067,7 @@ export default function KeeperRoomScreen() {
               <Text style={[styles.moodBadgeText, mood === 'happy' && { color: colours.ink }]}>{t.moodBadge[mood]}</Text>
             </View>
           )}
-          <Text style={styles.caption}>{shelfCaption ?? t.moments[momentIndex]}</Text>
+          <Text style={styles.caption}>{shelfCaption ?? spotCaption ?? t.moments[momentIndex]}</Text>
         </View>
       </SafeAreaView>
     </View>

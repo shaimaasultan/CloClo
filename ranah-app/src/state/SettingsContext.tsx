@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
-import { playClunk, playRingtone, playTick } from '../audio/tones';
+import { playClunk, playRingtone, playSfx, playTick, Sfx } from '../audio/tones';
 import { ToneId } from '../i18n/dictionaries';
 
 // Mirrors the prototype's soundEnabled / privacyMode flags and its
@@ -15,6 +15,8 @@ interface SettingsValue {
   setContactTone: (idx: number, tone: ToneId) => void;
   tick: () => void;
   clunk: (open: boolean) => void;
+  // Room interaction sounds (giggles, lamp clicks, …), silent when sound is off.
+  sfx: (name: Sfx) => void;
 }
 
 const SettingsContext = createContext<SettingsValue | null>(null);
@@ -55,9 +57,16 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     [soundEnabled]
   );
 
+  const sfx = useCallback(
+    (name: Sfx) => {
+      if (soundEnabled) playSfx(name);
+    },
+    [soundEnabled]
+  );
+
   const value = useMemo<SettingsValue>(
-    () => ({ soundEnabled, toggleSound, privacyMode, togglePrivacy, toneForContact, setContactTone, tick, clunk }),
-    [soundEnabled, toggleSound, privacyMode, togglePrivacy, toneForContact, setContactTone, tick, clunk]
+    () => ({ soundEnabled, toggleSound, privacyMode, togglePrivacy, toneForContact, setContactTone, tick, clunk, sfx }),
+    [soundEnabled, toggleSound, privacyMode, togglePrivacy, toneForContact, setContactTone, tick, clunk, sfx]
   );
 
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;
