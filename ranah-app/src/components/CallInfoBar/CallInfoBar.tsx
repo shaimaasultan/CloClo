@@ -11,7 +11,7 @@ import { useSettings } from '../../state/SettingsContext';
 export function CallInfoBar() {
   const { t, isRtl } = useLang();
   const { colours } = usePalette();
-  const { dialed, clearDialed, callState, ringerIdx } = useKeeperState();
+  const { dialed, clearDialed, callState, ringerIdx, muted } = useKeeperState();
   const { privacyMode } = useSettings();
   const rowDir = isRtl ? 'row-reverse' : 'row';
 
@@ -41,8 +41,8 @@ export function CallInfoBar() {
 
       {callState === 'active' && (
         <View style={[styles.pill, styles.linePill, { flexDirection: rowDir }]} accessibilityRole="text">
-          <View style={styles.lineDot} />
-          <Text style={styles.lineLabel}>{t.lineInUse}</Text>
+          <View style={[styles.lineDot, muted && styles.lineDotMuted]} />
+          <Text style={styles.lineLabel}>{muted ? `${t.lineInUse} · ${t.mutedTag}` : t.lineInUse}</Text>
         </View>
       )}
     </View>
@@ -75,5 +75,7 @@ const styles = StyleSheet.create({
   // Same pill as the readouts, in the green of an open line.
   linePill: { borderColor: 'rgba(127,214,180,.55)', paddingVertical: 7 },
   lineDot: { width: 7, height: 7, borderRadius: 3.5, backgroundColor: '#7fd6b4' },
+  // Amber while muted: the line is still open, you just can't be heard.
+  lineDotMuted: { backgroundColor: '#e8b04a' },
   lineLabel: { color: '#bdf0dc', fontSize: 9, letterSpacing: 1, fontWeight: '600', fontFamily: 'monospace' },
 });

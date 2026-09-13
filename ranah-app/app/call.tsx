@@ -76,12 +76,11 @@ export default function CallScreen() {
   const router = useRouter();
   const { t, isRtl } = useLang();
   const { colours } = usePalette();
-  const { callState, setCallState, ringerIdx, mood, sky } = useKeeperState();
+  const { callState, setCallState, ringerIdx, mood, sky, muted, toggleMute } = useKeeperState();
   const { clunk } = useSettings();
 
   const [seconds, setSeconds] = useState(0);
   const [lines, setLines] = useState<ScriptLine[]>([]);
-  const [muted, setMuted] = useState(false);
   const [clarityOn, setClarityOn] = useState(false);
   const [talking, setTalking] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
@@ -172,7 +171,7 @@ export default function CallScreen() {
         </View>
 
         <View style={[styles.controls, { flexDirection: rowDir }]}>
-          <CallControl label={t.mute} accessibilityLabel={t.muteAria} checked={muted} onPress={() => setMuted((m) => !m)}>
+          <CallControl label={t.mute} accessibilityLabel={t.muteAria} checked={muted} onPress={toggleMute}>
             {(color) => (
               <Svg width={18} height={18} viewBox="0 0 24 24">
                 <Path d="M9 5.5a3 3 0 0 1 6 0v6a3 3 0 0 1-6 0z" stroke={color} strokeWidth={1.8} fill="none" strokeLinejoin="round" />

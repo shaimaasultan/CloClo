@@ -6,6 +6,7 @@ import { BrandHeader } from '../src/components/BrandHeader/BrandHeader';
 import { CallInfoBar } from '../src/components/CallInfoBar/CallInfoBar';
 import { DeclineButton } from '../src/components/DeclineButton/DeclineButton';
 import { MissedCallNote } from '../src/components/MissedCallNote/MissedCallNote';
+import { MuteButton } from '../src/components/MuteButton/MuteButton';
 import { Dock } from '../src/components/Dock/Dock';
 import { KeeperAvatar } from '../src/components/KeeperAvatar/KeeperAvatar';
 import { PhoneHandset } from '../src/components/PhoneHandset/PhoneHandset';
@@ -81,6 +82,7 @@ export default function DialScreen() {
             </Pressable>
           )}
           {callState === 'ringing' && <DeclineButton label={t.decline} onPress={() => setCallState('idle')} />}
+          {callState === 'active' && <MuteButton />}
           {callState === 'active' && <DeclineButton calm label={t.handsetHangup} onPress={hangUp} />}
         </View>
 

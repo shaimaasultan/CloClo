@@ -7,6 +7,7 @@ import { setRainLevel } from '../src/audio/tones';
 import { BrandHeader } from '../src/components/BrandHeader/BrandHeader';
 import { CallInfoBar } from '../src/components/CallInfoBar/CallInfoBar';
 import { DeclineButton } from '../src/components/DeclineButton/DeclineButton';
+import { MuteButton } from '../src/components/MuteButton/MuteButton';
 import { Dock } from '../src/components/Dock/Dock';
 import { KeeperAvatar, KeeperReaction, KeeperSpot } from '../src/components/KeeperAvatar/KeeperAvatar';
 import { PhoneHandset } from '../src/components/PhoneHandset/PhoneHandset';
@@ -898,6 +899,7 @@ export default function KeeperRoomScreen() {
 
         <View style={[styles.infoRow, { flexDirection: rowDir }]}>
           <CallInfoBar />
+          {callState === 'active' && <MuteButton />}
           {callState === 'active' && <DeclineButton calm label={t.handsetHangup} onPress={hangUp} />}
         </View>
 

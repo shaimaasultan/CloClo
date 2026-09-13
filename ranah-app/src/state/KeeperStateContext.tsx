@@ -62,6 +62,10 @@ interface KeeperStateValue {
   // Connected (answered or outgoing) calls with a caller, sample history
   // included — what unlocks their keepsake on the shelf.
   connectedCallCount: (callerIdx: number) => number;
+  // Your microphone on a live call: muted keeps the line in use but stops
+  // your side (and the transcript) until unmuted. Resets when the call ends.
+  muted: boolean;
+  toggleMute: () => void;
 }
 
 const KeeperStateContext = createContext<KeeperStateValue | null>(null);
@@ -75,6 +79,7 @@ export function KeeperStateProvider({ children }: { children: React.ReactNode })
   const [dialed, setDialed] = useState('');
   const [callLog, setCallLog] = useState<LoggedCall[]>([]);
   const [missedNotes, setMissedNotes] = useState<number[]>(SAMPLE_MISSED);
+  const [muted, setMuted] = useState(false);
 
   const lastCallEndTime = useRef(0);
   const callsCompleted = useRef(0);
@@ -137,6 +142,7 @@ export function KeeperStateProvider({ children }: { children: React.ReactNode })
       if (next === 'idle') {
         ringerIdxRef.current = null;
         setRingerIdx(null);
+        setMuted(false);
       }
       setCallStateRaw(next);
       if (prev === 'active' && next === 'idle') setMood(computeMood());
@@ -183,6 +189,8 @@ export function KeeperStateProvider({ children }: { children: React.ReactNode })
 
   const dismissMissedNotes = useCallback(() => setMissedNotes((notes) => (notes.length ? [] : notes)), []);
 
+  const toggleMute = useCallback(() => setMuted((m) => !m), []);
+
   const connectedCallCount = useCallback(
     (callerIdx: number) =>
       SAMPLE_RECENTS.filter((r) => r.callerIdx === callerIdx && r.type !== 'missed').length +
@@ -210,6 +218,8 @@ export function KeeperStateProvider({ children }: { children: React.ReactNode })
       missedNotes,
       dismissMissedNotes,
       connectedCallCount,
+      muted,
+      toggleMute,
     }),
     [
       callState,
@@ -228,6 +238,8 @@ export function KeeperStateProvider({ children }: { children: React.ReactNode })
       missedNotes,
       dismissMissedNotes,
       connectedCallCount,
+      muted,
+      toggleMute,
     ]
   );
 

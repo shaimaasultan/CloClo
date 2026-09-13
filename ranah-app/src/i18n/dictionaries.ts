@@ -24,6 +24,9 @@ export interface Dictionary {
   incomingTag: string;
   decline: string;
   mute: string;
+  unmute: string;
+  // Added to "Line in use" while your microphone is muted.
+  mutedTag: string;
   muteAria: string;
   clarity: string;
   clarityAria: string;
@@ -149,6 +152,8 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
     incomingTag: 'Incoming call',
     decline: 'Decline',
     mute: 'Mute',
+    unmute: 'Unmute',
+    mutedTag: 'Muted',
     muteAria: 'Mute microphone',
     clarity: 'Clarity',
     clarityAria: 'Clean up the caller’s audio',
@@ -260,6 +265,8 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
     incomingTag: 'مكالمة واردة',
     decline: 'رفض',
     mute: 'كتم',
+    unmute: 'إلغاء الكتم',
+    mutedTag: 'مكتوم',
     muteAria: 'كتم الميكروفون',
     clarity: 'وضوح',
     clarityAria: 'نضّفي صوت اللي بيتصل',
