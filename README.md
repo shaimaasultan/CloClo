@@ -112,6 +112,6 @@ The app is built on **Expo SDK 57**, **React Native 0.86**, and
 
 ## License
 
-No license has been chosen for CloClo yet, so all rights are reserved by the
-author. `ranah-app/LICENSE` is the MIT license that ships with the Expo
-starter template and covers that template code.
+CloClo is released under the [MIT License](LICENSE). `ranah-app/LICENSE` is
+the MIT license that ships with the Expo starter template and covers that
+template code.
