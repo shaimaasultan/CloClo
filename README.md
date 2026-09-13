@@ -38,6 +38,9 @@ This repository holds two things:
   they're usually doing, their weather, and their local time. Their status
   line ("Driving · light rain · 9:42 PM their time") is built from those
   details in English and Arabic. Deleting asks for confirmation.
+- **Birthdays today** – a card at the top of Contacts lists everyone whose
+  birthday it is, with their local time and a **Call** button; a small 🎂
+  reminder beside the dial opens it.
 - **Recents** – call directions and durations, with "Just now", "5m ago",
   "Yesterday", "3d ago" labels.
 - **Sounds** – pick a ringtone per contact.
