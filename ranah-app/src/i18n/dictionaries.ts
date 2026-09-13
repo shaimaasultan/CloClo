@@ -56,6 +56,8 @@ export interface Dictionary {
   paletteNames: Record<'oxblood' | 'verdigris' | 'ivory' | 'graphite', string>;
   callers: Caller[];
   recents: RecentCall[];
+  // Short spoken-style call length, e.g. "4m 12s" / "4 د 12 ث".
+  formatCallDuration: (seconds: number) => string;
 }
 
 export type CallType = 'incoming' | 'outgoing' | 'missed';
@@ -73,6 +75,8 @@ export interface RecentCall {
   type: CallType;
   time: string;
   meta: string;
+  // How long the call lasted. Missed calls never connected, so they have none.
+  durationSec?: number;
 }
 
 export const DICTIONARIES: Record<Lang, Dictionary> = {
@@ -136,11 +140,16 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
       { name: 'Mama', meta: 'At home · snow falling · 11:05 PM their time', sky: 'snow', number: '0111 908 2234' },
     ],
     recents: [
-      { callerIdx: 0, type: 'incoming', time: '2m ago', meta: 'Driving · light rain · 9:42 PM their time' },
-      { callerIdx: 1, type: 'outgoing', time: 'Yesterday', meta: 'At the gym · clear skies · 6:30 PM their time' },
+      { callerIdx: 0, type: 'incoming', time: '2m ago', meta: 'Driving · light rain · 9:42 PM their time', durationSec: 252 },
+      { callerIdx: 1, type: 'outgoing', time: 'Yesterday', meta: 'At the gym · clear skies · 6:30 PM their time', durationSec: 65 },
       { callerIdx: 2, type: 'missed', time: 'Yesterday', meta: 'At home · snow falling · 11:20 PM their time' },
-      { callerIdx: 0, type: 'outgoing', time: 'Monday', meta: 'At home · clear skies · 8:00 AM their time' },
+      { callerIdx: 0, type: 'outgoing', time: 'Monday', meta: 'At home · clear skies · 8:00 AM their time', durationSec: 758 },
     ],
+    formatCallDuration: (seconds) => {
+      const m = Math.floor(seconds / 60);
+      const s = seconds % 60;
+      return m > 0 ? `${m}m ${String(s).padStart(2, '0')}s` : `${s}s`;
+    },
   },
   ar: {
     dir: 'rtl',
@@ -207,10 +216,15 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
       { name: 'ماما', meta: 'في البيت · بينزل تلج · 11:05 بالليل عندها', sky: 'snow', number: '0111 908 2234' },
     ],
     recents: [
-      { callerIdx: 0, type: 'incoming', time: 'من دقيقتين', meta: 'بتسوق · مطر خفيف · 9:42 مساءً عندها' },
-      { callerIdx: 1, type: 'outgoing', time: 'إمبارح', meta: 'في الجيم · جو صافي · 6:30 المغرب عنده' },
+      { callerIdx: 0, type: 'incoming', time: 'من دقيقتين', meta: 'بتسوق · مطر خفيف · 9:42 مساءً عندها', durationSec: 252 },
+      { callerIdx: 1, type: 'outgoing', time: 'إمبارح', meta: 'في الجيم · جو صافي · 6:30 المغرب عنده', durationSec: 65 },
       { callerIdx: 2, type: 'missed', time: 'إمبارح', meta: 'في البيت · بينزل تلج · 11:20 بالليل عندها' },
-      { callerIdx: 0, type: 'outgoing', time: 'الإتنين', meta: 'في البيت · جو صافي · 8:00 الصبح عندها' },
+      { callerIdx: 0, type: 'outgoing', time: 'الإتنين', meta: 'في البيت · جو صافي · 8:00 الصبح عندها', durationSec: 758 },
     ],
+    formatCallDuration: (seconds) => {
+      const m = Math.floor(seconds / 60);
+      const s = seconds % 60;
+      return m > 0 ? `${m} د ${s} ث` : `${s} ث`;
+    },
   },
 };

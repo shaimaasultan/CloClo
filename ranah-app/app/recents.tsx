@@ -19,14 +19,17 @@ export default function RecentsScreen() {
         ) : (
           t.recents.map((entry, i) => {
             const caller = t.callers[entry.callerIdx];
+            // Missed calls never connected, so only answered calls show a length.
+            const duration = entry.durationSec !== undefined ? t.formatCallDuration(entry.durationSec) : null;
+            const when = duration ? `${entry.time} · ${duration}` : entry.time;
             return (
               <ContactRow
                 key={`${entry.callerIdx}-${i}`}
                 name={caller.name}
-                meta={entry.time}
+                meta={when}
                 subMeta={entry.meta}
                 callType={entry.type}
-                accessibilityLabel={`${t.callTypeNames[entry.type]} · ${caller.name} · ${entry.time} · ${entry.meta}`}
+                accessibilityLabel={`${t.callTypeNames[entry.type]} · ${caller.name} · ${when} · ${entry.meta}`}
                 onPress={() => callContact(entry.callerIdx)}
               />
             );
