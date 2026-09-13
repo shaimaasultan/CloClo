@@ -30,11 +30,11 @@ const TIE = '#3d5a8a';
 const TIE_KNOT = '#2f4870';
 const WHEEL = '#2e2a2e';
 
-export type KeeperPose = 'sleep' | 'book' | 'music' | 'wave' | 'alert' | 'onCall' | 'peek';
+export type KeeperPose = 'sleep' | 'book' | 'music' | 'wave' | 'alert' | 'onCall' | 'peek' | 'gaze';
 
-// Where the keeper is in their room: the middle, napping on the bed, or
-// peeking out of the front door.
-export type KeeperSpot = 'center' | 'bed' | 'door';
+// Where the keeper is in their room: the middle, napping on the bed,
+// peeking out of the front door, or sitting on the window seat.
+export type KeeperSpot = 'center' | 'bed' | 'door' | 'seat';
 
 // A short-lived reaction to being poked; `at` lets the same reaction replay.
 export interface KeeperReaction {
@@ -56,6 +56,7 @@ export function keeperPose(
   if (callState === 'active') return 'onCall';
   if (spot === 'bed') return 'sleep';
   if (spot === 'door') return 'peek';
+  if (spot === 'seat') return 'gaze';
   if (mood === 'happy') return 'wave';
   if (variant === 'hub') return 'sleep';
   if (activity === 'book') return 'book';
@@ -266,6 +267,7 @@ export function KeeperAvatar({
     if (lookUp && pose !== 'sleep') return 'up';
     if (pose === 'sleep' || blink) return 'closed';
     if (pose === 'peek') return 'side';
+    if (pose === 'gaze') return 'gaze';
     if (pose === 'alert') return 'wide';
     if ((mood === 'bored' || sleepy) && callState === 'idle') return 'droopy';
     if (pose === 'book') return 'down';
@@ -317,6 +319,16 @@ export function KeeperAvatar({
             <Circle cx={58} cy={48.8} r={2.5} fill={INK} />
             <Circle cx={42.8} cy={48} r={0.8} fill="#fff" />
             <Circle cx={58.8} cy={48} r={0.8} fill="#fff" />
+          </G>
+        );
+      case 'gaze':
+        // Dreamily looking up and out of the window beside them.
+        return (
+          <G>
+            <Circle cx={40.5} cy={49} r={2.5} fill={INK} />
+            <Circle cx={56.5} cy={49} r={2.5} fill={INK} />
+            <Circle cx={41.2} cy={48.2} r={0.8} fill="#fff" />
+            <Circle cx={57.2} cy={48.2} r={0.8} fill="#fff" />
           </G>
         );
       case 'side':
@@ -530,6 +542,14 @@ export function KeeperAvatar({
             {restRight()}
           </G>
         );
+      case 'gaze':
+        // Sitting with their chin in their hand.
+        return (
+          <G>
+            {restLeft()}
+            {arm('M65 80 Q73 74 60 65', [58, 64])}
+          </G>
+        );
       case 'peek':
         // Shading their eyes to look out of the door.
         return (
@@ -576,8 +596,8 @@ export function KeeperAvatar({
     </G>
   );
 
-  // Standing, or sitting cross-legged to doze.
-  const sitting = pose === 'sleep';
+  // Standing, or sitting cross-legged (dozing, or on the window seat).
+  const sitting = pose === 'sleep' || pose === 'gaze';
   const upperBody = (
     <G transform={sitting ? 'translate(0 14)' : undefined}>
       {renderTorso()}

@@ -82,6 +82,8 @@ export interface Dictionary {
   grumpyCaption: string;
   napCaption: string;
   peekCaption: (weather: string) => string;
+  seatLabel: string;
+  seatCaption: (weather: string) => string;
   // Seasonal and holiday room decorations.
   decorLabel: string;
   decorNames: Record<DecorChoice, string>;
@@ -213,6 +215,8 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
     grumpyCaption: 'Hmph! Enough poking.',
     napCaption: 'Napping on the bed',
     peekCaption: (weather) => `Peeking outside · ${weather}`,
+    seatLabel: 'Sit the keeper on the window seat',
+    seatCaption: (weather) => `Gazing out the window · ${weather}`,
     decorLabel: 'Room decorations',
     decorNames: {
       auto: 'Auto (by date)',
@@ -326,6 +330,8 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
     grumpyCaption: 'هممف! كفاية زغزغة.',
     napCaption: 'نايم على السرير',
     peekCaption: (weather) => `بيبص برا · ${weather}`,
+    seatLabel: 'قعّدي الحارس على قعدة الشباك',
+    seatCaption: (weather) => `بيتفرج من الشباك · ${weather}`,
     decorLabel: 'زينة الأوضة',
     decorNames: {
       auto: 'تلقائي (حسب التاريخ)',

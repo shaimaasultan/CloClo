@@ -92,6 +92,8 @@ const SPOTS: Record<KeeperSpot, { x: number; ground: number }> = {
   center: { x: 200, ground: FLOOR_Y },
   bed: { x: 72, ground: 206 },
   door: { x: 300, ground: FLOOR_Y },
+  // Up on the cushioned window seat, in front of the window.
+  seat: { x: 76, ground: 110 },
 };
 
 // Three pokes inside this window make the keeper grumpy.
@@ -113,6 +115,7 @@ const DOOR_SLOT: Slot = { x: 322, y: 116, w: 64, h: 150 };
 const BOOK_SLOT: Slot = { x: 327, y: 18, w: 26, h: 30 };
 const PLANT_SLOT: Slot = { x: 122, y: 200, w: 34, h: 70 };
 const CAKE_SLOT: Slot = { x: 40, y: 224, w: 42, h: 46 };
+const SEAT_SLOT: Slot = { x: 16, y: 98, w: 120, h: 26 };
 // Tap areas for each keepsake on the shelf, around the book.
 const SHELF_SLOTS: Record<KeepsakeKind, Slot> = {
   mug: { x: 279, y: 18, w: 25, h: 30 },
@@ -817,7 +820,9 @@ export default function KeeperRoomScreen() {
       if (dragging.current) {
         dragging.current = false;
         const feetX = ((keeperLeft + offset.current.x + keeperW / 2) * VB_W) / boxW;
-        moveKeeper(feetX < 125 ? 'bed' : feetX > 282 ? 'door' : 'center');
+        const feetY = ((keeperTop + offset.current.y + keeperH * (133 / 140)) * VB_H) / boxH;
+        // Lifted high on the left lands on the window seat; low on the left is the bed.
+        moveKeeper(feetX < 140 && feetY < 170 ? 'seat' : feetX < 125 ? 'bed' : feetX > 282 ? 'door' : 'center');
         return;
       }
       if (Date.now() - pressStartedAt.current <= POKE_MAX_MS) pokeKeeper();
@@ -860,7 +865,14 @@ export default function KeeperRoomScreen() {
     .map((name) => name.charAt(0))
     .join('');
 
-  const spotCaption = spot === 'bed' ? t.napCaption : spot === 'door' ? t.peekCaption(t.skyNames[sky]) : null;
+  const spotCaption =
+    spot === 'bed'
+      ? t.napCaption
+      : spot === 'door'
+        ? t.peekCaption(t.skyNames[sky])
+        : spot === 'seat'
+          ? t.seatCaption(t.skyNames[sky])
+          : null;
 
   const hotspot = (key: string, slot: Slot, label: string, onPress: () => void) => (
     <Pressable
@@ -948,6 +960,14 @@ export default function KeeperRoomScreen() {
                   </G>
                 )}
 
+                {/* The window seat: a ledge on brackets with a long cushion. */}
+                <Path d="M30 110 L30 122 L40 110 Z" fill={colours.metal3} />
+                <Path d="M122 110 L122 122 L112 110 Z" fill={colours.metal3} />
+                <Rect x={18} y={98} width={116} height={7} rx={2} fill={colours.metal2} />
+                <Rect x={22} y={104} width={108} height={8} rx={4} fill={colours.body1} />
+                <Line x1={58} y1={105} x2={58} y2={111} stroke={colours.body2} strokeOpacity={0.5} strokeWidth={1} />
+                <Line x1={94} y1={105} x2={94} y2={111} stroke={colours.body2} strokeOpacity={0.5} strokeWidth={1} />
+
                 <Rect x={276} y={46} width={96} height={7} rx={2} fill={colours.metal2} />
                 <Wobble pivot={BOOK_PIVOT} rotate={bookWiggle.rotate}>
                   <Rect x={330} y={22} width={20} height={26} rx={2} transform="rotate(-6 340 35)" fill={colours.metal1} stroke={colours.metal3} strokeWidth={1} />
@@ -1030,6 +1050,7 @@ export default function KeeperRoomScreen() {
                 return hotspot(`keepsake-${k.kind}`, SHELF_SLOTS[k.kind], label, () => tapKeepsake(k.kind, label));
               })}
               {idle && hotspot('bed', BED_SLOT, t.napLabel, () => moveKeeper(keeperSpot === 'bed' ? 'center' : 'bed'))}
+              {idle && hotspot('seat', SEAT_SLOT, t.seatLabel, () => moveKeeper(keeperSpot === 'seat' ? 'center' : 'seat'))}
               {idle && hotspot('door', DOOR_SLOT, t.peekLabel, () => moveKeeper(keeperSpot === 'door' ? 'center' : 'door'))}
               {/* On someone's birthday, tap the cake to call them. */}
               {idle &&
