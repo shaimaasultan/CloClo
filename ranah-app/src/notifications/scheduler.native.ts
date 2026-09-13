@@ -3,12 +3,16 @@
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import type { PlannedAlert } from './plan';
+import { ActionLabels, NotificationResponseEvent, PermissionState, SNOOZE_ACTION_MINUTES } from './types';
 
-export type PermissionState = 'granted' | 'denied' | 'undetermined' | 'unsupported';
+export type { PermissionState } from './types';
 
 export const canScheduleAhead = true;
 
 const CHANNEL_ID = 'reminders';
+// The notification category that carries the Snooze / Done buttons.
+const CATEGORY_ID = 'reminder';
+const ACTION = { snoozeShort: 'snooze-short', snoozeLong: 'snooze-long', done: 'done' } as const;
 let setUp = false;
 
 export async function setupNotifications(): Promise<void> {
@@ -33,6 +37,18 @@ export async function setupNotifications(): Promise<void> {
   }
 }
 
+// The buttons on a reminder's notification. Each opens CloClo so the choice
+// is applied straight away (acting without opening the app would need a
+// background task).
+export async function configureActions(labels: ActionLabels): Promise<void> {
+  const opens = { opensAppToForeground: true };
+  await Notifications.setNotificationCategoryAsync(CATEGORY_ID, [
+    { identifier: ACTION.snoozeShort, buttonTitle: labels.snoozeShort, options: opens },
+    { identifier: ACTION.snoozeLong, buttonTitle: labels.snoozeLong, options: opens },
+    { identifier: ACTION.done, buttonTitle: labels.done, options: opens },
+  ]);
+}
+
 function toState(p: Notifications.NotificationPermissionsStatus): PermissionState {
   if (p.granted || p.ios?.status === Notifications.IosAuthorizationStatus.PROVISIONAL) return 'granted';
   return p.canAskAgain ? 'undetermined' : 'denied';
@@ -51,7 +67,13 @@ export async function syncScheduled(alerts: PlannedAlert[]): Promise<void> {
   await Notifications.cancelAllScheduledNotificationsAsync();
   for (const alert of alerts) {
     await Notifications.scheduleNotificationAsync({
-      content: { title: alert.title, body: alert.body, data: { url: '/reminders', reminderId: alert.reminderId } },
+      content: {
+        title: alert.title,
+        body: alert.body,
+        data: { url: '/reminders', reminderId: alert.reminderId, day: alert.day },
+        // Only a first alert can be snoozed; a snooze repeat has no buttons.
+        ...(alert.snoozed ? {} : { categoryIdentifier: CATEGORY_ID }),
+      },
       trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date: alert.fireAt, channelId: CHANNEL_ID },
     });
   }
@@ -60,7 +82,46 @@ export async function syncScheduled(alerts: PlannedAlert[]): Promise<void> {
 // Foreground alerts use the in-app banner instead.
 export function showSystemNotification(_title: string, _body: string, _onClick: () => void): void {}
 
-export function onNotificationTap(onTap: () => void): () => void {
-  const subscription = Notifications.addNotificationResponseReceivedListener(() => onTap());
+function toEvent(response: Notifications.NotificationResponse): NotificationResponseEvent {
+  const data = response.notification.request.content.data as { reminderId?: unknown; day?: unknown } | null;
+  const reminderId = typeof data?.reminderId === 'string' ? data.reminderId : null;
+  const day = typeof data?.day === 'string' ? data.day : null;
+  if (!reminderId || !day) return { kind: 'open' };
+  switch (response.actionIdentifier) {
+    case ACTION.done:
+      return { kind: 'done', reminderId, day };
+    case ACTION.snoozeShort:
+      return { kind: 'snooze', reminderId, day, minutes: SNOOZE_ACTION_MINUTES.short };
+    case ACTION.snoozeLong:
+      return { kind: 'snooze', reminderId, day, minutes: SNOOZE_ACTION_MINUTES.long };
+    default:
+      return { kind: 'open' };
+  }
+}
+
+// Each response is handled once, whether it arrives while CloClo is running
+// or is the one that launched it.
+const handled = new Set<string>();
+
+export function onNotificationResponse(onResponse: (event: NotificationResponseEvent) => void): () => void {
+  const handle = (response: Notifications.NotificationResponse) => {
+    const key = `${response.notification.request.identifier}|${response.actionIdentifier}`;
+    if (handled.has(key)) return;
+    handled.add(key);
+    // A button was used, so the notification has done its job.
+    if (response.actionIdentifier !== Notifications.DEFAULT_ACTION_IDENTIFIER) {
+      Notifications.dismissNotificationAsync(response.notification.request.identifier).catch(() => {});
+    }
+    onResponse(toEvent(response));
+  };
+
+  Notifications.getLastNotificationResponseAsync()
+    .then((response) => {
+      if (!response) return;
+      handle(response);
+      Notifications.clearLastNotificationResponseAsync().catch(() => {});
+    })
+    .catch(() => {});
+  const subscription = Notifications.addNotificationResponseReceivedListener(handle);
   return () => subscription.remove();
 }

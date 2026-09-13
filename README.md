@@ -81,6 +81,9 @@ This repository holds two things:
   15, or 30 minutes, or an hour). The reminder alerts once more when the
   snooze is up – without a Snooze button – and is marked done then (even if
   the app was closed). Tapping **Done** instead marks it done straight away.
+  On iOS and Android the notification itself has **Snooze 10 min**,
+  **Snooze 1 hour**, and **Done** buttons; each briefly opens CloClo to apply
+  the choice.
 - **Snoozed sticker** – while any reminder is snoozed, a blue sticky note
   beside the dial shows when the next one comes back (with a count if there
   are several), the Reminders tab shows a badge, and the reminder's row

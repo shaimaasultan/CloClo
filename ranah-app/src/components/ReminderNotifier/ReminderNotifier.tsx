@@ -6,11 +6,13 @@ import { dueAlerts, planAlerts, PlannedAlert } from '../../notifications/plan';
 import { useNotificationPermission } from '../../notifications/permission';
 import {
   canScheduleAhead,
-  onNotificationTap,
+  configureActions,
+  onNotificationResponse,
   setupNotifications,
   showSystemNotification,
   syncScheduled,
 } from '../../notifications/scheduler';
+import { SNOOZE_ACTION_MINUTES } from '../../notifications/types';
 import { useContacts } from '../../state/ContactsContext';
 import { useKeeperState } from '../../state/KeeperStateContext';
 import { useLang } from '../../state/LangContext';
@@ -81,10 +83,25 @@ export function ReminderNotifier() {
 
   const openReminders = useCallback(() => router.dismissTo('/reminders'), [router]);
 
+  // Phone notifications: tapping opens Reminders; its buttons snooze the
+  // reminder (once) or tick it off.
   useEffect(() => {
     setupNotifications().catch(() => {});
-    return onNotificationTap(openReminders);
-  }, [openReminders]);
+    return onNotificationResponse((response) => {
+      if (response.kind === 'done') markDone(response.reminderId, response.day);
+      else if (response.kind === 'snooze') snoozeReminder(response.reminderId, response.day, response.minutes);
+      else openReminders();
+    });
+  }, [openReminders, markDone, snoozeReminder]);
+
+  // The notification buttons speak the app's language.
+  useEffect(() => {
+    configureActions({
+      snoozeShort: t.snoozeAction(SNOOZE_ACTION_MINUTES.short),
+      snoozeLong: t.snoozeAction(SNOOZE_ACTION_MINUTES.long),
+      done: t.markDoneLabel,
+    }).catch(() => {});
+  }, [t]);
 
   // Phones: reschedule whenever reminders, names or language change.
   const namesKey = reminders.map((r) => contactName(r.contactId) ?? '').join('|');

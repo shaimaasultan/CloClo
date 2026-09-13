@@ -3,7 +3,9 @@
 // ReminderNotifier's due-time check). Phones use scheduler.native.ts.
 import type { PlannedAlert } from './plan';
 
-export type PermissionState = 'granted' | 'denied' | 'undetermined' | 'unsupported';
+import type { ActionLabels, NotificationResponseEvent, PermissionState } from './types';
+
+export type { PermissionState } from './types';
 
 // Phones hand alerts to the OS ahead of time; the web can't.
 export const canScheduleAhead = false;
@@ -57,6 +59,10 @@ export function showSystemNotification(title: string, body: string, onClick: () 
   }
 }
 
-export function onNotificationTap(_onTap: () => void): () => void {
+// Browser notifications have no buttons; clicking one just opens CloClo
+// (see showSystemNotification), and snoozing happens in the in-app banner.
+export async function configureActions(_labels: ActionLabels): Promise<void> {}
+
+export function onNotificationResponse(_onResponse: (event: NotificationResponseEvent) => void): () => void {
   return () => {};
 }

@@ -143,6 +143,8 @@ export interface Dictionary {
   snoozeMinutes: (minutes: number) => string;
   snoozedTag: string;
   snoozedUntil: (time: string) => string;
+  // A snooze button on a phone notification, e.g. "Snooze 10 min".
+  snoozeAction: (minutes: number) => string;
   // The blue sticker on the dial while reminders are snoozed.
   snoozeStickerLabel: (count: number, time: string) => string;
   // Spoken with the dock's count badges.
@@ -363,6 +365,7 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
     snoozeMinutes: (minutes) => (minutes < 60 ? `${minutes} min` : minutes === 60 ? '1 hour' : `${minutes / 60} hours`),
     snoozedTag: 'Snoozed reminder',
     snoozedUntil: (time) => `Snoozed until ${time}`,
+    snoozeAction: (minutes) => `Snooze ${minutes < 60 ? `${minutes} min` : minutes === 60 ? '1 hour' : `${minutes / 60} hours`}`,
     snoozeStickerLabel: (count, time) =>
       count === 1
         ? `Snoozed reminder, back at ${time}. Open Reminders`
@@ -568,6 +571,7 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
     snoozeMinutes: (minutes) => (minutes < 60 ? `${minutes} دقيقة` : minutes === 60 ? 'ساعة' : `${minutes / 60} ساعات`),
     snoozedTag: 'تذكير متأجل',
     snoozedUntil: (time) => `متأجل لحد ${time}`,
+    snoozeAction: (minutes) => `أجّلي ${minutes < 60 ? `${minutes} دقيقة` : minutes === 60 ? 'ساعة' : `${minutes / 60} ساعات`}`,
     snoozeStickerLabel: (count, time) =>
       count === 1
         ? `تذكير متأجل، راجع الساعة ${time}. افتحي التذكيرات`
