@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router';
 import React, { useEffect, useId, useRef, useState } from 'react';
 import { Animated, LayoutChangeEvent, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -127,6 +128,7 @@ const PROP_GLYPH: Record<'book' | 'music' | 'chat', string> = { book: '📖', mu
 const CHROME_HEIGHT = 275;
 
 export default function KeeperRoomScreen() {
+  const router = useRouter();
   const { t, isRtl } = useLang();
   const { colours } = usePalette();
   const { callState, setCallState, sky, mood, roomProp, cycleMoment, momentIndex, ringerIdx } = useKeeperState();
@@ -144,9 +146,11 @@ export default function KeeperRoomScreen() {
   const ringing = callState === 'ringing';
   const ringer = ringerIdx !== null ? t.callers[ringerIdx] : null;
 
+  // Answering opens the live call screen with its transcript.
   const answerCall = () => {
     clunk(true);
     setCallState('active');
+    router.navigate('/call');
   };
 
   const declineCall = () => setCallState('idle');

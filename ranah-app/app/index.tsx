@@ -42,7 +42,11 @@ export default function DialScreen() {
   const handleHandsetPress = () => {
     const opening = callState !== 'active';
     clunk(opening);
-    if (callState === 'ringing') setCallState('active'); // answer
+    if (callState === 'ringing') {
+      // answer — straight into the live call screen with its transcript
+      setCallState('active');
+      router.navigate('/call');
+    }
     else if (callState === 'active') setCallState('idle'); // hang up
     else setCallState('active'); // tap-to-call a dialled number
   };

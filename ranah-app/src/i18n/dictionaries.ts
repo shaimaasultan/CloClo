@@ -19,6 +19,15 @@ export interface Dictionary {
   handsetHangup: string;
   incomingTag: string;
   decline: string;
+  mute: string;
+  muteAria: string;
+  clarity: string;
+  clarityAria: string;
+  end: string;
+  endAria: string;
+  exampleNote: string;
+  translatedLabel: string;
+  youLabel: string;
   roomTitle: string;
   roomBack: string;
   wallNote: string;
@@ -86,6 +95,15 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
     handsetHangup: 'Hang up',
     incomingTag: 'Incoming call',
     decline: 'Decline',
+    mute: 'Mute',
+    muteAria: 'Mute microphone',
+    clarity: 'Clarity',
+    clarityAria: 'Clean up the caller’s audio',
+    end: 'End',
+    endAria: 'End call',
+    exampleNote: 'Example live translation',
+    translatedLabel: 'Translated',
+    youLabel: 'You',
     roomTitle: "Keeper's room",
     roomBack: 'Dial',
     wallNote: 'call someone soon',
@@ -143,6 +161,15 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
     handsetHangup: 'اقفلي السماعة',
     incomingTag: 'مكالمة واردة',
     decline: 'رفض',
+    mute: 'كتم',
+    muteAria: 'كتم الميكروفون',
+    clarity: 'وضوح',
+    clarityAria: 'نضّفي صوت اللي بيتصل',
+    end: 'إنهاء',
+    endAria: 'إنهاء المكالمة',
+    exampleNote: 'مثال لترجمة فورية',
+    translatedLabel: 'الترجمة',
+    youLabel: 'أنا',
     roomTitle: 'أوضة الحارس',
     roomBack: 'القرص',
     wallNote: 'اتصل بحد قريب',
