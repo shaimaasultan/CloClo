@@ -5,7 +5,7 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { setRainLevel } from '../src/audio/tones';
 import { AuthorFooter } from '../src/components/AuthorFooter/AuthorFooter';
-import { BrandHeader } from '../src/components/BrandHeader/BrandHeader';
+import { BrandHeader, isHeaderStacked, STACKED_HEADER_EXTRA } from '../src/components/BrandHeader/BrandHeader';
 import { CallInfoBar } from '../src/components/CallInfoBar/CallInfoBar';
 import { DeclineButton } from '../src/components/DeclineButton/DeclineButton';
 import { Keepsake } from '../src/components/Keepsake/Keepsake';
@@ -877,7 +877,12 @@ export default function KeeperRoomScreen() {
 
   return (
     <View style={[styles.root, { backgroundColor: colours.body2 }]}>
-      <WeatherLayer width={winWidth} height={winHeight} kind={sky} topInset={CHROME_HEIGHT} />
+      <WeatherLayer
+        width={winWidth}
+        height={winHeight}
+        kind={sky}
+        topInset={CHROME_HEIGHT + (isHeaderStacked(winWidth) ? STACKED_HEADER_EXTRA : 0)}
+      />
       <SafeAreaView style={styles.safe}>
         <BrandHeader />
 

@@ -1,10 +1,11 @@
+import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Lang } from '../../i18n/dictionaries';
 import { useKeeperState } from '../../state/KeeperStateContext';
 import { useLang } from '../../state/LangContext';
 import { usePalette } from '../../state/PaletteContext';
-import { PALETTE_ORDER, PALETTE_SWATCH_HEX } from '../../theme/tokens';
+import { PALETTE_SWATCH_HEX } from '../../theme/tokens';
 import { SkyIcon } from '../SkyIcon/SkyIcon';
 import { WeatherKind } from '../WeatherLayer/WeatherLayer';
 
@@ -42,7 +43,8 @@ interface SettingsBarProps {
 // hairline dividers so it reads as a single object beside the logo.
 export function SettingsBar({ compact = false }: SettingsBarProps) {
   const { t, lang, setLang, isRtl } = useLang();
-  const { paletteName, colours, setPalette } = usePalette();
+  const { paletteName, colours, setPalette, quickPalettes } = usePalette();
+  const router = useRouter();
   const { sky, setSky } = useKeeperState();
   const now = useClock();
   const time = formatTime(now);
@@ -94,12 +96,14 @@ export function SettingsBar({ compact = false }: SettingsBarProps) {
 
       {divider}
 
+      {/* Three quick case colours (the ones used most recently), and a
+          button for all the others in Advanced settings. */}
       <View
         style={[styles.group, { flexDirection: rowDir, gap: size.swatchGap }]}
         role="radiogroup"
         aria-label={t.paletteLabel}
       >
-        {PALETTE_ORDER.map((name) => {
+        {quickPalettes.map((name) => {
           const active = paletteName === name;
           return (
             <Pressable
@@ -113,12 +117,24 @@ export function SettingsBar({ compact = false }: SettingsBarProps) {
                 height: size.swatch,
                 borderRadius: size.swatch / 2,
                 borderWidth: size.swatchBorder,
-                borderColor: active ? '#f3d78b' : 'transparent',
+                borderColor: active ? colours.highlight : 'transparent',
                 backgroundColor: PALETTE_SWATCH_HEX[name],
               }}
             />
           );
         })}
+        <Pressable
+          onPress={() => router.push('/advanced')}
+          role="button"
+          aria-label={t.moreColoursAria}
+          style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
+            styles.moreBtn,
+            { width: size.swatch, height: size.swatch, borderRadius: size.swatch / 2 },
+            (pressed || hovered) && styles.swatchBtnActive,
+          ]}
+        >
+          <Text style={[styles.moreLabel, { fontSize: Math.round(size.swatch * 0.7), lineHeight: size.swatch - 2 }]}>+</Text>
+        </Pressable>
       </View>
 
       {divider}
@@ -167,6 +183,15 @@ const styles = StyleSheet.create({
   divider: { width: 1, height: 16, backgroundColor: 'rgba(255,255,255,.12)' },
   group: { alignItems: 'center' },
   skyBtn: { alignItems: 'center', justifyContent: 'center' },
+  swatchBtnActive: { opacity: 0.8 },
+  moreBtn: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: 'rgba(239,230,211,.5)',
+  },
+  moreLabel: { color: 'rgba(239,230,211,.85)', fontWeight: '700', textAlign: 'center' },
   langBtn: { borderRadius: 999, paddingVertical: 3 },
   langLabel: { fontWeight: '600' },
 });

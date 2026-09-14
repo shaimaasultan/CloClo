@@ -34,7 +34,9 @@ export default function AdvancedSettingsScreen() {
     >
       <ScrollView contentContainerStyle={styles.list}>
         <View style={[styles.section, align]}>
-          <Text style={styles.label}>{t.paletteLabel}</Text>
+          <Text style={styles.label}>
+            {t.paletteLabel} · {t.paletteNames[paletteName]}
+          </Text>
           <View style={[styles.swatchRow, { flexDirection: rowDir }]} role="radiogroup" aria-label={t.paletteLabel}>
             {PALETTE_ORDER.map((name) => {
               const active = paletteName === name;
@@ -147,7 +149,8 @@ const styles = StyleSheet.create({
   lastSection: { borderBottomWidth: 0 },
   label: { color: '#f3ecdd', fontSize: 13, fontWeight: '600' },
   hint: { color: 'rgba(239,230,211,.5)', fontSize: 10, fontFamily: 'monospace', marginTop: -6 },
-  swatchRow: { gap: 10 },
+  // Eight themes: the swatches wrap onto a second row on narrow screens.
+  swatchRow: { gap: 10, flexWrap: 'wrap' },
   swatch: {
     width: 32,
     height: 32,

@@ -3,6 +3,7 @@
 
 import type { DecorChoice } from '../state/decorations';
 import type { Repeat } from '../state/RemindersContext';
+import type { PaletteName } from '../theme/tokens';
 
 export type Lang = 'en' | 'ar';
 
@@ -69,7 +70,9 @@ export interface Dictionary {
   advancedHint: string;
   languageLabel: string;
   paletteLabel: string;
-  paletteNames: Record<'oxblood' | 'verdigris' | 'ivory' | 'graphite', string>;
+  paletteNames: Record<PaletteName, string>;
+  // The header's button for the case colours not among its three quick picks.
+  moreColoursAria: string;
   recents: RecentCall[];
   // Pieces of a contact's status line ("Driving · light rain · 9:42 PM their time").
   activityNames: Record<CallerActivity, string>;
@@ -360,7 +363,17 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
     advancedHint: 'Language and case colour',
     languageLabel: 'Language',
     paletteLabel: 'Case colour',
-    paletteNames: { oxblood: 'Oxblood', verdigris: 'Verdigris', ivory: 'Ivory', graphite: 'Graphite' },
+    paletteNames: {
+      oxblood: 'Oxblood',
+      verdigris: 'Verdigris',
+      ivory: 'Ivory',
+      graphite: 'Graphite',
+      midnight: 'Midnight brass',
+      mustard: '70s mustard',
+      mint: '50s mint',
+      rose: 'Princess rose',
+    },
+    moreColoursAria: 'More case colours in Advanced settings',
     recents: [
       { contactId: 'nadia', type: 'incoming', time: '2m ago', meta: 'Driving · light rain · 9:42 PM their time', durationSec: 252 },
       { contactId: 'omar', type: 'outgoing', time: 'Yesterday', meta: 'At the gym · clear skies · 6:30 PM their time', durationSec: 65 },
@@ -629,7 +642,17 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
     advancedHint: 'اللغة ولون الجسم',
     languageLabel: 'اللغة',
     paletteLabel: 'لون الجسم',
-    paletteNames: { oxblood: 'عنّابي', verdigris: 'أخضر نحاسي', ivory: 'عاجي', graphite: 'غرافيت' },
+    paletteNames: {
+      oxblood: 'عنّابي',
+      verdigris: 'أخضر نحاسي',
+      ivory: 'عاجي',
+      graphite: 'غرافيت',
+      midnight: 'كحلي ونحاس',
+      mustard: 'مستردة السبعينات',
+      mint: 'نعناعي الخمسينات',
+      rose: 'وردي برنسيس',
+    },
+    moreColoursAria: 'ألوان تانية في الإعدادات المتقدمة',
     recents: [
       { contactId: 'nadia', type: 'incoming', time: 'من دقيقتين', meta: 'بتسوق · مطر خفيف · 9:42 مساءً عندها', durationSec: 252 },
       { contactId: 'omar', type: 'outgoing', time: 'إمبارح', meta: 'في الجيم · جو صافي · 6:30 المغرب عنده', durationSec: 65 },

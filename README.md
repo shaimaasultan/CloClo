@@ -177,10 +177,15 @@ This repository holds two things:
 ### Look and language
 
 - **Header controls** – one pill beside the logo holds the clock with today's
-  date underneath (in English or Arabic), the sky picker, the case colour
-  (Oxblood, Verdigris, Ivory, Graphite), and the language switch.
-- **Case colour** – repaints the phone, the keeper's sweater, and a wash over
-  the room's wall.
+  date underneath (in English or Arabic), the sky picker, three quick case
+  colours (the ones used most recently) with a **+** for the rest in Advanced
+  settings, and the language switch. On narrow screens the header stacks onto
+  two rows, so the logo, name, and slogan always show.
+- **Case colour** – eight themes modelled on classic phones, chosen in
+  Advanced settings: Oxblood, Verdigris, Ivory (cream Bakelite on a dark
+  espresso screen), Graphite (with a warm amber highlight), Midnight brass,
+  70s mustard, 50s mint, and Princess rose. Each repaints the phone, the
+  keeper's sweater, and a wash over the room's wall.
 - **Caller's sky** – clear, rain, snow, or storm weather drifts behind every
   screen and follows the caller when they ring.
 - **English and Arabic** – full Egyptian-Arabic translation with right-to-left

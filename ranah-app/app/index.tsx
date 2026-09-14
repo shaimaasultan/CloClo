@@ -3,7 +3,7 @@ import React from 'react';
 import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AuthorFooter } from '../src/components/AuthorFooter/AuthorFooter';
-import { BrandHeader } from '../src/components/BrandHeader/BrandHeader';
+import { BrandHeader, isHeaderStacked, STACKED_HEADER_EXTRA } from '../src/components/BrandHeader/BrandHeader';
 import { CallInfoBar } from '../src/components/CallInfoBar/CallInfoBar';
 import { DeclineButton } from '../src/components/DeclineButton/DeclineButton';
 import { MissedCallNote } from '../src/components/MissedCallNote/MissedCallNote';
@@ -60,7 +60,12 @@ export default function DialScreen() {
   // peeks above the dial) never gets pushed into the chrome above it.
   // The speed-dial holes under the dial need a little room of their own.
   const speedDialSpace = favourites.length > 0 ? 70 : 0;
-  const dialSize = Math.max(220, Math.min(340, winWidth * 0.86, (winHeight - CHROME_HEIGHT - speedDialSpace) * 0.85));
+  // On narrow screens the header stacks onto two rows, which also takes room.
+  const headerExtra = isHeaderStacked(winWidth) ? STACKED_HEADER_EXTRA : 0;
+  const dialSize = Math.max(
+    220,
+    Math.min(340, winWidth * 0.86, (winHeight - CHROME_HEIGHT - headerExtra - speedDialSpace) * 0.85)
+  );
   // Prototype proportions (400px dial): a 220px handset whose top sits 42px
   // above the dial, so its horns rest down over the brass bezel like a
   // receiver sitting in its cradle rather than floating above the phone.
@@ -95,7 +100,7 @@ export default function DialScreen() {
 
   return (
     <View style={[styles.root, { backgroundColor: colours.body2 }]}>
-      <WeatherLayer width={winWidth} height={winHeight} kind={sky} topInset={CHROME_HEIGHT} />
+      <WeatherLayer width={winWidth} height={winHeight} kind={sky} topInset={CHROME_HEIGHT + headerExtra} />
       <SafeAreaView style={styles.safe}>
         <BrandHeader />
 

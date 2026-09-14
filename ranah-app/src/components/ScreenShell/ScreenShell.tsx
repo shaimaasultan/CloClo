@@ -5,7 +5,7 @@ import { useKeeperState } from '../../state/KeeperStateContext';
 import { useLang } from '../../state/LangContext';
 import { usePalette } from '../../state/PaletteContext';
 import { AuthorFooter } from '../AuthorFooter/AuthorFooter';
-import { BrandHeader } from '../BrandHeader/BrandHeader';
+import { BrandHeader, isHeaderStacked, STACKED_HEADER_EXTRA } from '../BrandHeader/BrandHeader';
 import { Dock } from '../Dock/Dock';
 import { DockKey } from '../DockIcon/DockIcon';
 import { ChevronIcon } from '../Icons/Icons';
@@ -41,7 +41,12 @@ export function ScreenShell({ active, back, children }: ScreenShellProps) {
 
   return (
     <View style={[styles.root, { backgroundColor: colours.body2 }]}>
-      <WeatherLayer width={width} height={height} kind={sky} topInset={CHROME_HEIGHT} />
+      <WeatherLayer
+        width={width}
+        height={height}
+        kind={sky}
+        topInset={CHROME_HEIGHT + (isHeaderStacked(width) ? STACKED_HEADER_EXTRA : 0)}
+      />
       <SafeAreaView style={styles.safe}>
         <BrandHeader />
 
