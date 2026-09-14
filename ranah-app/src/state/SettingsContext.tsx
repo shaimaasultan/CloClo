@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
-import { playClunk, playRingtone, playSfx, playTick, Sfx } from '../audio/tones';
+import { discardRecording } from '../audio/recordedTones';
+import { forgetSound, playClunk, playDialReturn, playRingtone, playSfx, playTick, Sfx } from '../audio/tones';
 import type { DecorChoice } from './decorations';
 import { readPersisted, usePersist } from './persist';
 import { dayKey } from './RemindersContext';
@@ -35,6 +36,12 @@ interface SettingsValue {
   nudgeSince: number;
   nudgeDismissed: Record<string, string>;
   dismissNudge: (id: string) => void;
+  // Ringtones recorded with the microphone: a contact's file (phones) or
+  // data: URL (web). Setting one also selects it; null deletes it.
+  recordedToneFor: (id: string) => string | undefined;
+  setRecordedTone: (id: string, uri: string | null) => void;
+  // The rotary dial whirring home after a digit, one click per pulse.
+  dialReturn: (digit: string) => void;
 }
 
 interface SavedSettings {
@@ -63,6 +70,12 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const [nudgeDays, setNudgeDays] = useState(saved.nudgeDays ?? 7);
   const [nudgeSince] = useState(() => saved.nudgeSince ?? Date.now());
   const [nudgeDismissed, setNudgeDismissed] = useState<Record<string, string>>(saved.nudgeDismissed ?? {});
+  // Kept apart from the other settings: recordings on the web are data: URLs
+  // and much bigger than everything else.
+  const [recordedTones, setRecordedTones] = useState<Record<string, string>>(() =>
+    readPersisted('recordedTones', {}, (v) => typeof v === 'object' && v !== null)
+  );
+  usePersist('recordedTones', recordedTones);
 
   const toSave = useMemo<SavedSettings>(
     () => ({ soundEnabled, privacyMode, contactTones, decorChoice, keepsakeOverrides, nudgeDays, nudgeSince, nudgeDismissed }),
@@ -93,19 +106,53 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
 
   const togglePrivacy = useCallback(() => setPrivacyMode((prev) => !prev), []);
 
-  const toneForContact = useCallback((id: string) => contactTones[id] ?? 'classic', [contactTones]);
+  const toneForContact = useCallback(
+    (id: string): ToneId => {
+      const tone = contactTones[id] ?? 'classic';
+      // A recorded tone whose recording is gone falls back to the bell.
+      return tone === 'recorded' && !recordedTones[id] ? 'classic' : tone;
+    },
+    [contactTones, recordedTones]
+  );
+
+  const recordedToneFor = useCallback((id: string) => recordedTones[id], [recordedTones]);
+
+  const setRecordedTone = useCallback((id: string, uri: string | null) => {
+    setRecordedTones((prev) => {
+      const old = prev[id];
+      if (old && old !== uri) {
+        forgetSound(old);
+        discardRecording(old);
+      }
+      const next = { ...prev };
+      if (uri) next[id] = uri;
+      else delete next[id];
+      return next;
+    });
+    // A new recording becomes their ringtone; deleting it goes back to the bell.
+    setContactTones((prev) =>
+      uri ? { ...prev, [id]: 'recorded' } : prev[id] === 'recorded' ? { ...prev, [id]: 'classic' } : prev
+    );
+  }, []);
 
   const setContactTone = useCallback(
     (id: string, tone: ToneId) => {
       setContactTones((prev) => ({ ...prev, [id]: tone }));
-      if (soundEnabled) playRingtone(tone);
+      if (soundEnabled) playRingtone(tone, recordedTones[id]);
     },
-    [soundEnabled]
+    [soundEnabled, recordedTones]
   );
 
   const tick = useCallback(() => {
     if (soundEnabled) playTick();
   }, [soundEnabled]);
+
+  const dialReturn = useCallback(
+    (digit: string) => {
+      if (soundEnabled) playDialReturn(digit);
+    },
+    [soundEnabled]
+  );
 
   const clunk = useCallback(
     (open: boolean) => {
@@ -141,8 +188,14 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       nudgeSince,
       nudgeDismissed,
       dismissNudge,
+      recordedToneFor,
+      setRecordedTone,
+      dialReturn,
     }),
     [
+      recordedToneFor,
+      setRecordedTone,
+      dialReturn,
       nudgeDays,
       nudgeSince,
       nudgeDismissed,

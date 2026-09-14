@@ -50,7 +50,7 @@ export default function DialScreen() {
   const pendingReminders = todaysReminders.filter((r) => !r.doneDates.includes(dayKey(now))).length;
   // Snoozed reminders still waiting to come back.
   const snoozed = pendingSnoozes(reminders, now.getTime());
-  const { tick, clunk } = useSettings();
+  const { dialReturn, clunk } = useSettings();
   const startIncomingCall = useIncomingCall();
   const { width: winWidth, height: winHeight } = useWindowDimensions();
 
@@ -78,8 +78,9 @@ export default function DialScreen() {
     else setCallState('active'); // tap-to-call a dialled number
   };
 
+  // Letting go of the dial: it whirs home, clicking once per pulse.
   const handleDigit = (digit: string) => {
-    tick();
+    dialReturn(digit);
     appendDigit(digit);
   };
 

@@ -7,7 +7,7 @@ import { AuthorFooter } from '../src/components/AuthorFooter/AuthorFooter';
 import { BrandHeader } from '../src/components/BrandHeader/BrandHeader';
 import { CallInfoBar } from '../src/components/CallInfoBar/CallInfoBar';
 import { KeeperAvatar } from '../src/components/KeeperAvatar/KeeperAvatar';
-import { CALL_SCRIPT, ScriptLine, TextDir } from '../src/data/callScript';
+import { TranscriptStatus, useLiveTranscript } from '../src/speech/useLiveTranscript';
 import { useContacts } from '../src/state/ContactsContext';
 import { isBirthdayOn } from '../src/state/decorations';
 import { useKeeperState } from '../src/state/KeeperStateContext';
@@ -15,14 +15,18 @@ import { useLang } from '../src/state/LangContext';
 import { usePalette } from '../src/state/PaletteContext';
 import { useSettings } from '../src/state/SettingsContext';
 
-// Same pacing as the prototype: a new transcript line every 2.6s (held
-// while muted), and the keeper's mouth stays open 1.1s after each line.
-const LINE_INTERVAL_MS = 2600;
-const TALK_MS = 1100;
+// The keeper's mouth stays open this long after your words arrive.
+const TALK_MS = 700;
 
 const YOU_COLOUR = '#6cc2b3';
 const HANDSET_PATH =
   'M14 44 C 6 44 4 30 12 24 L 40 6 C 46 2 52 6 50 13 L 46 24 C 62 14 88 14 104 24 L 100 13 C 98 6 104 2 110 6 L 138 24 C 146 30 144 44 136 44 C 130 44 128 40 122 36 C 106 26 44 26 28 36 C 22 40 20 44 14 44 Z';
+
+// The languages you can speak on a call, as speech-recognition locales.
+const SPEECH_LANGS = [
+  { code: 'en-US', label: 'EN' },
+  { code: 'ar-EG', label: 'عربي' },
+];
 
 function formatDuration(totalSeconds: number) {
   const m = Math.floor(totalSeconds / 60);
@@ -30,10 +34,12 @@ function formatDuration(totalSeconds: number) {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }
 
-// Each script line carries its own direction (Arabic lines right-aligned,
-// English left-aligned) regardless of the UI language.
-function dirStyle(dir: TextDir): TextStyle {
-  return { writingDirection: dir, textAlign: dir === 'rtl' ? 'right' : 'left' };
+// Each line reads in its own direction — Arabic right-aligned, English
+// left-aligned — whatever the app's language.
+function directionOf(text: string): TextStyle {
+  return /[؀-ۿ]/.test(text)
+    ? { writingDirection: 'rtl', textAlign: 'right' }
+    : { writingDirection: 'ltr', textAlign: 'left' };
 }
 
 interface CallControlProps {
@@ -72,24 +78,22 @@ function CallControl({ label, accessibilityLabel, onPress, checked, variant, chi
 }
 
 // Ported from the prototype's .call-screen: caller header with a running
-// timer, the keeper's face (mouth opens as each line arrives), Mute /
-// Clarity / End controls, and a live transcript where every line shows the
-// original speech and its translation. Only reachable by answering a call.
+// timer, the keeper on the line (mouth moving as you speak), Mute / Clarity /
+// End controls, and a live transcript of what you say, heard by the device's
+// own speech recognition. Only reachable during a live call.
 export default function CallScreen() {
   const router = useRouter();
-  const { t, isRtl } = useLang();
+  const { t, lang, isRtl } = useLang();
   const { colours } = usePalette();
   const { callState, setCallState, ringerId, mood, sky, muted, toggleMute } = useKeeperState();
   const { contactById } = useContacts();
   const { clunk } = useSettings();
 
   const [seconds, setSeconds] = useState(0);
-  const [lines, setLines] = useState<ScriptLine[]>([]);
   const [clarityOn, setClarityOn] = useState(false);
   const [talking, setTalking] = useState(false);
+  const [speechLang, setSpeechLang] = useState(lang === 'ar' ? 'ar-EG' : 'en-US');
   const scrollRef = useRef<ScrollView>(null);
-  const mutedRef = useRef(muted);
-  mutedRef.current = muted;
 
   const caller = contactById(ringerId) ?? null;
   const live = callState === 'active' && caller !== null;
@@ -97,34 +101,21 @@ export default function CallScreen() {
   const rowDir = isRtl ? 'row-reverse' : 'row';
   const uiAlign: TextStyle = { textAlign: isRtl ? 'right' : 'left' };
 
+  const { lines, interim, status } = useLiveTranscript({ active: live, muted, lang: speechLang });
+
   useEffect(() => {
     if (!live) return;
     const id = setInterval(() => setSeconds((s) => s + 1), 1000);
     return () => clearInterval(id);
   }, [live]);
 
+  // The keeper's mouth moves while your words come in.
   useEffect(() => {
-    if (!live) return;
-    let index = 0;
-    let talkTimer: ReturnType<typeof setTimeout> | undefined;
-    const id = setInterval(() => {
-      if (mutedRef.current) return;
-      if (index >= CALL_SCRIPT.length) {
-        clearInterval(id);
-        return;
-      }
-      const next = CALL_SCRIPT[index];
-      index += 1;
-      setLines((prev) => [...prev, next]);
-      setTalking(true);
-      clearTimeout(talkTimer);
-      talkTimer = setTimeout(() => setTalking(false), TALK_MS);
-    }, LINE_INTERVAL_MS);
-    return () => {
-      clearInterval(id);
-      clearTimeout(talkTimer);
-    };
-  }, [live]);
+    if (lines.length === 0 && !interim) return;
+    setTalking(true);
+    const id = setTimeout(() => setTalking(false), TALK_MS);
+    return () => clearTimeout(id);
+  }, [lines.length, interim]);
 
   // Hanging up (or landing here without a live call) sends you back to the
   // dial — this screen only exists for the length of an answered call.
@@ -139,6 +130,19 @@ export default function CallScreen() {
     clunk(false);
     setCallState('idle');
   };
+
+  const statusText: Record<TranscriptStatus, string> = {
+    starting: t.liveStarting,
+    listening: t.liveListening,
+    muted: t.liveMuted,
+    denied: t.liveDenied,
+    unavailable: t.liveUnavailable,
+    'unsupported-language': t.liveLanguageUnsupported,
+    error: t.liveError,
+  };
+  const problem = status === 'denied' || status === 'unavailable' || status === 'unsupported-language' || status === 'error';
+  // Clarity shows only finished lines, without the half-heard words in progress.
+  const showInterim = !clarityOn && interim.length > 0;
 
   return (
     <View style={styles.root}>
@@ -164,7 +168,7 @@ export default function CallScreen() {
         </View>
 
         {/* The keeper on the line: handset to their ear, dressed for the
-            caller's weather, mouth moving as each transcript line lands. */}
+            caller's weather, mouth moving as your words come in. */}
         <View style={styles.stage}>
           <KeeperAvatar
             size={104}
@@ -211,29 +215,51 @@ export default function CallScreen() {
           </CallControl>
         </View>
 
+        {/* Listening status, and the language you're speaking. */}
+        <View style={[styles.statusRow, { flexDirection: rowDir }]}>
+          <View style={[styles.statusDot, status === 'listening' ? styles.dotLive : problem ? styles.dotProblem : styles.dotIdle]} />
+          <Text style={[styles.statusText, uiAlign, problem && styles.problemText]} accessibilityLiveRegion="polite">
+            {statusText[status]}
+          </Text>
+          <View style={[styles.langSwitch, { flexDirection: rowDir }]} role="radiogroup" aria-label={t.liveLangLabel}>
+            {SPEECH_LANGS.map((option) => {
+              const active = speechLang === option.code;
+              return (
+                <Pressable
+                  key={option.code}
+                  onPress={() => setSpeechLang(option.code)}
+                  role="radio"
+                  aria-checked={active}
+                  style={[styles.langBtn, active && { backgroundColor: colours.metal2 }]}
+                >
+                  <Text style={[styles.langLabel, { color: active ? colours.ink : 'rgba(239,230,211,.6)' }]}>{option.label}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+
         <ScrollView
           ref={scrollRef}
           style={styles.transcript}
           contentContainerStyle={styles.transcriptContent}
           onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
         >
-          <Text style={styles.note}>{t.exampleNote}</Text>
-          {lines.map((line, i) => {
-            const isYou = line.who === 'you';
-            return (
-              <View key={i} style={styles.row}>
-                <Text style={[styles.speaker, uiAlign, { color: isYou ? YOU_COLOUR : colours.metal1 }]}>
-                  {isYou ? t.youLabel : caller.name}
-                </Text>
-                {/* The caller's side sounds muddy until Clarity cleans it up. */}
-                <Text style={[styles.original, dirStyle(line.originalDir), !isYou && !clarityOn && styles.noisy]}>
-                  {line.original}
-                </Text>
-                <Text style={[styles.tag, dirStyle(line.translatedDir)]}>{t.translatedLabel}</Text>
-                <Text style={[styles.translated, dirStyle(line.translatedDir)]}>{line.translated}</Text>
-              </View>
-            );
-          })}
+          {lines.length === 0 && !showInterim && status === 'listening' && (
+            <Text style={styles.empty}>{t.liveEmpty}</Text>
+          )}
+          {lines.map((line) => (
+            <View key={line.id} style={styles.row}>
+              <Text style={[styles.speaker, uiAlign, { color: YOU_COLOUR }]}>{t.youLabel}</Text>
+              <Text style={[styles.original, directionOf(line.text)]}>{line.text}</Text>
+            </View>
+          ))}
+          {showInterim && (
+            <View style={styles.row}>
+              <Text style={[styles.speaker, uiAlign, { color: YOU_COLOUR }]}>{t.youLabel}</Text>
+              <Text style={[styles.original, styles.interim, directionOf(interim)]}>{interim}</Text>
+            </View>
+          )}
         </ScrollView>
         <AuthorFooter />
       </SafeAreaView>
@@ -281,29 +307,41 @@ const styles = StyleSheet.create({
   controlEnd: { backgroundColor: '#7a3630', borderColor: 'rgba(255,255,255,.12)' },
   controlEndActive: { backgroundColor: '#8f423b' },
   controlLabel: { fontSize: 9, letterSpacing: 0.6, textTransform: 'uppercase' },
-  transcript: { flex: 1, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,.06)' },
-  transcriptContent: { paddingTop: 10, paddingHorizontal: 16, paddingBottom: 16, gap: 10 },
-  note: {
+  statusRow: {
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,.06)',
+  },
+  statusDot: { width: 8, height: 8, borderRadius: 4 },
+  dotLive: { backgroundColor: '#7fd6b4' },
+  dotIdle: { backgroundColor: 'rgba(239,230,211,.35)' },
+  dotProblem: { backgroundColor: '#e6a49c' },
+  statusText: { flex: 1, minWidth: 0, color: 'rgba(239,230,211,.7)', fontSize: 10, fontFamily: 'monospace' },
+  problemText: { color: '#e6a49c' },
+  langSwitch: {
+    gap: 2,
+    padding: 2,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,.12)',
+  },
+  langBtn: { borderRadius: 999, paddingVertical: 3, paddingHorizontal: 9 },
+  langLabel: { fontSize: 10, fontWeight: '700' },
+  transcript: { flex: 1 },
+  transcriptContent: { paddingTop: 6, paddingHorizontal: 16, paddingBottom: 16, gap: 10 },
+  empty: {
     textAlign: 'center',
-    fontSize: 9,
-    letterSpacing: 1.4,
-    textTransform: 'uppercase',
+    paddingTop: 12,
+    fontSize: 11,
     fontFamily: 'monospace',
-    color: 'rgba(239,230,211,.4)',
-    marginBottom: 2,
+    color: 'rgba(239,230,211,.45)',
   },
   row: { borderBottomWidth: 1, borderBottomColor: 'rgba(239,230,211,.08)', paddingBottom: 8 },
   speaker: { fontSize: 9, letterSpacing: 1, textTransform: 'uppercase', fontFamily: 'monospace', marginBottom: 3 },
   original: { color: '#f3ecdd', fontSize: 14, lineHeight: 20 },
-  noisy: { opacity: 0.6 },
-  tag: {
-    fontSize: 8,
-    letterSpacing: 1,
-    textTransform: 'uppercase',
-    fontFamily: 'monospace',
-    color: 'rgba(239,230,211,.32)',
-    marginTop: 4,
-    marginBottom: 2,
-  },
-  translated: { color: 'rgba(239,230,211,.55)', fontSize: 11, lineHeight: 16, fontFamily: 'monospace' },
+  // Words still being heard: fainter until the phrase is finished.
+  interim: { color: 'rgba(239,230,211,.55)', fontStyle: 'italic' },
 });

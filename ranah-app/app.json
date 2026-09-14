@@ -27,7 +27,20 @@
     },
     "plugins": [
       "expo-router",
-      "expo-notifications"
+      "expo-notifications",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Allow CloClo to use the microphone so you can record your own ringtones."
+        }
+      ],
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Allow CloClo to use the microphone for live call transcripts and recording your own ringtones.",
+          "speechRecognitionPermission": "Allow CloClo to turn what you say on a call into a live transcript."
+        }
+      ]
     ]
   }
 }

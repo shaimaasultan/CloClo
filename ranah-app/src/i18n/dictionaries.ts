@@ -33,8 +33,16 @@ export interface Dictionary {
   clarityAria: string;
   end: string;
   endAria: string;
-  exampleNote: string;
-  translatedLabel: string;
+  // The live transcript of your side of a call.
+  liveStarting: string;
+  liveListening: string;
+  liveMuted: string;
+  liveDenied: string;
+  liveUnavailable: string;
+  liveLanguageUnsupported: string;
+  liveError: string;
+  liveEmpty: string;
+  liveLangLabel: string;
   youLabel: string;
   roomTitle: string;
   roomBack: string;
@@ -170,6 +178,21 @@ export interface Dictionary {
   clearSearch: string;
   noMatches: string;
   jumpToLetter: (letter: string) => string;
+  // Recording a ringtone in Sounds.
+  recordTone: string;
+  recordNewTone: string;
+  recordDelete: string;
+  recordToneFor: (name: string) => string;
+  recordHint: string;
+  recordStart: string;
+  recordStop: string;
+  recordPlay: string;
+  recordKeep: string;
+  recordAgain: string;
+  recordCancel: string;
+  recordSeconds: (seconds: number) => string;
+  micDenied: string;
+  recordFailed: string;
   // Short spoken-style call length, e.g. "4m 12s" / "4 د 12 ث".
   formatCallDuration: (seconds: number) => string;
   justNow: string;
@@ -220,7 +243,8 @@ export type KeepsakeKind = 'postcard' | 'mug' | 'snowGlobe' | 'book' | 'photo' |
 export type CallerActivity = 'driving' | 'work' | 'home';
 
 export type CallType = 'incoming' | 'outgoing' | 'missed';
-export type ToneId = 'classic' | 'chime' | 'buzz' | 'pulse';
+// 'recorded' is a ringtone recorded for that contact with the microphone.
+export type ToneId = 'classic' | 'chime' | 'buzz' | 'pulse' | 'recorded';
 
 // A contact as the screens see it: name in the current language and a status
 // line built from their activity, weather and local time.
@@ -280,8 +304,15 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
     clarityAria: 'Clean up the caller’s audio',
     end: 'End',
     endAria: 'End call',
-    exampleNote: 'Example live translation',
-    translatedLabel: 'Translated',
+    liveStarting: 'Starting the live transcript…',
+    liveListening: 'Listening — your side of the call',
+    liveMuted: 'Muted — not listening',
+    liveDenied: 'Microphone or speech recognition is off — allow it in your browser or phone settings',
+    liveUnavailable: 'Live transcripts need Chrome, Safari, or a development build of the app',
+    liveLanguageUnsupported: 'This language isn’t available for speech recognition here',
+    liveError: 'The live transcript hit a problem — trying again…',
+    liveEmpty: 'Start talking — your words appear here',
+    liveLangLabel: 'Language you’re speaking',
     youLabel: 'You',
     roomTitle: "Keeper's room",
     roomBack: 'Dial',
@@ -297,7 +328,7 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
     callTypeNames: { incoming: 'Incoming', outgoing: 'Outgoing', missed: 'Missed' },
     soundsTitle: 'Sounds',
     soundsHint: 'Choose how each caller sounds',
-    toneNames: { classic: 'Classic', chime: 'Chime', buzz: 'Retro buzz', pulse: 'Digital pulse' },
+    toneNames: { classic: 'Old phone bell', chime: 'Chime', buzz: 'Retro buzz', pulse: 'Digital pulse', recorded: 'My recording' },
     settingsTitle: 'Settings',
     soundLabel: 'Sound effects',
     soundHint: 'Dial ticks, clunks, and ringtones',
@@ -411,6 +442,20 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
     clearSearch: 'Clear search',
     noMatches: 'No matches',
     jumpToLetter: (letter) => `Jump to ${letter}`,
+    recordTone: 'Record a ringtone',
+    recordNewTone: 'Record a new one',
+    recordDelete: 'Delete recording',
+    recordToneFor: (name) => `Record a ringtone for ${name}`,
+    recordHint: 'Up to 10 seconds — hum, sing, or say their name',
+    recordStart: 'Record',
+    recordStop: 'Stop',
+    recordPlay: 'Play',
+    recordKeep: 'Use as ringtone',
+    recordAgain: 'Record again',
+    recordCancel: 'Cancel',
+    recordSeconds: (seconds) => `${seconds}s`,
+    micDenied: 'Microphone access is off — allow it in your browser or phone settings',
+    recordFailed: 'Couldn’t record — try again',
     formatCallDuration: (seconds) => {
       const m = Math.floor(seconds / 60);
       const s = seconds % 60;
@@ -498,8 +543,15 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
     clarityAria: 'نضّفي صوت اللي بيتصل',
     end: 'إنهاء',
     endAria: 'إنهاء المكالمة',
-    exampleNote: 'مثال لترجمة فورية',
-    translatedLabel: 'الترجمة',
+    liveStarting: 'بيشغّل التفريغ المباشر…',
+    liveListening: 'بيسمعك — كلامك إنتِ في المكالمة',
+    liveMuted: 'مكتوم — مش بيسمع',
+    liveDenied: 'الميكروفون أو التعرّف على الكلام مقفول — اسمحي بيه من إعدادات المتصفح أو التليفون',
+    liveUnavailable: 'التفريغ المباشر محتاج كروم أو سفاري أو نسخة تطوير من التطبيق',
+    liveLanguageUnsupported: 'اللغة دي مش متاحة للتعرّف على الكلام هنا',
+    liveError: 'التفريغ المباشر فيه مشكلة — بيحاول تاني…',
+    liveEmpty: 'ابدئي الكلام — كلامك هيظهر هنا',
+    liveLangLabel: 'اللغة اللي بتتكلمي بيها',
     youLabel: 'أنا',
     roomTitle: 'أوضة الحارس',
     roomBack: 'القرص',
@@ -520,7 +572,7 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
     callTypeNames: { incoming: 'واردة', outgoing: 'صادرة', missed: 'فايتة' },
     soundsTitle: 'نغمات',
     soundsHint: 'اختاري نغمة كل حد بيتصل',
-    toneNames: { classic: 'كلاسيك', chime: 'رنة خفيفة', buzz: 'رنة قديمة', pulse: 'نبضة رقمية' },
+    toneNames: { classic: 'جرس التليفون القديم', chime: 'رنة خفيفة', buzz: 'زنّة ريترو', pulse: 'نبضة رقمية', recorded: 'تسجيلي' },
     settingsTitle: 'الإعدادات',
     soundLabel: 'المؤثرات الصوتية',
     soundHint: 'صوت القرص، السماعة، والنغمات',
@@ -634,6 +686,20 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
     clearSearch: 'امسحي البحث',
     noMatches: 'مفيش نتايج',
     jumpToLetter: (letter) => `روحي لحرف ${letter}`,
+    recordTone: 'سجّلي نغمة',
+    recordNewTone: 'سجّلي واحدة جديدة',
+    recordDelete: 'امسحي التسجيل',
+    recordToneFor: (name) => `سجّلي نغمة لـ${name}`,
+    recordHint: 'لحد 10 ثواني — دندني أو غني أو قولي اسمهم',
+    recordStart: 'سجّلي',
+    recordStop: 'وقّفي',
+    recordPlay: 'شغّلي',
+    recordKeep: 'خليها النغمة',
+    recordAgain: 'سجّلي تاني',
+    recordCancel: 'إلغاء',
+    recordSeconds: (seconds) => `${seconds} ث`,
+    micDenied: 'الميكروفون مقفول — اسمحي بيه من إعدادات المتصفح أو التليفون',
+    recordFailed: 'التسجيل منفعش — جربي تاني',
     formatCallDuration: (seconds) => {
       const m = Math.floor(seconds / 60);
       const s = seconds % 60;

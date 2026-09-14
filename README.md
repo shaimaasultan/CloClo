@@ -26,7 +26,8 @@ This repository holds two things:
 ### Calling
 
 - **Rotary dial** – drag a finger hole clockwise to the brass stop and let go;
-  the disk springs back and the digit is added to *Last dialed*.
+  the disk whirs back with one click per pulse (three for "3", ten for "0"),
+  just like an old phone, and the digit is added to *Last dialed*.
 - **Incoming calls** – the handset vibrates over the top of the keeper's room,
   the caller's card shows their name and status, and the caller's ringtone
   repeats until you answer or hit the glowing **Decline** button. A call
@@ -35,8 +36,11 @@ This repository holds two things:
   *Number*, with **Mute** and **Hang up** on both the dial and the keeper's
   room. Muting keeps the line open and turns the pill amber.
 - **Live call screen** – answering opens a call view with a running timer,
-  Mute / Clarity / End controls, and a transcript where each line appears in
-  the speaker's own language with a live translation underneath.
+  Mute / Clarity / End controls, and a **live transcript of what you say**,
+  heard by the phone's or browser's own speech recognition (free, no
+  account). Pick the language you're speaking (EN / عربي); Arabic lines read
+  right to left, words still being heard show faded, Mute pauses listening,
+  and Clarity shows only finished lines.
 - **Missed-call note** – when a call rings out or you decline it, the keeper
   pins a sticky note to the room's door and beside the dial, and the Recents
   tab shows a red badge with the number of missed calls. Tap the note to open
@@ -61,7 +65,11 @@ This repository holds two things:
   in Arabic it follows Arabic letters.
 - **Recents** – call directions and durations, with "Just now", "5m ago",
   "Yesterday", "3d ago" labels.
-- **Sounds** – pick a ringtone per contact.
+- **Sounds** – pick a ringtone per contact: an old two-gong telephone bell,
+  Chime, Retro buzz, or Digital pulse – or **record your own** (up to 10
+  seconds) with the microphone, play it back, and use it as their ringtone.
+  Their incoming calls then loop the recording; delete it to go back to the
+  bell.
 - **Keepsakes** – in Settings, choose the object each contact leaves on the
   keeper's shelf (mug, postcard, snow globe, book, photo, or shell). It
   appears once you've talked with them.
@@ -161,11 +169,15 @@ restored when the app opens.
 CloClo is a working prototype, not a telephony app yet:
 
 - No real calls are placed or received: incoming calls come from the
-  *Preview an incoming call* button, and the call transcript and the starting
-  call history are sample data.
-- Dial ticks, handset clunks, ringtones, and room sounds are synthesised with
-  the Web Audio API, so they play in the web build only and are silent on
-  iOS / Android until recorded sound assets are added.
+  *Preview an incoming call* button, and the starting call history is sample
+  data.
+- The live transcript covers your side of the call only (the other person's
+  voice would need a real call connection), with no translation yet. It
+  works in Chrome and Safari, and on iOS / Android in a development build
+  (`npx expo run:android` / `npx expo run:ios`) – not in Expo Go. Accuracy
+  depends on the device.
+- All sounds are WAV files synthesised by `scripts/generate-sounds.mjs`
+  (`npm run sounds`), so they play on iOS, Android, and the web.
 - Ramadan and Eid decorations need a JavaScript engine with Islamic-calendar
   support; where it's missing, those holidays are skipped.
 - In the web build, reminder notifications only arrive while CloClo is open
@@ -229,16 +241,19 @@ The app is built on **Expo SDK 57**, **React Native 0.86**, and
     │   ├── settings.tsx
     │   ├── keepsakes.tsx       # shelf object per contact
     │   └── advanced.tsx        # case colour, language, decorations
-    └── src/
-        ├── components/         # dial, handset, keeper, room decor, header, dock, …
-        ├── state/              # calls, contacts, reminders, settings, language,
-        │                       # palette, decorations, and saved-data loading
-        ├── notifications/      # reminder alerts: planning, phone scheduling,
-        │                       # browser notifications, and permission
-        ├── i18n/               # English and Arabic dictionaries
-        ├── audio/              # synthesised tones, ringtones, and room sounds
-        ├── data/               # sample call transcript
-        └── theme/              # case-colour palettes
+    ├── src/
+    │   ├── components/         # dial, handset, keeper, room decor, header, dock, …
+    │   ├── state/              # calls, contacts, reminders, settings, language,
+    │   │                       # palette, decorations, and saved-data loading
+    │   ├── notifications/      # reminder alerts: planning, phone scheduling,
+    │   │                       # browser notifications, and permission
+    │   ├── i18n/               # English and Arabic dictionaries
+    │   ├── audio/              # playing sounds and saving recorded ringtones
+    │   ├── speech/             # live transcript from speech recognition
+    │   └── theme/              # case-colour palettes
+    ├── assets/sounds/          # the bell, dial, handset, room, and rain sounds
+    └── scripts/
+        └── generate-sounds.mjs # synthesises assets/sounds (npm run sounds)
 ```
 
 ## Author
