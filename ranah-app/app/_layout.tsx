@@ -1,7 +1,9 @@
 import { Stack } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { InboxBanner } from '../src/components/InboxBanner/InboxBanner';
 import { IncomingRinger } from '../src/components/IncomingRinger/IncomingRinger';
+import { InboxProvider } from '../src/state/InboxContext';
 import { LateCallPrompt } from '../src/components/LateCallPrompt/LateCallPrompt';
 import { ReminderNotifier } from '../src/components/ReminderNotifier/ReminderNotifier';
 import { ContactsProvider } from '../src/state/ContactsContext';
@@ -21,6 +23,7 @@ export default function RootLayout() {
         <LangProvider>
           <ContactsProvider>
           <RemindersProvider>
+          <InboxProvider>
           <MessagesProvider>
             <PaletteProvider>
               <SettingsProvider>
@@ -28,11 +31,13 @@ export default function RootLayout() {
                   <IncomingRinger />
                   <Stack screenOptions={{ headerShown: false }} />
                   <ReminderNotifier />
+                  <InboxBanner />
                   <LateCallPrompt />
                 </KeeperStateProvider>
               </SettingsProvider>
             </PaletteProvider>
           </MessagesProvider>
+          </InboxProvider>
           </RemindersProvider>
           </ContactsProvider>
         </LangProvider>

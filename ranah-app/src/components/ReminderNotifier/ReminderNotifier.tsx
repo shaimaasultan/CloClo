@@ -90,9 +90,10 @@ export function ReminderNotifier() {
     return onNotificationResponse((response) => {
       if (response.kind === 'done') markDone(response.reminderId, response.day);
       else if (response.kind === 'snooze') snoozeReminder(response.reminderId, response.day, response.minutes);
+      else if (response.kind === 'openChat') router.push({ pathname: '/chat', params: { id: response.peerId } });
       else openReminders();
     });
-  }, [openReminders, markDone, snoozeReminder]);
+  }, [openReminders, markDone, snoozeReminder, router]);
 
   // The notification buttons speak the app's language.
   useEffect(() => {

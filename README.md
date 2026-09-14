@@ -87,10 +87,19 @@ This repository holds two things:
   Shift+Enter adds a line), tap a message to delete it, and call the contact
   or delete the whole conversation from the header. Opening a conversation
   marks it read.
-- **Ready for accounts** – every message records who it's from and to, and
-  sending goes through one small transport (`src/messages/transport.ts`), so
-  a server can later deliver each message to its recipient and each person
-  only receives messages sent to them.
+- **New-message notifications** – delivering a message writes two things: the
+  message in the conversation, and a notification for the person it's for.
+  The notification shows once as a sound and a phone or browser
+  notification, and as a "💬 New message from …" banner at the bottom of the
+  screen with **Read** (opens the conversation) and **×** (dismisses the
+  notification; the message stays unread). Unseen notifications are still
+  there the next time CloClo opens, opening a conversation clears that
+  person's notifications, and no banner appears for the conversation you're
+  reading.
+- **Ready for accounts** – every message and notification records who it's
+  from and who it's for, and sending goes through one small transport
+  (`src/messages/transport.ts`), so a server can later keep each person's
+  own messages and notifications and deliver them only to that person.
 - **Narrow screens** – with eight tabs, the dock shows icons only below
   520 px wide; each tab keeps its name for screen readers.
 
@@ -181,8 +190,8 @@ This repository holds two things:
 ### Remembered between launches
 
 Contacts, settings (sound, privacy mode, ringtones, keepsakes, decorations),
-language, case colour, call history, reminders, recorded ringtones, and messages
-are saved on the device and restored when the app opens.
+language, case colour, call history, reminders, recorded ringtones, messages, and
+message notifications are saved on the device and restored when the app opens.
 
 ## Project status
 
@@ -199,6 +208,10 @@ CloClo is a working prototype, not a telephony app yet:
 - Messages stay on the device they're written on: there are no accounts or
   server yet, so nobody else receives them, and incoming messages come from
   the *Preview an incoming message* button.
+- Each install is identified by an automatic device ID. Identifying people by
+  phone number is planned with the server, with a verified sign-in: iPhones
+  and browsers don't let apps read the phone's own number, and an unverified
+  number would let anyone claim someone else's.
 - All sounds are WAV files synthesised by `scripts/generate-sounds.mjs`
   (`npm run sounds`), so they play on iOS, Android, and the web.
 - Ramadan and Eid decorations need a JavaScript engine with Islamic-calendar

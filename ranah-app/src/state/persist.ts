@@ -15,7 +15,8 @@ export type PersistKey =
   | 'reminders'
   | 'recordedTones'
   | 'messages'
-  | 'profile';
+  | 'profile'
+  | 'inbox';
 
 const KEYS: PersistKey[] = [
   'contacts',
@@ -28,6 +29,7 @@ const KEYS: PersistKey[] = [
   'recordedTones',
   'messages',
   'profile',
+  'inbox',
 ];
 const PREFIX = 'cloclo:';
 const cache = new Map<string, unknown>();

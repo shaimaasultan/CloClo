@@ -82,8 +82,19 @@ export async function syncScheduled(alerts: PlannedAlert[]): Promise<void> {
 // Foreground alerts use the in-app banner instead.
 export function showSystemNotification(_title: string, _body: string, _onClick: () => void): void {}
 
+// A notification right now (a new message). While CloClo is open the in-app
+// banner shows it and this lands in the phone's notification list; tapping
+// it arrives through onNotificationResponse.
+export async function presentNow(title: string, body: string, data: Record<string, string>, _onClick: () => void): Promise<void> {
+  await Notifications.scheduleNotificationAsync({ content: { title, body, data }, trigger: null });
+}
+
 function toEvent(response: Notifications.NotificationResponse): NotificationResponseEvent {
-  const data = response.notification.request.content.data as { reminderId?: unknown; day?: unknown } | null;
+  const data = response.notification.request.content.data as
+    | { reminderId?: unknown; day?: unknown; kind?: unknown; peerId?: unknown }
+    | null;
+  // A new-message notification opens that conversation.
+  if (data?.kind === 'message' && typeof data.peerId === 'string') return { kind: 'openChat', peerId: data.peerId };
   const reminderId = typeof data?.reminderId === 'string' ? data.reminderId : null;
   const day = typeof data?.day === 'string' ? data.day : null;
   if (!reminderId || !day) return { kind: 'open' };

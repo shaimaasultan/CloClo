@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
 import { localTransport } from '../messages/transport';
 import { useContacts } from './ContactsContext';
+import { useInbox } from './InboxContext';
 import { readPersisted, usePersist } from './persist';
 
 export type MessageStatus = 'sending' | 'sent' | 'delivered' | 'read' | 'failed';
@@ -65,7 +66,13 @@ interface MessagesValue {
   thread: (peerId: string) => Message[];
   sendMessage: (peerId: string, text: string) => void;
   // A message arriving from someone (for now only from the preview button).
+  // Delivery writes the message and a notification for you.
   receiveMessage: (peerId: string, text: string) => void;
+  // The conversation on screen right now, if any: no banner for its messages.
+  activeChat: string | null;
+  setActiveChat: (peerId: string | null) => void;
+  // Is this message still there (not deleted)?
+  hasMessage: (id: string) => boolean;
   markThreadRead: (peerId: string) => void;
   deleteMessage: (id: string) => void;
   deleteThread: (peerId: string) => void;
@@ -75,6 +82,7 @@ const MessagesContext = createContext<MessagesValue | null>(null);
 
 export function MessagesProvider({ children }: { children: React.ReactNode }) {
   const { contactById } = useContacts();
+  const { addItem } = useInbox();
   const [profile] = useState<Profile>(() =>
     readPersisted<Profile>('profile', { id: newId('me-') }, (v) => typeof (v as Profile | null)?.id === 'string')
   );
@@ -122,10 +130,17 @@ export function MessagesProvider({ children }: { children: React.ReactNode }) {
 
   const receiveMessage = useCallback(
     (peerId: string, text: string) => {
-      setMessages((prev) => [...prev, { id: newId('m'), from: peerId, to: myId, text, at: Date.now(), status: 'delivered' }]);
+      const message: Message = { id: newId('m'), from: peerId, to: myId, text, at: Date.now(), status: 'delivered' };
+      // The two records of a delivery: the message, and the notification that
+      // tells you about it.
+      setMessages((prev) => [...prev, message]);
+      addItem({ kind: 'message', to: myId, from: peerId, messageId: message.id, text, at: message.at });
     },
-    [myId]
+    [myId, addItem]
   );
+
+  const [activeChat, setActiveChat] = useState<string | null>(null);
+  const hasMessage = useCallback((id: string) => messages.some((m) => m.id === id), [messages]);
 
   const markThreadRead = useCallback(
     (peerId: string) => {
@@ -151,8 +166,21 @@ export function MessagesProvider({ children }: { children: React.ReactNode }) {
   );
 
   const value = useMemo<MessagesValue>(
-    () => ({ myId, conversations, unreadTotal, thread, sendMessage, receiveMessage, markThreadRead, deleteMessage, deleteThread }),
-    [myId, conversations, unreadTotal, thread, sendMessage, receiveMessage, markThreadRead, deleteMessage, deleteThread]
+    () => ({
+      myId,
+      conversations,
+      unreadTotal,
+      thread,
+      sendMessage,
+      receiveMessage,
+      activeChat,
+      setActiveChat,
+      hasMessage,
+      markThreadRead,
+      deleteMessage,
+      deleteThread,
+    }),
+    [myId, conversations, unreadTotal, thread, sendMessage, receiveMessage, activeChat, hasMessage, markThreadRead, deleteMessage, deleteThread]
   );
 
   return <MessagesContext.Provider value={value}>{children}</MessagesContext.Provider>;

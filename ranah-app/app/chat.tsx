@@ -17,6 +17,7 @@ import { PhoneIcon } from '../src/components/Icons/Icons';
 import { ScreenShell } from '../src/components/ScreenShell/ScreenShell';
 import { dayHeading, messageTime, textDirection } from '../src/messages/format';
 import { useContacts } from '../src/state/ContactsContext';
+import { useInbox } from '../src/state/InboxContext';
 import { useLang } from '../src/state/LangContext';
 import { Message, useMessages } from '../src/state/MessagesContext';
 import { usePalette } from '../src/state/PaletteContext';
@@ -33,7 +34,8 @@ export default function ChatScreen() {
   const { t, lang, isRtl } = useLang();
   const { colours } = usePalette();
   const { contactById } = useContacts();
-  const { myId, thread, sendMessage, markThreadRead, deleteMessage, deleteThread } = useMessages();
+  const { myId, thread, sendMessage, markThreadRead, deleteMessage, deleteThread, setActiveChat } = useMessages();
+  const { markSeenFrom } = useInbox();
   const { sfx } = useSettings();
   const callContact = useCallContact();
   const [draft, setDraft] = useState('');
@@ -53,14 +55,23 @@ export default function ChatScreen() {
 
   // Opening the conversation reads it — and so does a message arriving while
   // it's open.
+  // It also clears that person's notifications, and while it's on screen no
+  // banner appears for their new messages.
   useFocusEffect(
     useCallback(() => {
-      if (id) markThreadRead(id);
-    }, [id, markThreadRead])
+      if (!id) return;
+      setActiveChat(id);
+      markThreadRead(id);
+      markSeenFrom(id);
+      return () => setActiveChat(null);
+    }, [id, markThreadRead, markSeenFrom, setActiveChat])
   );
   useEffect(() => {
-    if (id && hasUnread) markThreadRead(id);
-  }, [id, hasUnread, markThreadRead]);
+    if (id && hasUnread) {
+      markThreadRead(id);
+      markSeenFrom(id);
+    }
+  }, [id, hasUnread, markThreadRead, markSeenFrom]);
 
   // A deleted contact (or a bad link) closes the conversation.
   useEffect(() => {

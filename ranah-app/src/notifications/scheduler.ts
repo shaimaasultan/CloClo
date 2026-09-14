@@ -59,6 +59,11 @@ export function showSystemNotification(title: string, body: string, onClick: () 
   }
 }
 
+// A notification right now (a new message), if the browser allows them.
+export async function presentNow(title: string, body: string, _data: Record<string, string>, onClick: () => void): Promise<void> {
+  showSystemNotification(title, body, onClick);
+}
+
 // Browser notifications have no buttons; clicking one just opens CloClo
 // (see showSystemNotification), and snoozing happens in the in-app banner.
 export async function configureActions(_labels: ActionLabels): Promise<void> {}

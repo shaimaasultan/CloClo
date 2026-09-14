@@ -210,6 +210,9 @@ export interface Dictionary {
   sampleMessages: string[];
   unreadMessagesCount: (count: number) => string;
   messagesLocalNote: string;
+  // The new-message notification.
+  newMessageFrom: (name: string) => string;
+  readMessage: string;
   // Short spoken-style call length, e.g. "4m 12s" / "4 د 12 ث".
   formatCallDuration: (seconds: number) => string;
   justNow: string;
@@ -496,6 +499,8 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
     ],
     unreadMessagesCount: (count) => (count === 1 ? '1 unread message' : `${count} unread messages`),
     messagesLocalNote: 'Messages stay on this device for now',
+    newMessageFrom: (name) => `New message from ${name}`,
+    readMessage: 'Read',
     formatCallDuration: (seconds) => {
       const m = Math.floor(seconds / 60);
       const s = seconds % 60;
@@ -763,6 +768,8 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
     ],
     unreadMessagesCount: (count) => (count === 1 ? 'رسالة مش مقروءة' : `${count} رسايل مش مقروءة`),
     messagesLocalNote: 'الرسايل محفوظة على الجهاز ده دلوقتي',
+    newMessageFrom: (name) => `رسالة جديدة من ${name}`,
+    readMessage: 'اقري',
     formatCallDuration: (seconds) => {
       const m = Math.floor(seconds / 60);
       const s = seconds % 60;

@@ -16,4 +16,5 @@ export interface ActionLabels {
 export type NotificationResponseEvent =
   | { kind: 'open' }
   | { kind: 'done'; reminderId: string; day: string }
-  | { kind: 'snooze'; reminderId: string; day: string; minutes: number };
+  | { kind: 'snooze'; reminderId: string; day: string; minutes: number }
+  | { kind: 'openChat'; peerId: string };
