@@ -13,7 +13,7 @@ export const APP_NAME = 'CloClo';
 export interface Dictionary {
   dir: 'ltr' | 'rtl';
   slogan: string;
-  dockNames: Record<'dial' | 'contacts' | 'recents' | 'reminders' | 'keeper' | 'sounds' | 'settings', string>;
+  dockNames: Record<'dial' | 'contacts' | 'messages' | 'recents' | 'reminders' | 'keeper' | 'sounds' | 'settings', string>;
   readoutLabel: string;
   callingLabel: string;
   clearAria: string;
@@ -193,6 +193,23 @@ export interface Dictionary {
   recordSeconds: (seconds: number) => string;
   micDenied: string;
   recordFailed: string;
+  // Messages.
+  newMessage: string;
+  chooseContact: string;
+  noConversations: string;
+  youPrefix: (text: string) => string;
+  messagePlaceholder: (name: string) => string;
+  sendMessage: string;
+  messageSending: string;
+  messageSent: string;
+  deleteMessage: string;
+  deleteConversation: string;
+  deleteConversationConfirm: (name: string) => string;
+  chatEmpty: (name: string) => string;
+  previewMessage: string;
+  sampleMessages: string[];
+  unreadMessagesCount: (count: number) => string;
+  messagesLocalNote: string;
   // Short spoken-style call length, e.g. "4m 12s" / "4 د 12 ث".
   formatCallDuration: (seconds: number) => string;
   justNow: string;
@@ -281,6 +298,7 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
     dockNames: {
       dial: 'Dial',
       contacts: 'Contacts',
+      messages: 'Messages',
       recents: 'Recents',
       reminders: 'Reminders',
       keeper: 'Keeper',
@@ -456,6 +474,28 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
     recordSeconds: (seconds) => `${seconds}s`,
     micDenied: 'Microphone access is off — allow it in your browser or phone settings',
     recordFailed: 'Couldn’t record — try again',
+    newMessage: 'New message',
+    chooseContact: 'Choose who to message',
+    noConversations: 'No messages yet — start one with New message',
+    youPrefix: (text) => `You: ${text}`,
+    messagePlaceholder: (name) => `Message ${name}`,
+    sendMessage: 'Send',
+    messageSending: 'Sending',
+    messageSent: 'Sent',
+    deleteMessage: 'Delete message',
+    deleteConversation: 'Delete conversation',
+    deleteConversationConfirm: (name) => `Delete your conversation with ${name}? This can’t be undone.`,
+    chatEmpty: (name) => `Say hello to ${name} 👋`,
+    previewMessage: 'Preview an incoming message',
+    sampleMessages: [
+      'Are you free for a quick call later?',
+      'Just landed! Talk soon.',
+      'Did you see the photos I sent?',
+      'So nice to hear from you 😊',
+      'Don’t forget dinner on Friday!',
+    ],
+    unreadMessagesCount: (count) => (count === 1 ? '1 unread message' : `${count} unread messages`),
+    messagesLocalNote: 'Messages stay on this device for now',
     formatCallDuration: (seconds) => {
       const m = Math.floor(seconds / 60);
       const s = seconds % 60;
@@ -520,6 +560,7 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
     dockNames: {
       dial: 'القرص',
       contacts: 'جهات الاتصال',
+      messages: 'الرسايل',
       recents: 'الأخيرة',
       reminders: 'تذكيرات',
       keeper: 'الحارس',
@@ -700,6 +741,28 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
     recordSeconds: (seconds) => `${seconds} ث`,
     micDenied: 'الميكروفون مقفول — اسمحي بيه من إعدادات المتصفح أو التليفون',
     recordFailed: 'التسجيل منفعش — جربي تاني',
+    newMessage: 'رسالة جديدة',
+    chooseContact: 'اختاري تبعتي لمين',
+    noConversations: 'لسه مفيش رسايل — ابدئي واحدة من «رسالة جديدة»',
+    youPrefix: (text) => `إنتِ: ${text}`,
+    messagePlaceholder: (name) => `رسالة لـ${name}`,
+    sendMessage: 'ابعتي',
+    messageSending: 'بتتبعت',
+    messageSent: 'اتبعتت',
+    deleteMessage: 'امسحي الرسالة',
+    deleteConversation: 'امسحي المحادثة',
+    deleteConversationConfirm: (name) => `تمسحي المحادثة مع ${name}؟ مش هينفع ترجعيها.`,
+    chatEmpty: (name) => `قولي أهلاً لـ${name} 👋`,
+    previewMessage: 'جربي رسالة جاية',
+    sampleMessages: [
+      'فاضية نتكلم شوية بعدين؟',
+      'لسه واصلة! نتكلم بعدين.',
+      'شفتي الصور اللي بعتهالك؟',
+      'مبسوطة إني سمعت منك 😊',
+      'ما تنسيش العشا يوم الجمعة!',
+    ],
+    unreadMessagesCount: (count) => (count === 1 ? 'رسالة مش مقروءة' : `${count} رسايل مش مقروءة`),
+    messagesLocalNote: 'الرسايل محفوظة على الجهاز ده دلوقتي',
     formatCallDuration: (seconds) => {
       const m = Math.floor(seconds / 60);
       const s = seconds % 60;

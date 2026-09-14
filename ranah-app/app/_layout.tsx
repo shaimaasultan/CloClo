@@ -7,6 +7,7 @@ import { ReminderNotifier } from '../src/components/ReminderNotifier/ReminderNot
 import { ContactsProvider } from '../src/state/ContactsContext';
 import { KeeperStateProvider } from '../src/state/KeeperStateContext';
 import { LangProvider } from '../src/state/LangContext';
+import { MessagesProvider } from '../src/state/MessagesContext';
 import { PaletteProvider } from '../src/state/PaletteContext';
 import { PersistGate } from '../src/state/PersistGate';
 import { RemindersProvider } from '../src/state/RemindersContext';
@@ -20,6 +21,7 @@ export default function RootLayout() {
         <LangProvider>
           <ContactsProvider>
           <RemindersProvider>
+          <MessagesProvider>
             <PaletteProvider>
               <SettingsProvider>
                 <KeeperStateProvider>
@@ -30,6 +32,7 @@ export default function RootLayout() {
                 </KeeperStateProvider>
               </SettingsProvider>
             </PaletteProvider>
+          </MessagesProvider>
           </RemindersProvider>
           </ContactsProvider>
         </LangProvider>

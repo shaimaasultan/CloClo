@@ -74,6 +74,26 @@ This repository holds two things:
   keeper's shelf (mug, postcard, snow globe, book, photo, or shell). It
   appears once you've talked with them.
 
+### Messages
+
+- **Messages tab** – a chat bubble in the dock (with a green unread count)
+  opens your conversations, newest first: each shows the contact, a preview
+  line ("You: …" for yours), the time, and an unread count. Search by name,
+  number, or message text, start a **New message** by picking a contact, or
+  use *Preview an incoming message* to receive a sample one.
+- **Conversations** – your messages on one side and theirs on the other
+  (mirrored in Arabic), grouped under *Today / Yesterday / date* dividers,
+  with a ✓ on messages you've sent. Type and send (Enter sends on the web,
+  Shift+Enter adds a line), tap a message to delete it, and call the contact
+  or delete the whole conversation from the header. Opening a conversation
+  marks it read.
+- **Ready for accounts** – every message records who it's from and to, and
+  sending goes through one small transport (`src/messages/transport.ts`), so
+  a server can later deliver each message to its recipient and each person
+  only receives messages sent to them.
+- **Narrow screens** – with eight tabs, the dock shows icons only below
+  520 px wide; each tab keeps its name for screen readers.
+
 ### Reminders
 
 - **Reminders tab** – a bell in the dock opens your reminders: *Today*
@@ -161,8 +181,8 @@ This repository holds two things:
 ### Remembered between launches
 
 Contacts, settings (sound, privacy mode, ringtones, keepsakes, decorations),
-language, case colour, call history, and reminders are saved on the device and
-restored when the app opens.
+language, case colour, call history, reminders, recorded ringtones, and messages
+are saved on the device and restored when the app opens.
 
 ## Project status
 
@@ -176,6 +196,9 @@ CloClo is a working prototype, not a telephony app yet:
   works in Chrome and Safari, and on iOS / Android in a development build
   (`npx expo run:android` / `npx expo run:ios`) – not in Expo Go. Accuracy
   depends on the device.
+- Messages stay on the device they're written on: there are no accounts or
+  server yet, so nobody else receives them, and incoming messages come from
+  the *Preview an incoming message* button.
 - All sounds are WAV files synthesised by `scripts/generate-sounds.mjs`
   (`npm run sounds`), so they play on iOS, Android, and the web.
 - Ramadan and Eid decorations need a JavaScript engine with Islamic-calendar
@@ -234,6 +257,8 @@ The app is built on **Expo SDK 57**, **React Native 0.86**, and
     │   ├── call.tsx            # live call screen with transcript
     │   ├── contacts.tsx
     │   ├── contact.tsx         # add / edit / delete a contact
+    │   ├── messages.tsx        # conversations list
+    │   ├── chat.tsx            # one conversation
     │   ├── recents.tsx
     │   ├── reminders.tsx       # today's, upcoming and earlier reminders
     │   ├── reminder.tsx        # add / edit / delete a reminder
@@ -249,6 +274,7 @@ The app is built on **Expo SDK 57**, **React Native 0.86**, and
     │   │                       # browser notifications, and permission
     │   ├── i18n/               # English and Arabic dictionaries
     │   ├── audio/              # playing sounds and saving recorded ringtones
+    │   ├── messages/           # message sending (on-device for now) and times
     │   ├── speech/             # live transcript from speech recognition
     │   └── theme/              # case-colour palettes
     ├── assets/sounds/          # the bell, dial, handset, room, and rain sounds

@@ -5,9 +5,30 @@ import { useEffect } from 'react';
 // call history (Recents and the missed-call note), and reminders.
 // Everything is read once before the app renders (see PersistGate), so each
 // provider can start from its saved value without a flash of defaults.
-export type PersistKey = 'contacts' | 'settings' | 'lang' | 'palette' | 'callLog' | 'missedNotes' | 'reminders' | 'recordedTones';
+export type PersistKey =
+  | 'contacts'
+  | 'settings'
+  | 'lang'
+  | 'palette'
+  | 'callLog'
+  | 'missedNotes'
+  | 'reminders'
+  | 'recordedTones'
+  | 'messages'
+  | 'profile';
 
-const KEYS: PersistKey[] = ['contacts', 'settings', 'lang', 'palette', 'callLog', 'missedNotes', 'reminders', 'recordedTones'];
+const KEYS: PersistKey[] = [
+  'contacts',
+  'settings',
+  'lang',
+  'palette',
+  'callLog',
+  'missedNotes',
+  'reminders',
+  'recordedTones',
+  'messages',
+  'profile',
+];
 const PREFIX = 'cloclo:';
 const cache = new Map<string, unknown>();
 let hydration: Promise<void> | null = null;
