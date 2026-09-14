@@ -46,7 +46,7 @@ const CONFETTI: [number, number, number, string][] = [
   [78, 34, -50, '#f3d78b'],
 ];
 
-export type KeeperPose = 'sleep' | 'book' | 'music' | 'wave' | 'alert' | 'onCall' | 'peek' | 'gaze';
+export type KeeperPose = 'sleep' | 'book' | 'music' | 'wave' | 'alert' | 'onCall' | 'peek' | 'gaze' | 'photo';
 
 // Where the keeper is in their room: the middle, napping on the bed,
 // peeking out of the front door, or sitting on the window seat.
@@ -117,6 +117,11 @@ interface KeeperAvatarProps {
   muted?: boolean;
   // It's the caller's birthday: party hat and confetti.
   celebrating?: boolean;
+  // Haven't talked to someone in a while: between calls, the keeper holds up
+  // a framed photo with their initial.
+  photo?: { initial: string };
+  // Asking whether to call someone in the middle of their night.
+  yawning?: boolean;
   onPress?: () => void;
   accessibilityLabel?: string;
 }
@@ -141,12 +146,19 @@ export function KeeperAvatar({
   shiverStrength = 1,
   muted = false,
   celebrating = false,
+  photo,
+  yawning = false,
   onPress,
   accessibilityLabel,
 }: KeeperAvatarProps) {
   const reduceMotion = useReducedMotion();
   const { isRtl } = useLang();
-  const pose = keeperPose(variant, callState, mood, activity, spot);
+  // The photo only comes out when they're free: no call, in the middle of
+  // the room, and not being poked.
+  const pose: KeeperPose =
+    photo && callState === 'idle' && spot === 'center' && !reaction && !yawning
+      ? 'photo'
+      : keeperPose(variant, callState, mood, activity, spot);
   const width = (size * VB_W) / VB_H;
 
   const bob = useRef(new Animated.Value(0)).current;
@@ -292,11 +304,13 @@ export function KeeperAvatar({
   const eyeKind = (() => {
     if (reaction?.kind === 'giggle') return 'happy';
     if (reaction?.kind === 'grumpy') return 'droopy';
+    if (yawning) return 'closed';
     if (lookUp && pose !== 'sleep') return 'up';
     if (pose === 'sleep' || blink) return 'closed';
     if (pose === 'peek') return 'side';
     if (pose === 'gaze') return 'gaze';
     if (pose === 'alert') return 'wide';
+    if (pose === 'photo') return 'open';
     if ((mood === 'bored' || sleepy) && callState === 'idle') return 'droopy';
     if (pose === 'book') return 'down';
     return 'open';
@@ -420,7 +434,11 @@ export function KeeperAvatar({
     if (reaction?.kind === 'grumpy') return <Path d="M45.5 65 q4.5 -3.5 9 0" {...stroke} />;
     // Hushing: lips pressed shut behind the finger, no chatter.
     if (hushing) return <Path d="M47.5 63 h5" {...stroke} />;
+    // A big yawn.
+    if (yawning) return <Ellipse cx={50} cy={63.5} rx={4} ry={5.2} fill={INK} />;
     switch (pose) {
+      case 'photo':
+        return <Path d="M43 60 q7 8 14 0 Z" fill={INK} />;
       case 'sleep':
         return <Path d="M47 62 q3 2 6 0" {...stroke} />;
       case 'alert':
@@ -541,7 +559,31 @@ export function KeeperAvatar({
   );
 
   const renderArms = () => {
+    // Covering the yawn with a hand (not while a call needs their hands).
+    if (yawning && pose !== 'onCall' && pose !== 'alert') {
+      return (
+        <G>
+          {restLeft()}
+          {arm('M65 80 Q73 73 57 67', [56, 66])}
+        </G>
+      );
+    }
     switch (pose) {
+      case 'photo':
+        // Holding the framed photo up beside their face.
+        return (
+          <G>
+            {restLeft()}
+            <G transform="rotate(8 78 48)">
+              <Rect x={65} y={34} width={26} height={24} rx={2} fill={colours.metal1} stroke={colours.metal3} strokeWidth={1} />
+              <Rect x={68} y={37} width={20} height={18} fill="#cfe3e2" />
+              <SvgText x={78} y={50.5} fontSize={11} fontWeight="800" textAnchor="middle" fill="#5a3a1a">
+                {photo?.initial ?? ''}
+              </SvgText>
+            </G>
+            {arm('M65 80 Q77 74 74 60', [74, 59])}
+          </G>
+        );
       case 'book':
         return (
           <G>

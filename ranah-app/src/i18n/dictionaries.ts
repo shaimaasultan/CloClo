@@ -150,6 +150,17 @@ export interface Dictionary {
   // Spoken with the dock's count badges.
   missedCallsCount: (count: number) => string;
   snoozedCount: (count: number) => string;
+  // Calling someone in the middle of their night.
+  lateCallTitle: (name: string, time: string) => string;
+  lateCallBody: string;
+  callAnyway: string;
+  notNow: string;
+  // "Haven't talked in a while" nudges.
+  nudgeBubble: (name: string, days: number) => string;
+  nudgeLabel: string;
+  nudgeHint: string;
+  nudgeOff: string;
+  nudgeAfterDays: (days: number) => string;
   // Short spoken-style call length, e.g. "4m 12s" / "4 د 12 ث".
   formatCallDuration: (seconds: number) => string;
   justNow: string;
@@ -372,6 +383,15 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
         : `${count} snoozed reminders, next at ${time}. Open Reminders`,
     missedCallsCount: (count) => (count === 1 ? '1 missed call' : `${count} missed calls`),
     snoozedCount: (count) => (count === 1 ? '1 snoozed reminder' : `${count} snoozed reminders`),
+    lateCallTitle: (name, time) => `It’s ${time} for ${name}`,
+    lateCallBody: 'They might be asleep. Call anyway?',
+    callAnyway: 'Call anyway',
+    notNow: 'Not now',
+    nudgeBubble: (name, days) => `Haven’t talked to ${name} in ${days} ${days === 1 ? 'day' : 'days'}`,
+    nudgeLabel: 'Nudge me to call',
+    nudgeHint: 'When you haven’t talked to someone for a while, the keeper holds up their photo',
+    nudgeOff: 'Off',
+    nudgeAfterDays: (days) => `After ${days} days`,
     formatCallDuration: (seconds) => {
       const m = Math.floor(seconds / 60);
       const s = seconds % 60;
@@ -578,6 +598,15 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
         : `${count} تذكيرات متأجلة، أقربها الساعة ${time}. افتحي التذكيرات`,
     missedCallsCount: (count) => (count === 1 ? 'مكالمة فايتة' : `${count} مكالمات فايتة`),
     snoozedCount: (count) => (count === 1 ? 'تذكير متأجل' : `${count} تذكيرات متأجلة`),
+    lateCallTitle: (name, time) => `الساعة ${time} عند ${name}`,
+    lateCallBody: 'ممكن يكونوا نايمين. تتصلي برضه؟',
+    callAnyway: 'اتصلي برضه',
+    notNow: 'مش دلوقتي',
+    nudgeBubble: (name, days) => `بقالك ${days} ${days === 1 ? 'يوم' : 'أيام'} ما كلمتيش ${name}`,
+    nudgeLabel: 'فكّريني أكلم الناس',
+    nudgeHint: 'لما يعدي وقت من غير ما تكلمي حد، الحارس يرفع صورته',
+    nudgeOff: 'إيقاف',
+    nudgeAfterDays: (days) => `بعد ${days} أيام`,
     formatCallDuration: (seconds) => {
       const m = Math.floor(seconds / 60);
       const s = seconds % 60;

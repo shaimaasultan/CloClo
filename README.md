@@ -103,6 +103,14 @@ This repository holds two things:
   they're at home, a steering wheel when they're driving.
 - **Reactions** – finger to their lips ("shh") while you're muted, and a party
   hat with confetti when someone calls on their birthday.
+- **Haven't talked in a while** – when you haven't talked to someone for a
+  set number of days (3, 7, 14, or 30, or off, in Advanced settings), the
+  keeper holds up a framed photo with their initial, in the room and on the
+  dial. A card offers to **Call** them or **Not now**, which hides that
+  nudge until tomorrow. Only calls connected in the app reset the count.
+- **Late-night calls** – call someone when it's between 10 PM and 7 AM their
+  time and the keeper yawns and asks first: "It's 11:54 PM for Mama. They
+  might be asleep. Call anyway?"
 
 ### The keeper's room
 

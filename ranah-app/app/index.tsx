@@ -17,6 +17,7 @@ import { WeatherLayer } from '../src/components/WeatherLayer/WeatherLayer';
 import { useContacts } from '../src/state/ContactsContext';
 import { isBirthdayOn } from '../src/state/decorations';
 import { useKeeperState } from '../src/state/KeeperStateContext';
+import { useNudge } from '../src/state/nudges';
 import { useLang } from '../src/state/LangContext';
 import { usePalette } from '../src/state/PaletteContext';
 import { dayKey, occursOn, pendingSnoozes, useReminders } from '../src/state/RemindersContext';
@@ -32,6 +33,8 @@ export default function DialScreen() {
   const { colours } = usePalette();
   const { callState, setCallState, sky, mood, appendDigit, ringerId, missedNotes, muted } = useKeeperState();
   const { contacts, contactById } = useContacts();
+  // Someone you haven't talked to in a while: the hub keeper holds up their photo.
+  const hubNudge = useNudge();
   const ringer = contactById(ringerId);
   // Everyone whose birthday is today, for the reminder beside the dial.
   const birthdayNames = contacts.filter((c) => isBirthdayOn(c.birthday)).map((c) => c.name);
@@ -168,6 +171,7 @@ export default function DialScreen() {
                     muted={muted}
                     callerActivity={ringer?.activity}
                     celebrating={callState !== 'idle' && isBirthdayOn(ringer?.birthday)}
+                    photo={hubNudge ? { initial: hubNudge.contact.name.charAt(0) } : undefined}
                     accessibilityLabel={t.roomTitle}
                     onPress={() => router.dismissTo('/room')}
                   />

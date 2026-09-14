@@ -9,6 +9,9 @@ import { DECOR_CHOICES } from '../src/state/decorations';
 import { useSettings } from '../src/state/SettingsContext';
 import { PALETTE_ORDER, PALETTE_SWATCH_HEX } from '../src/theme/tokens';
 
+// Nudge after this many days without talking; 0 is off.
+const NUDGE_OPTIONS = [0, 3, 7, 14, 30];
+
 const LANG_OPTIONS: { lang: Lang; label: string }[] = [
   { lang: 'en', label: 'EN' },
   { lang: 'ar', label: 'عربي' },
@@ -20,7 +23,7 @@ export default function AdvancedSettingsScreen() {
   const router = useRouter();
   const { t, lang, setLang, isRtl } = useLang();
   const { paletteName, colours, setPalette } = usePalette();
-  const { decorChoice, setDecorChoice } = useSettings();
+  const { decorChoice, setDecorChoice, nudgeDays, setNudgeDays } = useSettings();
   const rowDir = isRtl ? 'row-reverse' : 'row';
   const align = { alignItems: isRtl ? ('flex-end' as const) : ('flex-start' as const) };
 
@@ -79,6 +82,33 @@ export default function AdvancedSettingsScreen() {
           </View>
         </View>
 
+        {/* How long before the keeper nudges you to call someone. */}
+        <View style={[styles.section, align]}>
+          <Text style={styles.label}>{t.nudgeLabel}</Text>
+          <Text style={[styles.hint, { textAlign: isRtl ? 'right' : 'left' }]}>{t.nudgeHint}</Text>
+          <View style={[styles.chipRow, { flexDirection: rowDir }]} role="radiogroup" aria-label={t.nudgeLabel}>
+            {NUDGE_OPTIONS.map((days) => {
+              const active = nudgeDays === days;
+              return (
+                <Pressable
+                  key={days}
+                  onPress={() => setNudgeDays(days)}
+                  role="radio"
+                  aria-checked={active}
+                  style={[
+                    styles.chip,
+                    active && { backgroundColor: `${colours.metal2}47`, borderColor: `${colours.metal2}8c` },
+                  ]}
+                >
+                  <Text style={[styles.chipLabel, { color: active ? colours.highlight : 'rgba(239,230,211,.75)' }]}>
+                    {days === 0 ? t.nudgeOff : t.nudgeAfterDays(days)}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+
         <View style={[styles.section, styles.lastSection, align]}>
           <Text style={styles.label}>{t.languageLabel}</Text>
           <View style={[styles.langSwitch, { flexDirection: rowDir }]} role="radiogroup" aria-label={t.languageLabel}>
@@ -116,6 +146,7 @@ const styles = StyleSheet.create({
   },
   lastSection: { borderBottomWidth: 0 },
   label: { color: '#f3ecdd', fontSize: 13, fontWeight: '600' },
+  hint: { color: 'rgba(239,230,211,.5)', fontSize: 10, fontFamily: 'monospace', marginTop: -6 },
   swatchRow: { gap: 10 },
   swatch: {
     width: 32,

@@ -36,6 +36,7 @@ import { useSettings } from '../src/state/SettingsContext';
 import { useReducedMotion } from '../src/state/useReducedMotion';
 import { useContacts } from '../src/state/ContactsContext';
 import { isBirthdayOn, resolveDecor, RoomDecor } from '../src/state/decorations';
+import { useNudge } from '../src/state/nudges';
 import { useCallContact } from '../src/state/useCallContact';
 import type { KeepsakeKind } from '../src/i18n/dictionaries';
 import { USE_NATIVE_DRIVER } from '../src/theme/animation';
@@ -523,7 +524,7 @@ export default function KeeperRoomScreen() {
     connectedCallCount,
     muted,
   } = useKeeperState();
-  const { clunk, sfx, soundEnabled, decorChoice, keepsakeFor } = useSettings();
+  const { clunk, sfx, soundEnabled, decorChoice, keepsakeFor, dismissNudge } = useSettings();
   const callContact = useCallContact();
   const { contacts, contactById } = useContacts();
 
@@ -842,7 +843,11 @@ export default function KeeperRoomScreen() {
     .join('');
 
   // A speech bubble while the keeper waves hello.
-  const waving = idle && !reaction && keeperPose('room', callState, mood, roomProp, spot) === 'wave';
+  // Haven't talked to someone in a while: the keeper holds up their photo
+  // (when free), with a card offering to call them.
+  const nudgeCandidate = useNudge();
+  const nudge = idle && spot === 'center' && !reaction ? nudgeCandidate : null;
+  const waving = idle && !reaction && !nudge && keeperPose('room', callState, mood, roomProp, spot) === 'wave';
 
   const spotCaption =
     spot === 'bed'
@@ -1096,6 +1101,7 @@ export default function KeeperRoomScreen() {
                     shiverStrength={windowOpen && sky === 'storm' ? 2.2 : 1}
                     muted={muted}
                     celebrating={celebrating}
+                    photo={nudge ? { initial: nudge.contact.name.charAt(0) } : undefined}
                   />
                   {celebrating && ringer && (
                     // "Happy birthday, Nadia!" over the keeper's head.
@@ -1115,6 +1121,28 @@ export default function KeeperRoomScreen() {
                   )}
                 </Animated.View>
               </GestureDetector>
+
+              {nudge && (
+                <View style={[styles.incomingCard, pointer.boxNone, { top: boxH * 0.03 }]}>
+                  <View style={[styles.nudgeCard, { flexDirection: rowDir, borderColor: `${colours.metal2}66` }]}>
+                    <Text style={styles.nudgeEmoji}>🖼️</Text>
+                    <Text style={[styles.nudgeText, { textAlign: isRtl ? 'right' : 'left' }]} numberOfLines={2}>
+                      {t.nudgeBubble(nudge.contact.name, nudge.days)}
+                    </Text>
+                    <Pressable
+                      onPress={() => callContact(nudge.contact.id)}
+                      role="button"
+                      aria-label={t.callNameAria(nudge.contact.name)}
+                      style={[styles.nudgeCall, { backgroundColor: colours.metal2 }]}
+                    >
+                      <Text style={[styles.nudgeCallLabel, { color: colours.ink }]}>{t.birthdayCall}</Text>
+                    </Pressable>
+                    <Pressable onPress={() => dismissNudge(nudge.contact.id)} role="button" style={styles.nudgeLater}>
+                      <Text style={styles.nudgeLaterLabel}>{t.notNow}</Text>
+                    </Pressable>
+                  </View>
+                </View>
+              )}
 
               {/* Incoming call card, ported from the prototype's .incoming:
                   tag, caller name, their status line, and Decline. */}
@@ -1212,6 +1240,22 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   incomingBirthday: { fontSize: 11, fontWeight: '700' },
+  nudgeCard: {
+    alignItems: 'center',
+    gap: 8,
+    maxWidth: '100%',
+    backgroundColor: 'rgba(11,10,8,.72)',
+    borderRadius: 16,
+    borderWidth: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  nudgeEmoji: { fontSize: 16 },
+  nudgeText: { flexShrink: 1, color: '#f3ecdd', fontSize: 12, fontWeight: '700' },
+  nudgeCall: { borderRadius: 999, paddingVertical: 5, paddingHorizontal: 12 },
+  nudgeCallLabel: { fontSize: 11, fontWeight: '800' },
+  nudgeLater: { borderRadius: 999, paddingVertical: 5, paddingHorizontal: 10, backgroundColor: 'rgba(255,255,255,.08)' },
+  nudgeLaterLabel: { color: 'rgba(239,230,211,.8)', fontSize: 11, fontWeight: '700' },
   // Extra room above so the button's pulsing halo doesn't crowd the meta line.
   declineWrap: { marginTop: 6 },
   helloBubble: {
