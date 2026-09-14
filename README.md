@@ -51,6 +51,14 @@ This repository holds two things:
 - **Birthdays today** – a card at the top of Contacts lists everyone whose
   birthday it is, with their local time and a **Call** button; a small 🎂
   reminder beside the dial opens it.
+- **Favourites and speed dial** – star a contact to list them under
+  ★ Favourites at the top of Contacts. Each favourite also gets a
+  brass-rimmed speed-dial hole under the rotary dial (up to five) – tap it to
+  call them.
+- **Search and A–Z** – search Contacts or Recents by name or number (spaces
+  in numbers don't matter). Everyone else in Contacts is sorted A–Z under
+  letter headings, with a letter strip on the edge to jump down the list –
+  in Arabic it follows Arabic letters.
 - **Recents** – call directions and durations, with "Just now", "5m ago",
   "Yesterday", "3d ago" labels.
 - **Sounds** – pick a ringtone per contact.

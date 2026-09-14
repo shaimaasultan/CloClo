@@ -15,14 +15,16 @@ export interface Contact {
   sky: Caller['sky'];
   localHour: number;
   keepsake: KeepsakeKind;
+  // Starred: listed first in Contacts and given a speed-dial hole on the dial.
+  favourite?: boolean;
 }
 
-export type ContactDraft = Omit<Contact, 'id' | 'names'>;
+export type ContactDraft = Omit<Contact, 'id' | 'names' | 'favourite'>;
 
 const SEED_CONTACTS: Contact[] = [
   { id: 'nadia', name: 'Nadia', names: { en: 'Nadia', ar: 'نادية' }, number: '0100 214 7788', birthday: '03-21', activity: 'driving', sky: 'rain', localHour: 21, keepsake: 'postcard' },
   { id: 'omar', name: 'Omar', names: { en: 'Omar', ar: 'عمر' }, number: '0122 356 4190', birthday: '07-02', activity: 'work', sky: 'clear', localHour: 14, keepsake: 'mug' },
-  { id: 'mama', name: 'Mama', names: { en: 'Mama', ar: 'ماما' }, number: '0111 908 2234', birthday: '11-05', activity: 'home', sky: 'snow', localHour: 23, keepsake: 'snowGlobe' },
+  { id: 'mama', name: 'Mama', names: { en: 'Mama', ar: 'ماما' }, number: '0111 908 2234', birthday: '11-05', activity: 'home', sky: 'snow', localHour: 23, keepsake: 'snowGlobe', favourite: true },
 ];
 
 interface ContactsValue {
@@ -34,6 +36,7 @@ interface ContactsValue {
   addContact: (draft: ContactDraft) => string;
   updateContact: (id: string, draft: ContactDraft) => void;
   removeContact: (id: string) => void;
+  toggleFavourite: (id: string) => void;
 }
 
 const ContactsContext = createContext<ContactsValue | null>(null);
@@ -62,6 +65,7 @@ export function ContactsProvider({ children }: { children: React.ReactNode }) {
         activity: c.activity,
         localHour: c.localHour,
         birthday: c.birthday,
+        favourite: !!c.favourite,
       })),
     [stored, lang, t, minute]
   );
@@ -84,7 +88,9 @@ export function ContactsProvider({ children }: { children: React.ReactNode }) {
         if (c.id !== id) return c;
         // Renaming drops the per-language names; an untouched name keeps them.
         const names = draft.name === c.name ? c.names : undefined;
-        return { ...draft, id, names };
+        // Spread the stored contact first so fields the form doesn't edit
+        // (like the favourite star) survive.
+        return { ...c, ...draft, id, names };
       })
     );
   }, []);
@@ -93,9 +99,13 @@ export function ContactsProvider({ children }: { children: React.ReactNode }) {
     setStored((prev) => prev.filter((c) => c.id !== id));
   }, []);
 
+  const toggleFavourite = useCallback((id: string) => {
+    setStored((prev) => prev.map((c) => (c.id === id ? { ...c, favourite: !c.favourite } : c)));
+  }, []);
+
   const value = useMemo<ContactsValue>(
-    () => ({ contacts, contactById, rawContact, addContact, updateContact, removeContact }),
-    [contacts, contactById, rawContact, addContact, updateContact, removeContact]
+    () => ({ contacts, contactById, rawContact, addContact, updateContact, removeContact, toggleFavourite }),
+    [contacts, contactById, rawContact, addContact, updateContact, removeContact, toggleFavourite]
   );
 
   return <ContactsContext.Provider value={value}>{children}</ContactsContext.Provider>;

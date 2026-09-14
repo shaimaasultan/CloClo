@@ -8,6 +8,8 @@ import { CallInfoBar } from '../src/components/CallInfoBar/CallInfoBar';
 import { DeclineButton } from '../src/components/DeclineButton/DeclineButton';
 import { MissedCallNote } from '../src/components/MissedCallNote/MissedCallNote';
 import { SnoozeSticker } from '../src/components/SnoozeSticker/SnoozeSticker';
+import { SpeedDial } from '../src/components/SpeedDial/SpeedDial';
+import { useCallContact } from '../src/state/useCallContact';
 import { MuteButton } from '../src/components/MuteButton/MuteButton';
 import { Dock } from '../src/components/Dock/Dock';
 import { KeeperAvatar } from '../src/components/KeeperAvatar/KeeperAvatar';
@@ -35,6 +37,9 @@ export default function DialScreen() {
   const { contacts, contactById } = useContacts();
   // Someone you haven't talked to in a while: the hub keeper holds up their photo.
   const hubNudge = useNudge();
+  // Starred contacts, A–Z, each with a speed-dial hole under the dial.
+  const favourites = contacts.filter((c) => c.favourite).sort((a, b) => a.name.localeCompare(b.name));
+  const callContact = useCallContact();
   const ringer = contactById(ringerId);
   // Everyone whose birthday is today, for the reminder beside the dial.
   const birthdayNames = contacts.filter((c) => isBirthdayOn(c.birthday)).map((c) => c.name);
@@ -53,7 +58,9 @@ export default function DialScreen() {
   // Same responsive intent as the prototype's min(80vw,400px) dial sizing,
   // plus a check against remaining vertical space so the handset (which
   // peeks above the dial) never gets pushed into the chrome above it.
-  const dialSize = Math.max(220, Math.min(340, winWidth * 0.86, (winHeight - CHROME_HEIGHT) * 0.85));
+  // The speed-dial holes under the dial need a little room of their own.
+  const speedDialSpace = favourites.length > 0 ? 70 : 0;
+  const dialSize = Math.max(220, Math.min(340, winWidth * 0.86, (winHeight - CHROME_HEIGHT - speedDialSpace) * 0.85));
   // Prototype proportions (400px dial): a 220px handset whose top sits 42px
   // above the dial, so its horns rest down over the brass bezel like a
   // receiver sitting in its cradle rather than floating above the phone.
@@ -190,6 +197,8 @@ export default function DialScreen() {
               />
             </View>
           </View>
+          {/* Favourites as speed-dial holes under the dial. */}
+          <SpeedDial favourites={favourites} onCall={callContact} />
         </View>
         <AuthorFooter />
       </SafeAreaView>

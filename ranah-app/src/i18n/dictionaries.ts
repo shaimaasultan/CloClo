@@ -161,6 +161,15 @@ export interface Dictionary {
   nudgeHint: string;
   nudgeOff: string;
   nudgeAfterDays: (days: number) => string;
+  // Favourites, speed dial, and searching Contacts / Recents.
+  favouritesHeading: string;
+  favouriteAria: (name: string) => string;
+  speedDialLabel: string;
+  speedDialAria: (name: string) => string;
+  searchPlaceholder: string;
+  clearSearch: string;
+  noMatches: string;
+  jumpToLetter: (letter: string) => string;
   // Short spoken-style call length, e.g. "4m 12s" / "4 د 12 ث".
   formatCallDuration: (seconds: number) => string;
   justNow: string;
@@ -228,6 +237,8 @@ export interface Caller {
   localHour: number;
   // "MM-DD" (or empty); on the day, the Keeper's room throws them a little party.
   birthday: string;
+  // Starred in Contacts, with a speed-dial hole on the dial.
+  favourite?: boolean;
 }
 
 export interface RecentCall {
@@ -392,6 +403,14 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
     nudgeHint: 'When you haven’t talked to someone for a while, the keeper holds up their photo',
     nudgeOff: 'Off',
     nudgeAfterDays: (days) => `After ${days} days`,
+    favouritesHeading: 'Favourites',
+    favouriteAria: (name) => `Favourite: ${name}`,
+    speedDialLabel: 'Speed dial',
+    speedDialAria: (name) => `Speed dial ${name}`,
+    searchPlaceholder: 'Search name or number',
+    clearSearch: 'Clear search',
+    noMatches: 'No matches',
+    jumpToLetter: (letter) => `Jump to ${letter}`,
     formatCallDuration: (seconds) => {
       const m = Math.floor(seconds / 60);
       const s = seconds % 60;
@@ -607,6 +626,14 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
     nudgeHint: 'لما يعدي وقت من غير ما تكلمي حد، الحارس يرفع صورته',
     nudgeOff: 'إيقاف',
     nudgeAfterDays: (days) => `بعد ${days} أيام`,
+    favouritesHeading: 'المفضلة',
+    favouriteAria: (name) => `مفضلة: ${name}`,
+    speedDialLabel: 'اتصال سريع',
+    speedDialAria: (name) => `اتصال سريع بـ${name}`,
+    searchPlaceholder: 'دوري بالاسم أو الرقم',
+    clearSearch: 'امسحي البحث',
+    noMatches: 'مفيش نتايج',
+    jumpToLetter: (letter) => `روحي لحرف ${letter}`,
     formatCallDuration: (seconds) => {
       const m = Math.floor(seconds / 60);
       const s = seconds % 60;
