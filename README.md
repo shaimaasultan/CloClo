@@ -11,9 +11,10 @@ with it: their weather, their local time, and what they're up to.
 
 <video src="docs/demo.mp4" controls width="360"></video>
 
-**[▶ Watch the demo (1:39)](docs/demo.mp4)** – dialling, a birthday call
-with the keeper's party hat, the keeper's room, adding a contact, and the
-Arabic layout.
+**[▶ Watch the demo (2:52)](docs/demo.mp4)** – dialling, a call with the
+live transcript, favourites and A–Z contacts, searching Recents, a Messages
+conversation, case colours and room decorations in Advanced settings,
+per-caller ringtones, and the reminder sticker.
 
 This repository holds two things:
 
