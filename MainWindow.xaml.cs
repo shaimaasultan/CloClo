@@ -61,17 +61,17 @@ public partial class MainWindow : Window
     // set); otherwise the label (and this button) isn't even shown. Spans
     // the label's full (now two-line) height rather than trying to track
     // exactly where the button glyph sits within it.
-    private static readonly Rect PauseIconRect = new(116 * Scale, 211 * Scale, 22 * Scale, 34 * Scale);
+    private static readonly Rect PauseIconRect = new(116 * Scale, 209 * Scale, 22 * Scale, 36 * Scale);
     // The list button, notifications only — opens Windows' own flyout
     // (the full list) instead of launching an app. Sits just left of the
     // pause button; only meaningful while _watchingNotifications, but
     // harmless to check unconditionally since the label isn't shown at
     // all when nothing's being watched.
-    private static readonly Rect ListIconRect = new(96 * Scale, 211 * Scale, 20 * Scale, 34 * Scale);
+    private static readonly Rect ListIconRect = new(96 * Scale, 209 * Scale, 20 * Scale, 36 * Scale);
     // The rest of the label (icon/note + both text lines) — clicking there
     // opens the app. Checked after PauseIconRect/ListIconRect, which it
     // overlaps, so those rects' clicks are claimed first.
-    private static readonly Rect LabelBodyRect = new(0, 211 * Scale, 137 * Scale, 34 * Scale);
+    private static readonly Rect LabelBodyRect = new(0, 209 * Scale, 137 * Scale, 36 * Scale);
 
     private static readonly string[] YoutubeAumids = { "edge", "chrome" };
     private static readonly string[] SpotifyAumids = { "spotify" };
