@@ -63,6 +63,10 @@
     background:rgba(0,0,0,.4); color:var(--face);
   }
   #nowPlaying.show{ display:flex; }
+  /* The click itself (open the app) is handled host-side, same as the
+     icons — this just hints that the label body (not the pause button)
+     is a button too. */
+  #nowPlaying .note, #nowPlaying .icon, #nowPlaying .lines{ cursor:pointer; }
   #nowPlaying .note{ flex:none; font-size:10px; opacity:.85; margin-top:1px; }
   /* The notification's own app icon, when the host could fetch one — sits
      where .note otherwise would, the two never shown at once. */

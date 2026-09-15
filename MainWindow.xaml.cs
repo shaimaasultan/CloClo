@@ -52,6 +52,10 @@ public partial class MainWindow : Window
     // the label's full (now two-line) height rather than trying to track
     // exactly where the button glyph sits within it.
     private static readonly Rect PauseIconRect = new(116, 211, 22, 34);
+    // The rest of the label (icon/note + both text lines) — clicking there
+    // opens the app instead. Checked after PauseIconRect, which it
+    // overlaps, so that rect's clicks are claimed first.
+    private static readonly Rect LabelBodyRect = new(0, 211, 137, 34);
 
     private static readonly string[] YoutubeAumids = { "edge", "chrome" };
     private static readonly string[] SpotifyAumids = { "spotify" };
@@ -63,7 +67,8 @@ public partial class MainWindow : Window
     // fetcher delegate so the same watch/poll/pause machinery works for
     // both "what's playing in this app" and "the latest notification".
     // Icon is a data: URI (notifications only — media has none) or null.
-    private Func<Task<(string Title, string Subtitle, string? Icon)?>>? _watchedFetcher;
+    private Func<Task<(string Title, string Subtitle, string? Icon, string? AppUserModelId)?>>? _watchedFetcher;
+    private string? _watchedAppUserModelId;
     private DispatcherTimer? _nowPlayingTimer;
 
     [DllImport("user32.dll")] private static extern int GetWindowLong(IntPtr hWnd, int nIndex);
@@ -143,16 +148,16 @@ public partial class MainWindow : Window
     private void WatchApp(string[] aumidMatches) => Watch(async () =>
     {
         var info = await NowPlaying.GetForAppAsync(aumidMatches);
-        return info is { } np ? (np.Title, np.Artist, (string?)null) : ((string, string, string?)?)null;
+        return info is { } np ? (np.Title, np.Artist, (string?)null, (string?)np.AppUserModelId) : ((string, string, string?, string?)?)null;
     });
 
     private void WatchNotifications() => Watch(async () =>
     {
         var n = await NotificationWatcher.GetLatestAsync();
-        return n is { } latest ? ($"{latest.AppName}: {latest.Title}", latest.Body, latest.IconDataUri) : ((string, string, string?)?)null;
+        return n is { } latest ? ($"{latest.AppName}: {latest.Title}", latest.Body, latest.IconDataUri, latest.AppUserModelId) : ((string, string, string?, string?)?)null;
     });
 
-    private void Watch(Func<Task<(string Title, string Subtitle, string? Icon)?>> fetcher)
+    private void Watch(Func<Task<(string Title, string Subtitle, string? Icon, string? AppUserModelId)?>> fetcher)
     {
         _watchedFetcher = fetcher;
         _nowPlayingTimer ??= CreateNowPlayingTimer();
@@ -166,9 +171,15 @@ public partial class MainWindow : Window
     private void StopWatching()
     {
         _watchedFetcher = null;
+        _watchedAppUserModelId = null;
         _nowPlayingTimer?.Stop();
         try { Web.CoreWebView2?.PostWebMessageAsJson("{\"type\":\"nowPlaying\",\"title\":null,\"artist\":null,\"icon\":null}"); } catch { }
     }
+
+    // Clicking the label body (anywhere but the pause button) launches
+    // whichever app it's currently showing, using the AUMID captured from
+    // the last successful poll rather than re-querying on click.
+    private void OpenWatchedApp() => AppLauncher.TryActivate(_watchedAppUserModelId);
 
     private DispatcherTimer CreateNowPlayingTimer()
     {
@@ -182,6 +193,7 @@ public partial class MainWindow : Window
     {
         if (_watchedFetcher == null) return;
         var result = await _watchedFetcher();
+        _watchedAppUserModelId = result?.AppUserModelId;
         var json = result is { } r
             ? $"{{\"type\":\"nowPlaying\",\"title\":{JsonSerializer.Serialize(r.Title)},\"artist\":{JsonSerializer.Serialize(r.Subtitle)},\"icon\":{JsonSerializer.Serialize(r.Icon)}}}"
             : "{\"type\":\"nowPlaying\",\"title\":null,\"artist\":null,\"icon\":null}";
@@ -247,6 +259,11 @@ public partial class MainWindow : Window
         if (PauseIconRect.Contains(p) && _watchedFetcher != null)
         {
             StopWatching();
+            return;
+        }
+        if (LabelBodyRect.Contains(p) && _watchedFetcher != null && _watchedAppUserModelId != null)
+        {
+            OpenWatchedApp();
             return;
         }
 

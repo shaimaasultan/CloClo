@@ -5,7 +5,7 @@ using Windows.Media.Control;
 
 namespace CloCloWidget;
 
-public readonly record struct NowPlayingInfo(string Title, string Artist);
+public readonly record struct NowPlayingInfo(string Title, string Artist, string AppUserModelId);
 
 // What's playing in one specific app, via the same system media session
 // manager Windows itself uses for the volume flyout's media controls.
@@ -31,7 +31,7 @@ public static class NowPlaying
             var props = await session.TryGetMediaPropertiesAsync();
             if (props == null || string.IsNullOrWhiteSpace(props.Title)) return null;
 
-            return new NowPlayingInfo(props.Title, props.Artist ?? "");
+            return new NowPlayingInfo(props.Title, props.Artist ?? "", session.SourceAppUserModelId ?? "");
         }
         catch
         {
