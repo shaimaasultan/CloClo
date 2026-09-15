@@ -46,14 +46,16 @@ public partial class MainWindow : Window
     private const double AvatarWidth = 140 * Scale;
     private const double AvatarHeight = 245 * Scale;
 
-    // The four icon buttons, always visible, in coordinates relative to
+    // The five icon buttons, always visible, in coordinates relative to
     // _avatarWindow (i.e. already minus AvatarOffsetX/Y) — must stay in
     // sync with #mediaBar's layout in widget.html. Clicking one switches
-    // what the label below is watching (search shows a picker instead).
-    private static readonly Rect YoutubeIconRect = new(14 * Scale, 187 * Scale, 18 * Scale, 20 * Scale);
-    private static readonly Rect SpotifyIconRect = new(42 * Scale, 187 * Scale, 18 * Scale, 20 * Scale);
-    private static readonly Rect BellIconRect = new(70 * Scale, 187 * Scale, 18 * Scale, 20 * Scale);
-    private static readonly Rect SearchIconRect = new(98 * Scale, 187 * Scale, 18 * Scale, 20 * Scale);
+    // what the label below is watching (search/GPU show informational
+    // content instead of something that plays).
+    private static readonly Rect YoutubeIconRect = new(0, 187 * Scale, 18 * Scale, 20 * Scale);
+    private static readonly Rect SpotifyIconRect = new(28 * Scale, 187 * Scale, 18 * Scale, 20 * Scale);
+    private static readonly Rect BellIconRect = new(56 * Scale, 187 * Scale, 18 * Scale, 20 * Scale);
+    private static readonly Rect SearchIconRect = new(84 * Scale, 187 * Scale, 18 * Scale, 20 * Scale);
+    private static readonly Rect GpuIconRect = new(112 * Scale, 187 * Scale, 18 * Scale, 20 * Scale);
     // The pause button inside the label itself — same coordinate space.
     // Only acts while actually watching something (_watchedFetcher is
     // set); otherwise the label (and this button) isn't even shown. Spans
@@ -187,6 +189,25 @@ public partial class MainWindow : Window
         {
             var n = await NotificationWatcher.GetLatestAsync();
             return n is { } latest ? ($"{latest.AppName}: {latest.Title}", latest.Body, latest.IconDataUri, latest.AppUserModelId) : ((string, string, string?, string?)?)null;
+        });
+    }
+
+    // Static, not really something to "watch" the way media or
+    // notifications change — but reusing the same label/poll/pause
+    // mechanism is simpler than building a separate one-shot display just
+    // for this, and re-querying WMI every few seconds is cheap enough.
+    // There's no AUMID for a GPU, so the label body's "open app" click
+    // just does nothing here, which is the correct behaviour.
+    private void WatchGpus()
+    {
+        _watchingNotifications = false;
+        Watch(async () =>
+        {
+            var names = await Task.Run(GpuInfo.GetNames);
+            if (names.Count == 0) return ((string, string, string?, string?)?)null;
+            var title = names[0];
+            var subtitle = names.Count > 1 ? string.Join(", ", names.Skip(1)) : "";
+            return (title, subtitle, (string?)null, (string?)null);
         });
     }
 
@@ -392,6 +413,11 @@ public partial class MainWindow : Window
             // for this plain, untransformed window, so adding them directly
             // is both simpler and the one that's actually been verified.
             ShowAppPicker(_avatarWindow!.Left + p.X, _avatarWindow.Top + p.Y);
+            return;
+        }
+        if (GpuIconRect.Contains(p))
+        {
+            WatchGpus();
             return;
         }
         if (PauseIconRect.Contains(p) && _watchedFetcher != null)
