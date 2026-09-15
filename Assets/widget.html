@@ -14,7 +14,8 @@
     font-family:'Segoe UI', sans-serif;
   }
   #stage{
-    width:150px; height:232px; position:relative;
+    width:150px; height:232px; position:relative; box-sizing:border-box;
+    padding-bottom:24px;
     display:flex; flex-direction:column; align-items:center; justify-content:flex-end;
     cursor:grab;
   }
@@ -33,19 +34,31 @@
   #temp{ font-size:19px; font-weight:800; line-height:1; }
   #place{ font-size:10px; opacity:.9; letter-spacing:.02em; max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 
-  /* What's currently playing, system-wide — hidden until the host reports
-     something. A title too long for the widget scrolls instead of clipping. */
-  #nowPlaying{
-    display:none; align-items:center; gap:4px; margin-top:5px;
-    width:132px; padding:3px 6px; border-radius:9px;
-    background:rgba(0,0,0,.32); backdrop-filter:blur(1px);
-    color:var(--face); text-shadow:none;
+  /* Two small "what's playing" buttons pinned to the bottom of the widget —
+     click one to ask that specific app, rather than guessing at a single
+     system-wide "current" session (that turned out to mean "whichever app
+     last had media-key focus", not "whatever's actually playing"). Fixed
+     position/size regardless of state, so nothing else on the stage ever
+     has to reflow around it — see YoutubeIconRect/SpotifyIconRect in
+     MainWindow.xaml.cs, which must stay in sync with this layout. */
+  #mediaBar{ position:absolute; left:0; right:0; bottom:4px; height:20px; display:flex; align-items:center; justify-content:center; gap:10px; }
+  #mediaBar .icons{ display:flex; align-items:center; gap:10px; }
+  .mediaIcon{ width:18px; height:18px; border-radius:5px; display:flex; align-items:center; justify-content:center; box-shadow:0 1px 2px rgba(0,0,0,.4); cursor:pointer; }
+  #iconYoutube{ background:#ff0033; }
+  #iconYoutube .tri{ width:0; height:0; border-style:solid; border-width:4px 0 4px 6px; border-color:transparent transparent transparent #fff; margin-left:1.5px; }
+  #iconSpotify{ background:#1db954; border-radius:50%; color:#fff; font-size:11px; line-height:1; }
+
+  #mediaBar .result{
+    display:none; width:100%; height:100%; align-items:center; gap:4px;
+    padding:0 6px; box-sizing:border-box; border-radius:9px;
+    background:rgba(0,0,0,.4); color:var(--face);
   }
-  #nowPlaying.show{ display:flex; }
-  #nowPlaying .note{ flex:none; font-size:11px; opacity:.85; }
-  #nowPlaying .marquee{ flex:1; overflow:hidden; white-space:nowrap; -webkit-mask-image:linear-gradient(to right, transparent, #000 6px, #000 calc(100% - 6px), transparent); mask-image:linear-gradient(to right, transparent, #000 6px, #000 calc(100% - 6px), transparent); }
-  #nowPlaying .marquee span{ display:inline-block; font-size:9.5px; letter-spacing:.01em; }
-  #nowPlaying .marquee.scroll span{ animation:marquee 7s linear infinite; }
+  #mediaBar.active .icons{ display:none; }
+  #mediaBar.active .result{ display:flex; }
+  #mediaBar .result .note{ flex:none; font-size:10px; opacity:.85; }
+  #mediaBar .result .marquee{ flex:1; overflow:hidden; white-space:nowrap; -webkit-mask-image:linear-gradient(to right, transparent, #000 6px, #000 calc(100% - 6px), transparent); mask-image:linear-gradient(to right, transparent, #000 6px, #000 calc(100% - 6px), transparent); }
+  #mediaBar .result .marquee span{ display:inline-block; font-size:9.5px; letter-spacing:.01em; }
+  #mediaBar .result .marquee.scroll span{ animation:marquee 7s linear infinite; }
   @keyframes marquee{ 0%{ transform:translateX(100%); } 100%{ transform:translateX(-100%); } }
 
   /* Sun rays, shown behind the keeper on clear days. */
@@ -221,9 +234,15 @@
       <div id="place">…</div>
     </div>
 
-    <div id="nowPlaying">
-      <span class="note">♪</span>
-      <span class="marquee"><span id="nowPlayingText"></span></span>
+    <div id="mediaBar">
+      <div class="icons">
+        <div class="mediaIcon" id="iconYoutube" title="What's playing on YouTube"><span class="tri"></span></div>
+        <div class="mediaIcon" id="iconSpotify" title="What's playing on Spotify">♪</div>
+      </div>
+      <div class="result">
+        <span class="note">♪</span>
+        <span class="marquee"><span id="mediaResultText"></span></span>
+      </div>
     </div>
   </div>
 
@@ -232,26 +251,32 @@
   // separate, invisible WPF window the host places on top of the avatar —
   // this page itself is purely decorative and never receives mouse input.
 
-  // ---- now playing, pushed from the host as it changes (see NowPlaying.cs
-  // and RefreshNowPlaying in MainWindow.xaml.cs) rather than polled here,
-  // since reading the system media session is a WinRT/host-side thing ----
-  const nowPlayingEl = document.getElementById('nowPlaying');
-  const nowPlayingText = document.getElementById('nowPlayingText');
-  const marqueeEl = document.querySelector('#nowPlaying .marquee');
+  // ---- media bar: the icon click itself is handled host-side (see
+  // YoutubeIconRect/SpotifyIconRect + ShowNowPlayingForApp in
+  // MainWindow.xaml.cs — WebView2 never gets mouse input here at all), and
+  // the result comes back the same way, as a pushed message ----
+  const mediaBarEl = document.getElementById('mediaBar');
+  const mediaResultText = document.getElementById('mediaResultText');
+  const mediaMarqueeEl = document.querySelector('#mediaBar .result .marquee');
+  let mediaRevertTimer = null;
+
   window.chrome?.webview?.addEventListener('message', (e) => {
     const msg = e.data;
-    if (!msg || msg.type !== 'nowPlaying') return;
-    if (!msg.title) {
-      nowPlayingEl.classList.remove('show');
-      return;
-    }
-    nowPlayingText.textContent = msg.artist ? `${msg.title} — ${msg.artist}` : msg.title;
-    nowPlayingEl.classList.add('show');
-    marqueeEl.classList.remove('scroll');
-    // Only scroll if it actually overflows — a short title just sits still.
+    if (!msg || msg.type !== 'nowPlayingResult') return;
+
+    mediaResultText.textContent = msg.title
+      ? (msg.artist ? `${msg.title} — ${msg.artist}` : msg.title)
+      : `${msg.app}: nothing playing`;
+    mediaBarEl.classList.add('active');
+    mediaMarqueeEl.classList.remove('scroll');
     requestAnimationFrame(() => {
-      if (nowPlayingText.scrollWidth > marqueeEl.clientWidth) marqueeEl.classList.add('scroll');
+      if (mediaResultText.scrollWidth > mediaMarqueeEl.clientWidth) mediaMarqueeEl.classList.add('scroll');
     });
+
+    // Back to the icons after a few seconds, so they stay available to
+    // check the other app without an explicit "close" action.
+    clearTimeout(mediaRevertTimer);
+    mediaRevertTimer = setTimeout(() => mediaBarEl.classList.remove('active'), 6000);
   });
 
   // ---- blink, purely decorative ----

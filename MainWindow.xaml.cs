@@ -3,7 +3,6 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text.Json;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Interop;
@@ -17,8 +16,6 @@ public partial class MainWindow : Window
     private WidgetSettings _settings = WidgetSettings.Load();
     private DrawingForms.NotifyIcon? _trayIcon;
     private DispatcherTimer? _topmostTimer;
-    private DispatcherTimer? _nowPlayingTimer;
-    private NowPlayingInfo? _lastNowPlaying;
     private Window? _avatarWindow;
 
     private const int GWL_EXSTYLE = -20;
@@ -35,6 +32,12 @@ public partial class MainWindow : Window
     private const double AvatarOffsetY = 21;
     private const double AvatarWidth = 114;
     private const double AvatarHeight = 207;
+
+    // The two "what's playing" icon buttons at the bottom of the widget, in
+    // coordinates relative to _avatarWindow (i.e. already minus AvatarOffsetX/Y)
+    // — must stay in sync with #mediaBar's layout in widget.html.
+    private static readonly Rect YoutubeIconRect = new(34, 187, 18, 20);
+    private static readonly Rect SpotifyIconRect = new(62, 187, 18, 20);
 
     [DllImport("user32.dll")] private static extern int GetWindowLong(IntPtr hWnd, int nIndex);
     [DllImport("user32.dll")] private static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
@@ -95,31 +98,19 @@ public partial class MainWindow : Window
         Web.CoreWebView2.Settings.IsStatusBarEnabled = false;
 
         NavigateToWidget();
-        SetupNowPlayingTimer();
     }
 
-    // Polled rather than event-driven — GlobalSystemMediaTransportControls
-    // SessionManager does have a CurrentSessionChanged event, but polling
-    // every few seconds is simpler and cheap enough for a "what's playing"
-    // label, and also catches title/artist changes within the same session
-    // (e.g. track skip) that the session-changed event wouldn't fire for.
-    private void SetupNowPlayingTimer()
+    // "Current session" (tried first) turned out to be Windows' own guess
+    // at what's relevant — whichever app last had media-key focus — which
+    // could stick to a browser tab that wasn't even playing anymore instead
+    // of actually-playing Spotify. Rather than keep guessing at a single
+    // "now playing" session, these buttons ask about one specific app.
+    private async void ShowNowPlayingForApp(string[] aumidMatches, string appLabel)
     {
-        _nowPlayingTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(4) };
-        _nowPlayingTimer.Tick += async (_, _) => await RefreshNowPlaying();
-        _nowPlayingTimer.Start();
-        _ = RefreshNowPlaying();
-    }
-
-    private async Task RefreshNowPlaying()
-    {
-        var info = await NowPlaying.GetCurrentAsync();
-        if (info.Equals(_lastNowPlaying)) return;
-        _lastNowPlaying = info;
-
+        var info = await NowPlaying.GetForAppAsync(aumidMatches);
         var json = info is { } np
-            ? $"{{\"type\":\"nowPlaying\",\"title\":{JsonSerializer.Serialize(np.Title)},\"artist\":{JsonSerializer.Serialize(np.Artist)}}}"
-            : "{\"type\":\"nowPlaying\",\"title\":null,\"artist\":null}";
+            ? $"{{\"type\":\"nowPlayingResult\",\"app\":{JsonSerializer.Serialize(appLabel)},\"title\":{JsonSerializer.Serialize(np.Title)},\"artist\":{JsonSerializer.Serialize(np.Artist)}}}"
+            : $"{{\"type\":\"nowPlayingResult\",\"app\":{JsonSerializer.Serialize(appLabel)},\"title\":null,\"artist\":null}}";
         try { Web.CoreWebView2?.PostWebMessageAsJson(json); } catch { /* page not ready yet */ }
     }
 
@@ -163,6 +154,18 @@ public partial class MainWindow : Window
 
     private void AvatarWindow_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
+        var p = e.GetPosition(_avatarWindow);
+        if (YoutubeIconRect.Contains(p))
+        {
+            ShowNowPlayingForApp(new[] { "edge", "chrome" }, "YouTube");
+            return;
+        }
+        if (SpotifyIconRect.Contains(p))
+        {
+            ShowNowPlayingForApp(new[] { "spotify" }, "Spotify");
+            return;
+        }
+
         if (e.ClickCount >= 2)
         {
             ShowContextMenuAtCursor();
