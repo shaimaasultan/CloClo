@@ -39,6 +39,39 @@ public partial class LocationDialog : Window
         Close();
     }
 
+    private async void UseLocation_Click(object sender, RoutedEventArgs e)
+    {
+        UseLocationButton.IsEnabled = false;
+        OkButton.IsEnabled = false;
+        StatusText.Text = "Finding your location…";
+        try
+        {
+            var pos = await GeoLocation.GetCurrentAsync();
+            if (pos == null)
+            {
+                StatusText.Text = "Couldn't get your location — check Windows' location permission " +
+                    "(Settings > Privacy & security > Location > Let desktop apps access your location).";
+                return;
+            }
+
+            var (lat, lon) = pos.Value;
+            StatusText.Text = "Found you — looking up the place name…";
+            var city = await GeoLocation.ReverseGeocodeAsync(lat, lon)
+                ?? $"{lat.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)}, {lon.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)}";
+
+            ResolvedLat = lat;
+            ResolvedLon = lon;
+            ResolvedCity = city;
+            DialogResult = true;
+            Close();
+        }
+        finally
+        {
+            UseLocationButton.IsEnabled = true;
+            OkButton.IsEnabled = true;
+        }
+    }
+
     private async Task ResolveAndCloseAsync()
     {
         var name = CityBox.Text.Trim();

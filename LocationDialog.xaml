@@ -27,6 +27,9 @@
     <StackPanel Margin="16">
         <TextBlock Text="City name" Foreground="#f3ecdd" FontWeight="Bold" Margin="0,0,0,6" />
         <TextBox x:Name="CityBox" KeyDown="CityBox_KeyDown" />
+        <Button x:Name="UseLocationButton" Content="📍 Use my location" Click="UseLocation_Click"
+                HorizontalAlignment="Left" Margin="0,10,0,0" Padding="10,5"
+                Background="#3c2f1a" Foreground="#f3ecdd" FontWeight="Normal" />
         <TextBlock x:Name="StatusText" Foreground="#c9a24b" Margin="0,8,0,0" TextWrapping="Wrap" />
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,14,0,0">
             <Button Content="Cancel" Click="Cancel_Click" Background="#3c1512" Foreground="#f3ecdd" />
