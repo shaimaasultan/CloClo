@@ -52,9 +52,15 @@ public partial class MainWindow : Window
     // the label's full (now two-line) height rather than trying to track
     // exactly where the button glyph sits within it.
     private static readonly Rect PauseIconRect = new(116, 211, 22, 34);
+    // The list button, notifications only — opens Windows' own flyout
+    // (the full list) instead of launching an app. Sits just left of the
+    // pause button; only meaningful while _watchingNotifications, but
+    // harmless to check unconditionally since the label isn't shown at
+    // all when nothing's being watched.
+    private static readonly Rect ListIconRect = new(96, 211, 20, 34);
     // The rest of the label (icon/note + both text lines) — clicking there
-    // opens the app instead. Checked after PauseIconRect, which it
-    // overlaps, so that rect's clicks are claimed first.
+    // opens the app. Checked after PauseIconRect/ListIconRect, which it
+    // overlaps, so those rects' clicks are claimed first.
     private static readonly Rect LabelBodyRect = new(0, 211, 137, 34);
 
     private static readonly string[] YoutubeAumids = { "edge", "chrome" };
@@ -193,18 +199,14 @@ public partial class MainWindow : Window
         try { Web.CoreWebView2?.PostWebMessageAsJson("{\"type\":\"nowPlaying\",\"title\":null,\"artist\":null,\"icon\":null}"); } catch { }
     }
 
-    // Clicking the label body (anywhere but the pause button): for media,
-    // launches the app it's showing, using the AUMID captured from the
-    // last successful poll rather than re-querying on click. For
-    // notifications, opens Windows' own flyout instead — the label only
-    // ever shows the latest of possibly several, so the flyout's full
-    // list is more useful than launching whatever app sent that one.
-    private void OpenWatchedApp()
-    {
-        if (_watchingNotifications) OpenNotificationFlyout();
-        else AppLauncher.TryActivate(_watchedAppUserModelId);
-    }
+    // Clicking the label body (anywhere but the pause/list buttons)
+    // launches whichever app it's showing — media or notification alike —
+    // using the AUMID captured from the last successful poll rather than
+    // re-querying on click.
+    private void OpenWatchedApp() => AppLauncher.TryActivate(_watchedAppUserModelId);
 
+    // The list button, notifications only — opens the full list instead
+    // of launching just the one app that sent the latest notification.
     // Win+N is the standard shortcut for Windows' notification flyout on
     // both Windows 10 and 11 — simulating it is simpler and more robust
     // than trying to activate the flyout's own host process by AUMID.
@@ -230,8 +232,8 @@ public partial class MainWindow : Window
         var result = await _watchedFetcher();
         _watchedAppUserModelId = result?.AppUserModelId;
         var json = result is { } r
-            ? $"{{\"type\":\"nowPlaying\",\"title\":{JsonSerializer.Serialize(r.Title)},\"artist\":{JsonSerializer.Serialize(r.Subtitle)},\"icon\":{JsonSerializer.Serialize(r.Icon)}}}"
-            : "{\"type\":\"nowPlaying\",\"title\":null,\"artist\":null,\"icon\":null}";
+            ? $"{{\"type\":\"nowPlaying\",\"title\":{JsonSerializer.Serialize(r.Title)},\"artist\":{JsonSerializer.Serialize(r.Subtitle)},\"icon\":{JsonSerializer.Serialize(r.Icon)},\"isNotification\":{(_watchingNotifications ? "true" : "false")}}}"
+            : "{\"type\":\"nowPlaying\",\"title\":null,\"artist\":null,\"icon\":null,\"isNotification\":false}";
         try { Web.CoreWebView2?.PostWebMessageAsJson(json); } catch { /* page not ready yet */ }
     }
 
@@ -296,7 +298,12 @@ public partial class MainWindow : Window
             StopWatching();
             return;
         }
-        if (LabelBodyRect.Contains(p) && _watchedFetcher != null && (_watchingNotifications || _watchedAppUserModelId != null))
+        if (ListIconRect.Contains(p) && _watchedFetcher != null && _watchingNotifications)
+        {
+            OpenNotificationFlyout();
+            return;
+        }
+        if (LabelBodyRect.Contains(p) && _watchedFetcher != null && _watchedAppUserModelId != null)
         {
             OpenWatchedApp();
             return;
