@@ -33,6 +33,16 @@
   .sun .core{ position:absolute; left:8px; top:8px; width:10px; height:10px; border-radius:50%; background:var(--highlight); box-shadow:0 0 10px 2px var(--highlight); }
   .sun .ray{ position:absolute; left:12px; top:12px; width:2px; height:6px; background:var(--highlight); border-radius:1px; transform-origin:1px 13px; opacity:.85; }
 
+  /* A drifting cloud, shown instead of the sun on overcast days. */
+  .cloud{ position:absolute; top:16px; right:6px; width:46px; height:22px; display:none; animation:drift 6s ease-in-out infinite; }
+  body.sky-cloudy .cloud{ display:block; }
+  .cloud .puff{ position:absolute; bottom:5px; border-radius:50%; background:#dfe6ee; opacity:.92; }
+  .cloud .puff1{ left:0; width:16px; height:16px; }
+  .cloud .puff2{ left:12px; bottom:8px; width:20px; height:20px; }
+  .cloud .puff3{ left:28px; width:14px; height:14px; }
+  .cloud .base{ position:absolute; left:4px; bottom:0; width:38px; height:14px; border-radius:8px; background:#dfe6ee; opacity:.92; }
+  @keyframes drift{ 0%,100%{ transform:translateX(0); } 50%{ transform:translateX(-4px); } }
+
   /* A few falling streaks/dots — a light touch of the app's own weather layer. */
   .drop{ position:absolute; width:2px; height:12px; border-radius:1px; background:#cfe3f7; opacity:0; top:-14px; }
   body.sky-rain .drop, body.sky-storm .drop{ opacity:.75; animation:fall linear infinite; }
@@ -51,6 +61,7 @@
     <div id="sparkle">
       <div id="flash"></div>
       <div class="sun"><div class="core"></div></div>
+      <div class="cloud"><div class="puff puff1"></div><div class="puff puff2"></div><div class="puff puff3"></div><div class="base"></div></div>
       <div class="drop" style="left:8px; animation-duration:.9s; animation-delay:0s;"></div>
       <div class="drop" style="left:26px; animation-duration:1.1s; animation-delay:.3s;"></div>
       <div class="drop" style="left:112px; animation-duration:.8s; animation-delay:.15s;"></div>
@@ -209,7 +220,7 @@
   function show(id, on) { document.getElementById(id).style.display = on ? '' : 'none'; }
 
   function applyWeather(kind) {
-    document.body.classList.remove('sky-clear', 'sky-rain', 'sky-snow', 'sky-storm');
+    document.body.classList.remove('sky-clear', 'sky-cloudy', 'sky-rain', 'sky-snow', 'sky-storm');
     document.body.classList.add('sky-' + kind);
     groups.forEach((id) => show(id, false));
 
@@ -228,9 +239,10 @@
       show('snowHat', true);
     } else if (kind === 'storm') {
       show('torsoStorm', true);
-    } else {
+    } else if (kind === 'clear') {
       show('sunglasses', true);
     }
+    // cloudy: default torso, no sunglasses (no direct sun) — just the cloud overhead
   }
   // ---- live weather, from the query string CloClo's WPF host supplies ----
   const params = new URLSearchParams(location.search);
@@ -250,7 +262,8 @@
     if ([51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82].includes(code)) return 'rain';
     if ([71, 73, 75, 77, 85, 86].includes(code)) return 'snow';
     if ([95, 96, 99].includes(code)) return 'storm';
-    return 'clear';
+    if ([2, 3, 45, 48].includes(code)) return 'cloudy'; // partly cloudy, overcast, fog
+    return 'clear'; // 0 clear sky, 1 mainly clear
   }
 
   async function refreshWeather() {

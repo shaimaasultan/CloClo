@@ -40,6 +40,7 @@ public partial class MainWindow : Window
     {
         ("auto", "Auto (live)"),
         ("clear", "Clear"),
+        ("cloudy", "Cloudy"),
         ("rain", "Rain"),
         ("snow", "Snow"),
         ("storm", "Storm"),
