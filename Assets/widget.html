@@ -64,6 +64,9 @@
   }
   #nowPlaying.show{ display:flex; }
   #nowPlaying .note{ flex:none; font-size:10px; opacity:.85; margin-top:1px; }
+  /* The notification's own app icon, when the host could fetch one — sits
+     where .note otherwise would, the two never shown at once. */
+  #nowPlaying .icon{ display:none; flex:none; width:15px; height:15px; border-radius:3px; object-fit:cover; margin-top:1px; }
   #nowPlaying .lines{ flex:1; min-width:0; display:flex; flex-direction:column; justify-content:center; gap:2px; }
   #nowPlaying .titleLine, #nowPlaying .subtitleLine{ overflow:hidden; white-space:nowrap; -webkit-mask-image:linear-gradient(to right, transparent, #000 6px, #000 calc(100% - 6px), transparent); mask-image:linear-gradient(to right, transparent, #000 6px, #000 calc(100% - 6px), transparent); }
   #nowPlaying .titleLine span{ display:inline-block; font-size:9.5px; font-weight:600; letter-spacing:.01em; }
@@ -255,7 +258,8 @@
     </div>
 
     <div id="nowPlaying">
-      <span class="note">♪</span>
+      <span class="note" id="nowPlayingNote">♪</span>
+      <img class="icon" id="nowPlayingIcon" alt="" />
       <div class="lines">
         <div class="titleLine"><span id="nowPlayingTitle"></span></div>
         <div class="subtitleLine"><span id="nowPlayingSubtitle"></span></div>
@@ -279,6 +283,8 @@
   const subtitleTextEl = document.getElementById('nowPlayingSubtitle');
   const titleLineEl = document.querySelector('#nowPlaying .titleLine');
   const subtitleLineEl = document.querySelector('#nowPlaying .subtitleLine');
+  const noteEl = document.getElementById('nowPlayingNote');
+  const iconEl = document.getElementById('nowPlayingIcon');
 
   function fitLine(textEl, lineEl) {
     lineEl.classList.remove('scroll');
@@ -298,6 +304,17 @@
     titleTextEl.textContent = msg.title;
     subtitleTextEl.textContent = msg.artist || '';
     subtitleLineEl.style.display = msg.artist ? '' : 'none';
+    // The notification's own app icon when there is one (media never has
+    // one) — falls back to the plain note glyph otherwise, e.g. if the
+    // host couldn't fetch a logo for that particular app.
+    if (msg.icon) {
+      iconEl.src = msg.icon;
+      iconEl.style.display = 'block';
+      noteEl.style.display = 'none';
+    } else {
+      iconEl.style.display = 'none';
+      noteEl.style.display = '';
+    }
     nowPlayingEl.classList.add('show');
 
     // Only scroll a line if it actually overflows — a short one just sits still.

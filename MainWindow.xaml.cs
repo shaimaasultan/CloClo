@@ -62,7 +62,8 @@ public partial class MainWindow : Window
     // relevant), or until the pause button stops it explicitly. A plain
     // fetcher delegate so the same watch/poll/pause machinery works for
     // both "what's playing in this app" and "the latest notification".
-    private Func<Task<(string Title, string Subtitle)?>>? _watchedFetcher;
+    // Icon is a data: URI (notifications only — media has none) or null.
+    private Func<Task<(string Title, string Subtitle, string? Icon)?>>? _watchedFetcher;
     private DispatcherTimer? _nowPlayingTimer;
 
     [DllImport("user32.dll")] private static extern int GetWindowLong(IntPtr hWnd, int nIndex);
@@ -142,16 +143,16 @@ public partial class MainWindow : Window
     private void WatchApp(string[] aumidMatches) => Watch(async () =>
     {
         var info = await NowPlaying.GetForAppAsync(aumidMatches);
-        return info is { } np ? (np.Title, np.Artist) : ((string, string)?)null;
+        return info is { } np ? (np.Title, np.Artist, (string?)null) : ((string, string, string?)?)null;
     });
 
     private void WatchNotifications() => Watch(async () =>
     {
         var n = await NotificationWatcher.GetLatestAsync();
-        return n is { } latest ? ($"{latest.AppName}: {latest.Title}", latest.Body) : ((string, string)?)null;
+        return n is { } latest ? ($"{latest.AppName}: {latest.Title}", latest.Body, latest.IconDataUri) : ((string, string, string?)?)null;
     });
 
-    private void Watch(Func<Task<(string Title, string Subtitle)?>> fetcher)
+    private void Watch(Func<Task<(string Title, string Subtitle, string? Icon)?>> fetcher)
     {
         _watchedFetcher = fetcher;
         _nowPlayingTimer ??= CreateNowPlayingTimer();
@@ -166,7 +167,7 @@ public partial class MainWindow : Window
     {
         _watchedFetcher = null;
         _nowPlayingTimer?.Stop();
-        try { Web.CoreWebView2?.PostWebMessageAsJson("{\"type\":\"nowPlaying\",\"title\":null,\"artist\":null}"); } catch { }
+        try { Web.CoreWebView2?.PostWebMessageAsJson("{\"type\":\"nowPlaying\",\"title\":null,\"artist\":null,\"icon\":null}"); } catch { }
     }
 
     private DispatcherTimer CreateNowPlayingTimer()
@@ -182,8 +183,8 @@ public partial class MainWindow : Window
         if (_watchedFetcher == null) return;
         var result = await _watchedFetcher();
         var json = result is { } r
-            ? $"{{\"type\":\"nowPlaying\",\"title\":{JsonSerializer.Serialize(r.Title)},\"artist\":{JsonSerializer.Serialize(r.Subtitle)}}}"
-            : "{\"type\":\"nowPlaying\",\"title\":null,\"artist\":null}";
+            ? $"{{\"type\":\"nowPlaying\",\"title\":{JsonSerializer.Serialize(r.Title)},\"artist\":{JsonSerializer.Serialize(r.Subtitle)},\"icon\":{JsonSerializer.Serialize(r.Icon)}}}"
+            : "{\"type\":\"nowPlaying\",\"title\":null,\"artist\":null,\"icon\":null}";
         try { Web.CoreWebView2?.PostWebMessageAsJson(json); } catch { /* page not ready yet */ }
     }
 

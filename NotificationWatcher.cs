@@ -1,12 +1,13 @@
 using System;
 using System.Linq;
 using System.Threading.Tasks;
+using Windows.Storage.Streams;
 using Windows.UI.Notifications;
 using Windows.UI.Notifications.Management;
 
 namespace CloCloWidget;
 
-public readonly record struct LatestNotification(string AppName, string Title, string Body);
+public readonly record struct LatestNotification(string AppName, string Title, string Body, string? IconDataUri);
 
 // The most recent toast notification, via UserNotificationListener — the
 // same store Windows' own Action Center reads from. This API has
@@ -38,7 +39,36 @@ public static class NotificationWatcher
 
             var title = lines.Length > 0 ? lines[0] : appName;
             var body = lines.Length > 1 ? string.Join(" ", lines.Skip(1)) : "";
-            return new LatestNotification(appName, title, body);
+            var icon = await TryGetIconDataUriAsync(latest.AppInfo);
+            return new LatestNotification(appName, title, body, icon);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    // The page can't reach into WinRT streams itself, so the icon is
+    // shipped over as a data: URI — small enough (a 32x32 logo) that the
+    // base64 bloat doesn't matter for a single postMessage payload.
+    private static async Task<string?> TryGetIconDataUriAsync(Windows.ApplicationModel.AppInfo? appInfo)
+    {
+        try
+        {
+            var logo = appInfo?.DisplayInfo?.GetLogo(new Windows.Foundation.Size(32, 32));
+            if (logo == null) return null;
+
+            using var stream = await logo.OpenReadAsync();
+            using var reader = new DataReader(stream);
+            var size = (uint)stream.Size;
+            if (size == 0) return null;
+
+            await reader.LoadAsync(size);
+            var bytes = new byte[size];
+            reader.ReadBytes(bytes);
+
+            var contentType = string.IsNullOrEmpty(stream.ContentType) ? "image/png" : stream.ContentType;
+            return $"data:{contentType};base64,{Convert.ToBase64String(bytes)}";
         }
         catch
         {
