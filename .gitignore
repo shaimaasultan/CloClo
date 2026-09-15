@@ -3,3 +3,6 @@ Recording *.mp4
 
 # Local Claude Code settings and launch configuration
 .claude/
+
+# The Windows desktop widget lives in its own separate git repository.
+cloclo-widget/
