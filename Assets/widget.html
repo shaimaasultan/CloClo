@@ -18,6 +18,11 @@
     padding-bottom:62px;
     display:flex; flex-direction:column; align-items:center; justify-content:flex-end;
     cursor:grab;
+    /* Scales the whole thing uniformly — every rule below still targets the
+       original 150x270 canvas unchanged; only the window (MainWindow.xaml)
+       and the click hit-rects (MainWindow.xaml.cs) need to know about this
+       factor, since those live outside what CSS can reach. */
+    zoom:1.3;
   }
   #stage:active{ cursor:grabbing; }
   #sparkle{ position:absolute; inset:0; pointer-events:none; overflow:hidden; }

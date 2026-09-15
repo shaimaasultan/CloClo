@@ -27,6 +27,12 @@ public partial class MainWindow : Window
     private const uint SWP_NOMOVE = 0x0002;
     private const uint SWP_NOACTIVATE = 0x0010;
 
+    // The widget renders at 1.3x (see #stage's zoom in widget.html) — every
+    // rect below is the original 150x270-canvas value times that same
+    // factor, since WPF (unlike CSS) has no idea the page is zoomed and
+    // needs the actual on-screen pixel positions to hit-test correctly.
+    private const double Scale = 1.3;
+
     // Roughly where the avatar + the temperature/location text sit, as an
     // offset/size within the window — this is the rect the separate,
     // genuinely-interactive _avatarWindow covers (see CreateAvatarHitWindow).
@@ -35,35 +41,35 @@ public partial class MainWindow : Window
     // rect outside _avatarWindow's own bounds never receives a click at
     // all, it just falls through to the desktop (learned this the hard way
     // with the now-removed switch icon).
-    private const double AvatarOffsetX = 10;
-    private const double AvatarOffsetY = 21;
-    private const double AvatarWidth = 140;
-    private const double AvatarHeight = 245;
+    private const double AvatarOffsetX = 10 * Scale;
+    private const double AvatarOffsetY = 21 * Scale;
+    private const double AvatarWidth = 140 * Scale;
+    private const double AvatarHeight = 245 * Scale;
 
     // The four icon buttons, always visible, in coordinates relative to
     // _avatarWindow (i.e. already minus AvatarOffsetX/Y) — must stay in
     // sync with #mediaBar's layout in widget.html. Clicking one switches
     // what the label below is watching (search shows a picker instead).
-    private static readonly Rect YoutubeIconRect = new(14, 187, 18, 20);
-    private static readonly Rect SpotifyIconRect = new(42, 187, 18, 20);
-    private static readonly Rect BellIconRect = new(70, 187, 18, 20);
-    private static readonly Rect SearchIconRect = new(98, 187, 18, 20);
+    private static readonly Rect YoutubeIconRect = new(14 * Scale, 187 * Scale, 18 * Scale, 20 * Scale);
+    private static readonly Rect SpotifyIconRect = new(42 * Scale, 187 * Scale, 18 * Scale, 20 * Scale);
+    private static readonly Rect BellIconRect = new(70 * Scale, 187 * Scale, 18 * Scale, 20 * Scale);
+    private static readonly Rect SearchIconRect = new(98 * Scale, 187 * Scale, 18 * Scale, 20 * Scale);
     // The pause button inside the label itself — same coordinate space.
     // Only acts while actually watching something (_watchedFetcher is
     // set); otherwise the label (and this button) isn't even shown. Spans
     // the label's full (now two-line) height rather than trying to track
     // exactly where the button glyph sits within it.
-    private static readonly Rect PauseIconRect = new(116, 211, 22, 34);
+    private static readonly Rect PauseIconRect = new(116 * Scale, 211 * Scale, 22 * Scale, 34 * Scale);
     // The list button, notifications only — opens Windows' own flyout
     // (the full list) instead of launching an app. Sits just left of the
     // pause button; only meaningful while _watchingNotifications, but
     // harmless to check unconditionally since the label isn't shown at
     // all when nothing's being watched.
-    private static readonly Rect ListIconRect = new(96, 211, 20, 34);
+    private static readonly Rect ListIconRect = new(96 * Scale, 211 * Scale, 20 * Scale, 34 * Scale);
     // The rest of the label (icon/note + both text lines) — clicking there
     // opens the app. Checked after PauseIconRect/ListIconRect, which it
     // overlaps, so those rects' clicks are claimed first.
-    private static readonly Rect LabelBodyRect = new(0, 211, 137, 34);
+    private static readonly Rect LabelBodyRect = new(0, 211 * Scale, 137 * Scale, 34 * Scale);
 
     private static readonly string[] YoutubeAumids = { "edge", "chrome" };
     private static readonly string[] SpotifyAumids = { "spotify" };
