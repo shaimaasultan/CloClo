@@ -131,6 +131,11 @@
   /* A few falling streaks/dots — a light touch of the app's own weather layer. */
   .drop{ position:absolute; width:2px; height:12px; border-radius:1px; background:#cfe3f7; opacity:0; top:-14px; }
   body.sky-rain .drop, body.sky-storm .drop{ opacity:.75; animation:fall linear infinite; }
+  /* Lighter, slower, more transparent than rain's drops — same element,
+     just dialled down. animation-duration needs !important since each
+     .drop already sets its own inline duration for rain/storm's varied
+     timing. */
+  body.sky-drizzle .drop{ opacity:.4; width:1.5px; height:7px; animation:fall linear infinite; animation-duration:1.9s !important; }
   .flake{ position:absolute; width:4px; height:4px; border-radius:50%; background:#fff; opacity:0; top:-8px; }
   body.sky-snow .flake{ opacity:.85; animation:fallSlow linear infinite; }
   @keyframes fall{ 0%{ transform:translateY(-14px); } 100%{ transform:translateY(214px); } }
@@ -406,7 +411,7 @@
   function show(id, on) { document.getElementById(id).style.display = on ? '' : 'none'; }
 
   function applyWeather(kind) {
-    document.body.classList.remove('sky-clear', 'sky-cloudy', 'sky-mostlycloudy', 'sky-windy', 'sky-fog', 'sky-rain', 'sky-snow', 'sky-storm');
+    document.body.classList.remove('sky-clear', 'sky-cloudy', 'sky-mostlycloudy', 'sky-windy', 'sky-fog', 'sky-drizzle', 'sky-rain', 'sky-snow', 'sky-storm');
     document.body.classList.add('sky-' + kind);
     groups.forEach((id) => show(id, false));
 
@@ -420,6 +425,11 @@
       show('raincoatHoodBack', true);
       show('raincoatHood', true);
       show('umbrellaHeld', true);
+    } else if (kind === 'drizzle') {
+      // Light enough that the hood alone is enough — no full raincoat,
+      // no umbrella, unlike proper rain.
+      show('raincoatHoodBack', true);
+      show('raincoatHood', true);
     } else if (kind === 'snow') {
       show('torsoSnowExtra', true);
       show('snowHat', true);
@@ -445,7 +455,8 @@
   else applyWeather('clear');
 
   function codeToSky(code) {
-    if ([51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82].includes(code)) return 'rain';
+    if ([51, 53, 55, 56, 57].includes(code)) return 'drizzle';
+    if ([61, 63, 65, 66, 67, 80, 81, 82].includes(code)) return 'rain';
     if ([71, 73, 75, 77, 85, 86].includes(code)) return 'snow';
     if ([95, 96, 99].includes(code)) return 'storm';
     if ([45, 48].includes(code)) return 'fog';

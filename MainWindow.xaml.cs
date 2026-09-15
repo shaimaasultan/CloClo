@@ -106,6 +106,7 @@ public partial class MainWindow : Window
         ("mostlycloudy", "Mostly Cloudy"),
         ("windy", "Windy"),
         ("fog", "Fog"),
+        ("drizzle", "Drizzle"),
         ("rain", "Rain"),
         ("snow", "Snow"),
         ("storm", "Storm"),
