@@ -103,6 +103,7 @@ public partial class MainWindow : Window
         ("auto", "Auto (live)"),
         ("clear", "Clear"),
         ("cloudy", "Cloudy"),
+        ("mostlycloudy", "Mostly Cloudy"),
         ("windy", "Windy"),
         ("fog", "Fog"),
         ("rain", "Rain"),
