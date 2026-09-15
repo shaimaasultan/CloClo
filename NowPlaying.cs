@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 using Windows.Media.Control;
 
@@ -18,7 +19,16 @@ public static class NowPlaying
         try
         {
             var manager = await GlobalSystemMediaTransportControlsSessionManager.RequestAsync();
-            var session = manager.GetCurrentSession();
+
+            // manager.GetCurrentSession() is Windows' own guess at "the"
+            // session — it's whichever one last had media-key focus, which
+            // can stick to an app that's since paused, gone idle, or even
+            // closed, instead of following whatever's actually audible now.
+            // Prefer a session that's actually reporting Playing.
+            var session = manager.GetSessions()
+                .FirstOrDefault(s => s.GetPlaybackInfo()?.PlaybackStatus
+                    == GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing)
+                ?? manager.GetCurrentSession();
             if (session == null) return null;
 
             var props = await session.TryGetMediaPropertiesAsync();
