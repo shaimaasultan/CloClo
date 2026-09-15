@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text.Json;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Interop;
@@ -28,28 +29,27 @@ public partial class MainWindow : Window
     // Roughly where the avatar + the temperature/location text sit, as an
     // offset/size within the window — this is the rect the separate,
     // genuinely-interactive _avatarWindow covers (see CreateAvatarHitWindow).
-    // Widened (from an earlier 18/114 that only covered the character) so
-    // the switch icon at the right edge of #mediaBar — see below — actually
-    // falls inside it; a rect outside _avatarWindow's own bounds never
-    // receives a click at all, it just falls through to the desktop.
-    private const double AvatarOffsetX = 10;
+    private const double AvatarOffsetX = 18;
     private const double AvatarOffsetY = 21;
-    private const double AvatarWidth = 140;
-    private const double AvatarHeight = 207;
+    private const double AvatarWidth = 114;
+    private const double AvatarHeight = 231;
 
-    // The two "what's playing" icon buttons at the bottom of the widget, in
-    // coordinates relative to _avatarWindow (i.e. already minus AvatarOffsetX/Y)
-    // — must stay in sync with #mediaBar's layout in widget.html.
-    private static readonly Rect YoutubeIconRect = new(42, 187, 18, 20);
-    private static readonly Rect SpotifyIconRect = new(70, 187, 18, 20);
-    // The switch/refresh icon inside the result pill itself — same
-    // coordinate space, generously sized since it's a small target. Only
-    // acts while a result is actually showing (_lastShownApp is set).
-    private static readonly Rect SwitchIconRect = new(116, 187, 22, 20);
+    // The two "what's playing" icon buttons, always visible, in coordinates
+    // relative to _avatarWindow (i.e. already minus AvatarOffsetX/Y) — must
+    // stay in sync with #mediaBar's layout in widget.html. Clicking either
+    // one switches which app the label below is watching.
+    private static readonly Rect YoutubeIconRect = new(34, 187, 18, 20);
+    private static readonly Rect SpotifyIconRect = new(62, 187, 18, 20);
 
     private static readonly string[] YoutubeAumids = { "edge", "chrome" };
     private static readonly string[] SpotifyAumids = { "spotify" };
-    private string? _lastShownApp;
+
+    // The app the label is currently following — set by clicking an icon,
+    // kept live by _nowPlayingTimer until playback actually stops (rather
+    // than a timed popup that hides itself regardless of whether the track
+    // is still going).
+    private string[]? _watchedAumids;
+    private DispatcherTimer? _nowPlayingTimer;
 
     [DllImport("user32.dll")] private static extern int GetWindowLong(IntPtr hWnd, int nIndex);
     [DllImport("user32.dll")] private static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
@@ -108,6 +108,12 @@ public partial class MainWindow : Window
         Web.CoreWebView2.Settings.AreDefaultContextMenusEnabled = false;
         Web.CoreWebView2.Settings.AreDevToolsEnabled = false;
         Web.CoreWebView2.Settings.IsStatusBarEnabled = false;
+        // Every NavigateToWidget() call (Refresh weather, a location or sky
+        // change) reloads the page from scratch, dropping whatever label
+        // was showing. Push a fresh one once the new page is actually ready,
+        // rather than relying on "did it change" — from the host's side
+        // nothing changed, but the page lost it regardless.
+        Web.CoreWebView2.NavigationCompleted += (_, _) => _ = RefreshWatchedNowPlaying();
 
         NavigateToWidget();
     }
@@ -115,15 +121,32 @@ public partial class MainWindow : Window
     // "Current session" (tried first) turned out to be Windows' own guess
     // at what's relevant — whichever app last had media-key focus — which
     // could stick to a browser tab that wasn't even playing anymore instead
-    // of actually-playing Spotify. Rather than keep guessing at a single
-    // "now playing" session, these buttons ask about one specific app.
-    private async void ShowNowPlayingForApp(string[] aumidMatches, string appLabel)
+    // of actually-playing Spotify. Clicking an icon instead asks about one
+    // specific app, and keeps watching it — the label stays up for as long
+    // as that app keeps playing, and disappears once it actually stops,
+    // rather than hiding itself after a fixed delay regardless.
+    private void WatchApp(string[] aumidMatches)
     {
-        _lastShownApp = appLabel;
-        var info = await NowPlaying.GetForAppAsync(aumidMatches);
+        _watchedAumids = aumidMatches;
+        _nowPlayingTimer ??= CreateNowPlayingTimer();
+        _ = RefreshWatchedNowPlaying();
+    }
+
+    private DispatcherTimer CreateNowPlayingTimer()
+    {
+        var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(4) };
+        timer.Tick += async (_, _) => await RefreshWatchedNowPlaying();
+        timer.Start();
+        return timer;
+    }
+
+    private async Task RefreshWatchedNowPlaying()
+    {
+        if (_watchedAumids == null) return;
+        var info = await NowPlaying.GetForAppAsync(_watchedAumids);
         var json = info is { } np
-            ? $"{{\"type\":\"nowPlayingResult\",\"app\":{JsonSerializer.Serialize(appLabel)},\"title\":{JsonSerializer.Serialize(np.Title)},\"artist\":{JsonSerializer.Serialize(np.Artist)}}}"
-            : $"{{\"type\":\"nowPlayingResult\",\"app\":{JsonSerializer.Serialize(appLabel)},\"title\":null,\"artist\":null}}";
+            ? $"{{\"type\":\"nowPlaying\",\"title\":{JsonSerializer.Serialize(np.Title)},\"artist\":{JsonSerializer.Serialize(np.Artist)}}}"
+            : "{\"type\":\"nowPlaying\",\"title\":null,\"artist\":null}";
         try { Web.CoreWebView2?.PostWebMessageAsJson(json); } catch { /* page not ready yet */ }
     }
 
@@ -170,20 +193,12 @@ public partial class MainWindow : Window
         var p = e.GetPosition(_avatarWindow);
         if (YoutubeIconRect.Contains(p))
         {
-            ShowNowPlayingForApp(YoutubeAumids, "YouTube");
+            WatchApp(YoutubeAumids);
             return;
         }
         if (SpotifyIconRect.Contains(p))
         {
-            ShowNowPlayingForApp(SpotifyAumids, "Spotify");
-            return;
-        }
-        if (SwitchIconRect.Contains(p) && _lastShownApp != null)
-        {
-            var (aumids, label) = _lastShownApp == "YouTube"
-                ? (SpotifyAumids, "Spotify")
-                : (YoutubeAumids, "YouTube");
-            ShowNowPlayingForApp(aumids, label);
+            WatchApp(SpotifyAumids);
             return;
         }
 
