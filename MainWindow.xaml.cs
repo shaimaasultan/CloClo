@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -219,21 +220,25 @@ public partial class MainWindow : Window
         keybd_event(VK_LWIN, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
     }
 
-    // YouTube/Spotify are two guesses; this lists everything else that
-    // currently holds a media session (Windows Media Player, a game, some
-    // other browser tab, ...) as a native popup — the widget has no room
-    // for a real search box, so "search" here means "show me what's
-    // actually available to pick from" rather than a text field.
+    // Two sections: apps that currently hold a media session (▶, same as
+    // before — YouTube/Spotify are just two hardcoded guesses at this same
+    // list), and below a separator, every other currently-running app
+    // (from RunningApps.List(), the same visible-window set Alt-Tab shows)
+    // in case what the user's after isn't playing anything (yet), or isn't
+    // media at all — picking one still watches it, and also brings it to
+    // the foreground right away so clicking it always does *something*
+    // visible even if it never reports a track.
     private async void ShowAppPicker(double screenX, double screenY)
     {
         var menu = new DrawingForms.ContextMenuStrip();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         try
         {
             var manager = await Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager.RequestAsync();
             foreach (var session in manager.GetSessions())
             {
                 var aumid = session.SourceAppUserModelId;
-                if (string.IsNullOrWhiteSpace(aumid)) continue;
+                if (string.IsNullOrWhiteSpace(aumid) || !seen.Add(aumid)) continue;
 
                 var label = aumid;
                 try
@@ -250,11 +255,45 @@ public partial class MainWindow : Window
                 menu.Items.Add(itemText, null, (_, _) => WatchApp(new[] { match }));
             }
         }
-        catch { /* leave the menu empty/fallback below */ }
+        catch { /* leave the "playing" section empty/fallback below */ }
+
+        try
+        {
+            var running = RunningApps.List();
+            if (running.Count > 0 && menu.Items.Count > 0)
+            {
+                menu.Items.Add(new DrawingForms.ToolStripSeparator());
+            }
+            foreach (var app in running)
+            {
+                // Most plain Win32 apps never register an AUMID, so this
+                // is often null — dedupe against the "playing" section by
+                // AUMID when there is one, otherwise nothing to collide
+                // with, so just show it.
+                if (app.AppUserModelId != null && !seen.Add(app.AppUserModelId)) continue;
+                var aumid = app.AppUserModelId;
+                var hwnd = app.WindowHandle;
+                menu.Items.Add(app.Title, null, (_, _) =>
+                {
+                    if (aumid != null)
+                    {
+                        WatchApp(new[] { aumid });
+                        AppLauncher.TryActivate(aumid);
+                    }
+                    else
+                    {
+                        // No AUMID to watch media through — just bring it
+                        // to the foreground directly via its window handle.
+                        RunningApps.Activate(hwnd);
+                    }
+                });
+            }
+        }
+        catch { /* leave the "running" section empty */ }
 
         if (menu.Items.Count == 0)
         {
-            menu.Items.Add("No apps currently have media controls", null, (_, _) => { }).Enabled = false;
+            menu.Items.Add("Nothing found to watch", null, (_, _) => { }).Enabled = false;
         }
         menu.Show(new System.Drawing.Point((int)Math.Round(screenX), (int)Math.Round(screenY)));
     }
