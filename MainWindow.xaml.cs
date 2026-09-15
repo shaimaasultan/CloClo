@@ -46,16 +46,19 @@ public partial class MainWindow : Window
     private const double AvatarWidth = 140 * Scale;
     private const double AvatarHeight = 245 * Scale;
 
-    // The five icon buttons, always visible, in coordinates relative to
+    // The six icon buttons, always visible, in coordinates relative to
     // _avatarWindow (i.e. already minus AvatarOffsetX/Y) — must stay in
     // sync with #mediaBar's layout in widget.html. Clicking one switches
     // what the label below is watching (search/GPU show informational
-    // content instead of something that plays).
-    private static readonly Rect YoutubeIconRect = new(0, 187 * Scale, 18 * Scale, 20 * Scale);
-    private static readonly Rect SpotifyIconRect = new(28 * Scale, 187 * Scale, 18 * Scale, 20 * Scale);
-    private static readonly Rect BellIconRect = new(56 * Scale, 187 * Scale, 18 * Scale, 20 * Scale);
-    private static readonly Rect SearchIconRect = new(84 * Scale, 187 * Scale, 18 * Scale, 20 * Scale);
-    private static readonly Rect GpuIconRect = new(112 * Scale, 187 * Scale, 18 * Scale, 20 * Scale);
+    // content instead of something that plays). x positions assume the
+    // tighter 4px gap #mediaBar uses to fit all six within the stage's
+    // 150px width.
+    private static readonly Rect YoutubeIconRect = new(1 * Scale, 187 * Scale, 18 * Scale, 20 * Scale);
+    private static readonly Rect SpotifyIconRect = new(23 * Scale, 187 * Scale, 18 * Scale, 20 * Scale);
+    private static readonly Rect BellIconRect = new(45 * Scale, 187 * Scale, 18 * Scale, 20 * Scale);
+    private static readonly Rect SearchIconRect = new(67 * Scale, 187 * Scale, 18 * Scale, 20 * Scale);
+    private static readonly Rect GpuIconRect = new(89 * Scale, 187 * Scale, 18 * Scale, 20 * Scale);
+    private static readonly Rect ReadIconRect = new(111 * Scale, 187 * Scale, 18 * Scale, 20 * Scale);
     // The pause button inside the label itself — same coordinate space.
     // Only acts while actually watching something (_watchedFetcher is
     // set); otherwise the label (and this button) isn't even shown. Spans
@@ -92,10 +95,21 @@ public partial class MainWindow : Window
     private bool _watchingNotifications;
     private DispatcherTimer? _nowPlayingTimer;
 
+    // The last foreground window that belonged to some OTHER process —
+    // tracked continuously rather than read at click time, because by the
+    // time a click handler runs, clicking our own avatar window has almost
+    // certainly already made IT the foreground window. Polled instead of a
+    // proper WinEventHook since a few hundred ms of staleness is harmless
+    // for a user-initiated "read my selection" action.
+    private IntPtr _lastExternalForegroundWindow;
+    private DispatcherTimer? _foregroundTrackTimer;
+
     [DllImport("user32.dll")] private static extern int GetWindowLong(IntPtr hWnd, int nIndex);
     [DllImport("user32.dll")] private static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
     [DllImport("user32.dll")] private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int x, int y, int cx, int cy, uint flags);
     [DllImport("user32.dll")] private static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
+    [DllImport("user32.dll")] private static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll")] private static extern int GetWindowThreadProcessId(IntPtr hWnd, out int lpdwProcessId);
     private const byte VK_LWIN = 0x5B;
     private const byte VK_N = 0x4E;
     private const uint KEYEVENTF_KEYUP = 0x0002;
@@ -149,6 +163,7 @@ public partial class MainWindow : Window
 
         Topmost = _settings.AlwaysOnTop;
         SetupTopmostTimer();
+        SetupForegroundTracking();
 
         await Web.EnsureCoreWebView2Async();
         Web.DefaultBackgroundColor = System.Drawing.Color.Transparent;
@@ -211,6 +226,50 @@ public partial class MainWindow : Window
         });
     }
 
+    // A one-shot action, not a watch — grabs whatever's currently
+    // highlighted in whichever app had focus before this click, shows it in
+    // the label, and has Keeper read it aloud. Deliberately doesn't go
+    // through Watch()/the polling timer the way GPU info does: re-running
+    // this every 4 seconds would mean repeatedly stealing focus and firing
+    // Ctrl+C into whatever the user is now doing, which GPU's harmless WMI
+    // re-query is not.
+    private void ReadSelection()
+    {
+        _watchingNotifications = false;
+        _ = ReadSelectionAsync();
+    }
+
+    private async Task ReadSelectionAsync()
+    {
+        var target = _lastExternalForegroundWindow;
+        if (target == IntPtr.Zero) return;
+
+        var text = await TextSelectionReader.ReadSelectedTextAsync(target);
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            ShowOneShotLabel("Nothing selected", "Highlight some text, then click again.");
+            return;
+        }
+
+        text = text.Trim();
+        const int titleLimit = 60;
+        var title = text.Length > titleLimit ? text[..titleLimit] + "…" : text;
+        var subtitle = text.Length > titleLimit ? text : "";
+        ShowOneShotLabel(title, subtitle);
+        SpeechReader.Speak(text);
+    }
+
+    // Pushes a single label update without starting _nowPlayingTimer, for
+    // one-shot results like ReadSelection() above where re-fetching on a
+    // timer would be wrong rather than just wasteful.
+    private void ShowOneShotLabel(string title, string subtitle)
+    {
+        _watchedFetcher = () => Task.FromResult<(string, string, string?, string?)?>((title, subtitle, null, null));
+        _watchedAppUserModelId = null;
+        _nowPlayingTimer?.Stop();
+        _ = RefreshWatched();
+    }
+
     private void Watch(Func<Task<(string Title, string Subtitle, string? Icon, string? AppUserModelId)?>> fetcher)
     {
         _watchedFetcher = fetcher;
@@ -227,6 +286,7 @@ public partial class MainWindow : Window
         _watchedFetcher = null;
         _watchedAppUserModelId = null;
         _nowPlayingTimer?.Stop();
+        SpeechReader.Stop();
         try { Web.CoreWebView2?.PostWebMessageAsJson("{\"type\":\"nowPlaying\",\"title\":null,\"artist\":null,\"icon\":null}"); } catch { }
     }
 
@@ -420,6 +480,11 @@ public partial class MainWindow : Window
             WatchGpus();
             return;
         }
+        if (ReadIconRect.Contains(p))
+        {
+            ReadSelection();
+            return;
+        }
         if (PauseIconRect.Contains(p) && _watchedFetcher != null)
         {
             StopWatching();
@@ -466,6 +531,20 @@ public partial class MainWindow : Window
         _topmostTimer.Tick += (_, _) => ReassertTopmost();
         _topmostTimer.Start();
         ReassertTopmost();
+    }
+
+    private void SetupForegroundTracking()
+    {
+        var ownProcessId = Environment.ProcessId;
+        _foregroundTrackTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(400) };
+        _foregroundTrackTimer.Tick += (_, _) =>
+        {
+            var hwnd = GetForegroundWindow();
+            if (hwnd == IntPtr.Zero) return;
+            GetWindowThreadProcessId(hwnd, out var pid);
+            if (pid != ownProcessId) _lastExternalForegroundWindow = hwnd;
+        };
+        _foregroundTrackTimer.Start();
     }
 
     private void ReassertTopmost()

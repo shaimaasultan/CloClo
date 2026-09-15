@@ -39,15 +39,17 @@
   #temp{ font-size:19px; font-weight:800; line-height:1; }
   #place{ font-size:10px; opacity:.9; letter-spacing:.02em; max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 
-  /* Five small buttons, always visible — click one to ask specifically
+  /* Six small buttons, always visible — click one to ask specifically
      about that thing, rather than guessing at a single system-wide
      "current" session (that turned out to mean "whichever app last had
      media-key focus", not "whatever's actually playing"). Fixed
      position/size, so nothing else on the stage ever has to reflow around
      it — see YoutubeIconRect/SpotifyIconRect/BellIconRect/SearchIconRect/
-     GpuIconRect in MainWindow.xaml.cs, which must stay in sync with this
-     layout. */
-  #mediaBar{ position:absolute; left:0; right:0; bottom:42px; height:20px; display:flex; align-items:center; justify-content:center; gap:10px; }
+     GpuIconRect/ReadIconRect in MainWindow.xaml.cs, which must stay in sync
+     with this layout. Gap is tighter than a natural 10px so all six still
+     fit within the stage's 150px width without spilling past the window's
+     own edge (which would just get clipped, not wrapped). */
+  #mediaBar{ position:absolute; left:0; right:0; bottom:42px; height:20px; display:flex; align-items:center; justify-content:center; gap:4px; }
   .mediaIcon{ width:18px; height:18px; border-radius:5px; display:flex; align-items:center; justify-content:center; box-shadow:0 1px 2px rgba(0,0,0,.4); cursor:pointer; }
   #iconYoutube{ background:#ff0033; }
   #iconYoutube .tri{ width:0; height:0; border-style:solid; border-width:4px 0 4px 6px; border-color:transparent transparent transparent #fff; margin-left:1.5px; }
@@ -63,6 +65,13 @@
      the other icons use — static info, but reusing that mechanism beats
      building a separate one-shot display just for this. */
   #iconGpu{ background:transparent; box-shadow:none; font-size:12px; line-height:1; }
+  /* Grabs whatever text is highlighted in whichever app the user was in
+     right before clicking this — see TextSelectionReader.cs — shows it in
+     the label same as everything else, and has Keeper read it aloud (see
+     SpeechReader.cs). A one-shot action, not something that keeps polling
+     like the others, since re-simulating Ctrl+C every few seconds into
+     whatever now has focus would be actively disruptive. */
+  #iconRead{ background:transparent; box-shadow:none; font-size:12px; line-height:1; }
 
   /* What the watched app is playing (or the latest notification), sitting
      under the icons — hidden until the host reports something, and left
@@ -309,6 +318,7 @@
       <div class="mediaIcon" id="iconBell" title="Latest notification">🔔</div>
       <div class="mediaIcon" id="iconSearch" title="Other apps playing media">🔍</div>
       <div class="mediaIcon" id="iconGpu" title="GPUs in this system">🖥️</div>
+      <div class="mediaIcon" id="iconRead" title="Read selected text aloud">🗣️</div>
     </div>
 
     <div id="nowPlaying">
