@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:wv2="clr-namespace:Microsoft.Web.WebView2.Wpf;assembly=Microsoft.Web.WebView2.Wpf"
         Title="CloClo"
-        Width="150" Height="210"
+        Width="150" Height="232"
         WindowStyle="None"
         AllowsTransparency="True"
         Background="Transparent"
@@ -17,10 +17,10 @@
       turned out not to work here: WPF plus a WebView2 child both render
       through DirectComposition, which that legacy GDI mechanism doesn't
       reliably affect, so the "transparent" magenta just stayed solid).
-      Interactivity is handled separately in MainWindow.xaml.cs's WM_NCHITTEST
-      hook, which lets clicks outside a rough content box fall through to
-      the desktop instead of relying on this transparency mode to do that
-      for free (it doesn't).
+      This window never receives mouse input at all (see
+      MainWindow_SourceInitialized) — a separate, genuinely-interactive
+      window sized to the avatar handles clicks instead (CreateAvatarHitWindow
+      in the code-behind), so there's no click-through trickery needed here.
     -->
     <Grid>
         <wv2:WebView2 x:Name="Web" />

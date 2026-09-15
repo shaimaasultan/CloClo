@@ -14,7 +14,7 @@
     font-family:'Segoe UI', sans-serif;
   }
   #stage{
-    width:150px; height:210px; position:relative;
+    width:150px; height:232px; position:relative;
     display:flex; flex-direction:column; align-items:center; justify-content:flex-end;
     cursor:grab;
   }
@@ -32,6 +32,21 @@
   #info{ text-align:center; color:var(--face); margin-top:2px; text-shadow:0 1px 3px rgba(0,0,0,.85), 0 0 10px rgba(0,0,0,.55); }
   #temp{ font-size:19px; font-weight:800; line-height:1; }
   #place{ font-size:10px; opacity:.9; letter-spacing:.02em; max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+  /* What's currently playing, system-wide — hidden until the host reports
+     something. A title too long for the widget scrolls instead of clipping. */
+  #nowPlaying{
+    display:none; align-items:center; gap:4px; margin-top:5px;
+    width:132px; padding:3px 6px; border-radius:9px;
+    background:rgba(0,0,0,.32); backdrop-filter:blur(1px);
+    color:var(--face); text-shadow:none;
+  }
+  #nowPlaying.show{ display:flex; }
+  #nowPlaying .note{ flex:none; font-size:11px; opacity:.85; }
+  #nowPlaying .marquee{ flex:1; overflow:hidden; white-space:nowrap; -webkit-mask-image:linear-gradient(to right, transparent, #000 6px, #000 calc(100% - 6px), transparent); mask-image:linear-gradient(to right, transparent, #000 6px, #000 calc(100% - 6px), transparent); }
+  #nowPlaying .marquee span{ display:inline-block; font-size:9.5px; letter-spacing:.01em; }
+  #nowPlaying .marquee.scroll span{ animation:marquee 7s linear infinite; }
+  @keyframes marquee{ 0%{ transform:translateX(100%); } 100%{ transform:translateX(-100%); } }
 
   /* Sun rays, shown behind the keeper on clear days. */
   .sun{ position:absolute; top:14px; right:10px; width:26px; height:26px; display:none; }
@@ -205,12 +220,39 @@
       <div id="temp">--°</div>
       <div id="place">…</div>
     </div>
+
+    <div id="nowPlaying">
+      <span class="note">♪</span>
+      <span class="marquee"><span id="nowPlayingText"></span></span>
+    </div>
   </div>
 
 <script>
   // Dragging, double-click and right-click are all handled natively by a
   // separate, invisible WPF window the host places on top of the avatar —
   // this page itself is purely decorative and never receives mouse input.
+
+  // ---- now playing, pushed from the host as it changes (see NowPlaying.cs
+  // and RefreshNowPlaying in MainWindow.xaml.cs) rather than polled here,
+  // since reading the system media session is a WinRT/host-side thing ----
+  const nowPlayingEl = document.getElementById('nowPlaying');
+  const nowPlayingText = document.getElementById('nowPlayingText');
+  const marqueeEl = document.querySelector('#nowPlaying .marquee');
+  window.chrome?.webview?.addEventListener('message', (e) => {
+    const msg = e.data;
+    if (!msg || msg.type !== 'nowPlaying') return;
+    if (!msg.title) {
+      nowPlayingEl.classList.remove('show');
+      return;
+    }
+    nowPlayingText.textContent = msg.artist ? `${msg.title} — ${msg.artist}` : msg.title;
+    nowPlayingEl.classList.add('show');
+    marqueeEl.classList.remove('scroll');
+    // Only scroll if it actually overflows — a short title just sits still.
+    requestAnimationFrame(() => {
+      if (nowPlayingText.scrollWidth > marqueeEl.clientWidth) marqueeEl.classList.add('scroll');
+    });
+  });
 
   // ---- blink, purely decorative ----
   const eyesOpen = document.getElementById('eyesOpen');
