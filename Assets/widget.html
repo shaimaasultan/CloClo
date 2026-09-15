@@ -159,20 +159,9 @@
   </div>
 
 <script>
-  // ---- drag + menu: relayed to the WPF host, which owns the window ----
-  // The host decides whether a click starts a drag or (on the second click
-  // of a double-click, timed on its side) opens the menu instead — see the
-  // note by ReassertTopmost in MainWindow.xaml.cs for why right-click alone
-  // wasn't reaching the widget reliably.
-  const stage = document.getElementById('stage');
-  stage.addEventListener('mousedown', (e) => {
-    if (e.button !== 0) return;
-    window.chrome?.webview?.postMessage(JSON.stringify({ type: 'dragStart', x: e.screenX, y: e.screenY }));
-  });
-  window.addEventListener('contextmenu', (e) => {
-    e.preventDefault();
-    window.chrome?.webview?.postMessage(JSON.stringify({ type: 'contextMenu', x: e.screenX, y: e.screenY }));
-  });
+  // Dragging, double-click and right-click are all handled natively by a
+  // separate, invisible WPF window the host places on top of the avatar —
+  // this page itself is purely decorative and never receives mouse input.
 
   // ---- blink, purely decorative ----
   const eyesOpen = document.getElementById('eyesOpen');
