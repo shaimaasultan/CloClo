@@ -39,13 +39,14 @@ public partial class MainWindow : Window
     private const double AvatarWidth = 140;
     private const double AvatarHeight = 245;
 
-    // The three icon buttons, always visible, in coordinates relative to
+    // The four icon buttons, always visible, in coordinates relative to
     // _avatarWindow (i.e. already minus AvatarOffsetX/Y) — must stay in
     // sync with #mediaBar's layout in widget.html. Clicking one switches
-    // what the label below is watching.
-    private static readonly Rect YoutubeIconRect = new(28, 187, 18, 20);
-    private static readonly Rect SpotifyIconRect = new(56, 187, 18, 20);
-    private static readonly Rect BellIconRect = new(84, 187, 18, 20);
+    // what the label below is watching (search shows a picker instead).
+    private static readonly Rect YoutubeIconRect = new(14, 187, 18, 20);
+    private static readonly Rect SpotifyIconRect = new(42, 187, 18, 20);
+    private static readonly Rect BellIconRect = new(70, 187, 18, 20);
+    private static readonly Rect SearchIconRect = new(98, 187, 18, 20);
     // The pause button inside the label itself — same coordinate space.
     // Only acts while actually watching something (_watchedFetcher is
     // set); otherwise the label (and this button) isn't even shown. Spans
@@ -218,6 +219,46 @@ public partial class MainWindow : Window
         keybd_event(VK_LWIN, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
     }
 
+    // YouTube/Spotify are two guesses; this lists everything else that
+    // currently holds a media session (Windows Media Player, a game, some
+    // other browser tab, ...) as a native popup — the widget has no room
+    // for a real search box, so "search" here means "show me what's
+    // actually available to pick from" rather than a text field.
+    private async void ShowAppPicker(double screenX, double screenY)
+    {
+        var menu = new DrawingForms.ContextMenuStrip();
+        try
+        {
+            var manager = await Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager.RequestAsync();
+            foreach (var session in manager.GetSessions())
+            {
+                var aumid = session.SourceAppUserModelId;
+                if (string.IsNullOrWhiteSpace(aumid)) continue;
+
+                var label = aumid;
+                try
+                {
+                    var appInfo = Windows.ApplicationModel.AppInfo.GetFromAppUserModelId(aumid);
+                    if (!string.IsNullOrWhiteSpace(appInfo?.DisplayInfo?.DisplayName)) label = appInfo.DisplayInfo.DisplayName;
+                }
+                catch { /* fall back to the raw AUMID */ }
+
+                var playing = session.GetPlaybackInfo()?.PlaybackStatus
+                    == Windows.Media.Control.GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing;
+                var itemText = playing ? $"▶ {label}" : label;
+                var match = aumid; // capture for the closure below
+                menu.Items.Add(itemText, null, (_, _) => WatchApp(new[] { match }));
+            }
+        }
+        catch { /* leave the menu empty/fallback below */ }
+
+        if (menu.Items.Count == 0)
+        {
+            menu.Items.Add("No apps currently have media controls", null, (_, _) => { }).Enabled = false;
+        }
+        menu.Show(new System.Drawing.Point((int)Math.Round(screenX), (int)Math.Round(screenY)));
+    }
+
     private DispatcherTimer CreateNowPlayingTimer()
     {
         var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(4) };
@@ -291,6 +332,19 @@ public partial class MainWindow : Window
         if (BellIconRect.Contains(p))
         {
             WatchNotifications();
+            return;
+        }
+        if (SearchIconRect.Contains(p))
+        {
+            // Plain arithmetic rather than _avatarWindow.PointToScreen(p) or
+            // a separate DrawingForms.Cursor.Position read — both of those
+            // returned distorted/stale values during testing (confirmed via
+            // logging: Left/Top and p were individually correct, but
+            // PointToScreen's result was nowhere near their sum), while
+            // Left/Top and GetPosition share the same DIU coordinate space
+            // for this plain, untransformed window, so adding them directly
+            // is both simpler and the one that's actually been verified.
+            ShowAppPicker(_avatarWindow!.Left + p.X, _avatarWindow.Top + p.Y);
             return;
         }
         if (PauseIconRect.Contains(p) && _watchedFetcher != null)
