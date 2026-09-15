@@ -69,11 +69,20 @@ public partial class MainWindow : Window
     // Icon is a data: URI (notifications only — media has none) or null.
     private Func<Task<(string Title, string Subtitle, string? Icon, string? AppUserModelId)?>>? _watchedFetcher;
     private string? _watchedAppUserModelId;
+    // Notifications aren't really "one app" the way media is — the label
+    // shows only the latest of possibly several, so clicking it opens
+    // Windows' own notification flyout (the full list) rather than
+    // launching whatever app happened to send the latest one.
+    private bool _watchingNotifications;
     private DispatcherTimer? _nowPlayingTimer;
 
     [DllImport("user32.dll")] private static extern int GetWindowLong(IntPtr hWnd, int nIndex);
     [DllImport("user32.dll")] private static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
     [DllImport("user32.dll")] private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int x, int y, int cx, int cy, uint flags);
+    [DllImport("user32.dll")] private static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
+    private const byte VK_LWIN = 0x5B;
+    private const byte VK_N = 0x4E;
+    private const uint KEYEVENTF_KEYUP = 0x0002;
 
     private static readonly (string Value, string Label)[] SkyOptions =
     {
@@ -145,17 +154,25 @@ public partial class MainWindow : Window
     // specific thing, and keeps watching it — the label stays up for as
     // long as it's still relevant, and disappears once it actually isn't,
     // rather than hiding itself after a fixed delay regardless.
-    private void WatchApp(string[] aumidMatches) => Watch(async () =>
+    private void WatchApp(string[] aumidMatches)
     {
-        var info = await NowPlaying.GetForAppAsync(aumidMatches);
-        return info is { } np ? (np.Title, np.Artist, (string?)null, (string?)np.AppUserModelId) : ((string, string, string?, string?)?)null;
-    });
+        _watchingNotifications = false;
+        Watch(async () =>
+        {
+            var info = await NowPlaying.GetForAppAsync(aumidMatches);
+            return info is { } np ? (np.Title, np.Artist, (string?)null, (string?)np.AppUserModelId) : ((string, string, string?, string?)?)null;
+        });
+    }
 
-    private void WatchNotifications() => Watch(async () =>
+    private void WatchNotifications()
     {
-        var n = await NotificationWatcher.GetLatestAsync();
-        return n is { } latest ? ($"{latest.AppName}: {latest.Title}", latest.Body, latest.IconDataUri, latest.AppUserModelId) : ((string, string, string?, string?)?)null;
-    });
+        _watchingNotifications = true;
+        Watch(async () =>
+        {
+            var n = await NotificationWatcher.GetLatestAsync();
+            return n is { } latest ? ($"{latest.AppName}: {latest.Title}", latest.Body, latest.IconDataUri, latest.AppUserModelId) : ((string, string, string?, string?)?)null;
+        });
+    }
 
     private void Watch(Func<Task<(string Title, string Subtitle, string? Icon, string? AppUserModelId)?>> fetcher)
     {
@@ -176,10 +193,28 @@ public partial class MainWindow : Window
         try { Web.CoreWebView2?.PostWebMessageAsJson("{\"type\":\"nowPlaying\",\"title\":null,\"artist\":null,\"icon\":null}"); } catch { }
     }
 
-    // Clicking the label body (anywhere but the pause button) launches
-    // whichever app it's currently showing, using the AUMID captured from
-    // the last successful poll rather than re-querying on click.
-    private void OpenWatchedApp() => AppLauncher.TryActivate(_watchedAppUserModelId);
+    // Clicking the label body (anywhere but the pause button): for media,
+    // launches the app it's showing, using the AUMID captured from the
+    // last successful poll rather than re-querying on click. For
+    // notifications, opens Windows' own flyout instead — the label only
+    // ever shows the latest of possibly several, so the flyout's full
+    // list is more useful than launching whatever app sent that one.
+    private void OpenWatchedApp()
+    {
+        if (_watchingNotifications) OpenNotificationFlyout();
+        else AppLauncher.TryActivate(_watchedAppUserModelId);
+    }
+
+    // Win+N is the standard shortcut for Windows' notification flyout on
+    // both Windows 10 and 11 — simulating it is simpler and more robust
+    // than trying to activate the flyout's own host process by AUMID.
+    private void OpenNotificationFlyout()
+    {
+        keybd_event(VK_LWIN, 0, 0, UIntPtr.Zero);
+        keybd_event(VK_N, 0, 0, UIntPtr.Zero);
+        keybd_event(VK_N, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
+        keybd_event(VK_LWIN, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
+    }
 
     private DispatcherTimer CreateNowPlayingTimer()
     {
@@ -261,7 +296,7 @@ public partial class MainWindow : Window
             StopWatching();
             return;
         }
-        if (LabelBodyRect.Contains(p) && _watchedFetcher != null && _watchedAppUserModelId != null)
+        if (LabelBodyRect.Contains(p) && _watchedFetcher != null && (_watchingNotifications || _watchedAppUserModelId != null))
         {
             OpenWatchedApp();
             return;
