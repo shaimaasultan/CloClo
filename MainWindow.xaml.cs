@@ -531,7 +531,19 @@ public partial class MainWindow : Window
             Text = "CloClo weather",
         };
         _trayIcon.DoubleClick += (_, _) => ToggleVisible();
-        _trayIcon.ContextMenuStrip = BuildMenu(includeShowHide: true);
+
+        // Unlike ShowContextMenu below, the tray's menu isn't rebuilt per
+        // click — Windows owns the right-click-to-show wiring for
+        // NotifyIcon.ContextMenuStrip internally, so there's no call site
+        // here to rebuild from. Refresh the checkbox states via Opening
+        // instead, which fires right before every display.
+        var trayMenu = new DrawingForms.ContextMenuStrip();
+        trayMenu.Opening += (_, _) =>
+        {
+            trayMenu.Items.Clear();
+            PopulateMenu(trayMenu, includeShowHide: true);
+        };
+        _trayIcon.ContextMenuStrip = trayMenu;
     }
 
     // Shown two ways: as the tray icon's menu (Windows positions it near the
@@ -543,6 +555,12 @@ public partial class MainWindow : Window
     private DrawingForms.ContextMenuStrip BuildMenu(bool includeShowHide)
     {
         var menu = new DrawingForms.ContextMenuStrip();
+        PopulateMenu(menu, includeShowHide);
+        return menu;
+    }
+
+    private void PopulateMenu(DrawingForms.ContextMenuStrip menu, bool includeShowHide)
+    {
         if (includeShowHide)
         {
             menu.Items.Add("Show / hide", null, (_, _) => ToggleVisible());
@@ -556,7 +574,6 @@ public partial class MainWindow : Window
         menu.Items.Add(startup);
         menu.Items.Add(new DrawingForms.ToolStripSeparator());
         menu.Items.Add("Exit", null, (_, _) => System.Windows.Application.Current.Shutdown());
-        return menu;
     }
 
     private DrawingForms.ToolStripMenuItem BuildSkyMenu()
