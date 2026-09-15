@@ -54,6 +54,20 @@
   body.sky-storm #flash{ position:absolute; inset:0; background:#fff; opacity:0; pointer-events:none; }
   body.sky-storm #flash.on{ animation:flash .5s ease-out; }
   @keyframes flash{ 0%{ opacity:.55; } 100%{ opacity:0; } }
+
+  /* A low haze that rolls in over everything, thickest near the ground.
+     backdrop-filter can't reach the real desktop behind a transparent
+     window (there's nothing of the page's own behind it to blur), so this
+     is a plain white wash instead — opaque enough to still read as fog
+     over a similarly pale desktop background, not just a dark one. */
+  #fog{ position:absolute; inset:0; opacity:0; pointer-events:none; overflow:hidden; transition:opacity .4s; }
+  body.sky-fog #fog{ opacity:1; }
+  #fog::before{
+    content:''; position:absolute; inset:0;
+    background:linear-gradient(to top, rgba(255,255,255,.85), rgba(255,255,255,.5) 45%, rgba(255,255,255,.08) 78%);
+  }
+  #fog .wisp{ position:absolute; left:-25%; width:150%; height:9px; border-radius:50%; background:rgba(255,255,255,.55); filter:blur(2px); animation:driftWisp ease-in-out infinite; }
+  @keyframes driftWisp{ 0%,100%{ transform:translateX(0); } 50%{ transform:translateX(16px); } }
 </style>
 </head>
 <body>
@@ -70,6 +84,11 @@
       <div class="flake" style="left:40px; animation-duration:6.5s; animation-delay:1.2s;"></div>
       <div class="flake" style="left:100px; animation-duration:5.8s; animation-delay:.6s;"></div>
       <div class="flake" style="left:126px; animation-duration:7s; animation-delay:2s;"></div>
+    </div>
+
+    <div id="fog">
+      <div class="wisp" style="top:118px; animation-duration:10s;"></div>
+      <div class="wisp" style="top:148px; animation-duration:8s; animation-delay:1.5s;"></div>
     </div>
 
     <div id="keeperWrap">
@@ -220,7 +239,7 @@
   function show(id, on) { document.getElementById(id).style.display = on ? '' : 'none'; }
 
   function applyWeather(kind) {
-    document.body.classList.remove('sky-clear', 'sky-cloudy', 'sky-rain', 'sky-snow', 'sky-storm');
+    document.body.classList.remove('sky-clear', 'sky-cloudy', 'sky-fog', 'sky-rain', 'sky-snow', 'sky-storm');
     document.body.classList.add('sky-' + kind);
     groups.forEach((id) => show(id, false));
 
@@ -242,7 +261,7 @@
     } else if (kind === 'clear') {
       show('sunglasses', true);
     }
-    // cloudy: default torso, no sunglasses (no direct sun) — just the cloud overhead
+    // cloudy/fog: default torso, no sunglasses (no direct sun)
   }
   // ---- live weather, from the query string CloClo's WPF host supplies ----
   const params = new URLSearchParams(location.search);
@@ -262,7 +281,8 @@
     if ([51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82].includes(code)) return 'rain';
     if ([71, 73, 75, 77, 85, 86].includes(code)) return 'snow';
     if ([95, 96, 99].includes(code)) return 'storm';
-    if ([2, 3, 45, 48].includes(code)) return 'cloudy'; // partly cloudy, overcast, fog
+    if ([45, 48].includes(code)) return 'fog';
+    if ([2, 3].includes(code)) return 'cloudy'; // partly cloudy, overcast
     return 'clear'; // 0 clear sky, 1 mainly clear
   }
 
