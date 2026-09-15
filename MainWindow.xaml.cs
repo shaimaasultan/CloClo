@@ -37,7 +37,7 @@ public partial class MainWindow : Window
     private const double AvatarOffsetX = 10;
     private const double AvatarOffsetY = 21;
     private const double AvatarWidth = 140;
-    private const double AvatarHeight = 231;
+    private const double AvatarHeight = 245;
 
     // The three icon buttons, always visible, in coordinates relative to
     // _avatarWindow (i.e. already minus AvatarOffsetX/Y) — must stay in
@@ -48,8 +48,10 @@ public partial class MainWindow : Window
     private static readonly Rect BellIconRect = new(84, 187, 18, 20);
     // The pause button inside the label itself — same coordinate space.
     // Only acts while actually watching something (_watchedFetcher is
-    // set); otherwise the label (and this button) isn't even shown.
-    private static readonly Rect PauseIconRect = new(116, 211, 22, 20);
+    // set); otherwise the label (and this button) isn't even shown. Spans
+    // the label's full (now two-line) height rather than trying to track
+    // exactly where the button glyph sits within it.
+    private static readonly Rect PauseIconRect = new(116, 211, 22, 34);
 
     private static readonly string[] YoutubeAumids = { "edge", "chrome" };
     private static readonly string[] SpotifyAumids = { "spotify" };
