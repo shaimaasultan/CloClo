@@ -29,17 +29,27 @@ public partial class MainWindow : Window
     // Roughly where the avatar + the temperature/location text sit, as an
     // offset/size within the window — this is the rect the separate,
     // genuinely-interactive _avatarWindow covers (see CreateAvatarHitWindow).
-    private const double AvatarOffsetX = 18;
+    // Widened from a tighter 18/114 so the pause button at the right edge
+    // of the now-playing label — see below — actually falls inside it; a
+    // rect outside _avatarWindow's own bounds never receives a click at
+    // all, it just falls through to the desktop (learned this the hard way
+    // with the now-removed switch icon).
+    private const double AvatarOffsetX = 10;
     private const double AvatarOffsetY = 21;
-    private const double AvatarWidth = 114;
+    private const double AvatarWidth = 140;
     private const double AvatarHeight = 231;
 
     // The two "what's playing" icon buttons, always visible, in coordinates
     // relative to _avatarWindow (i.e. already minus AvatarOffsetX/Y) — must
     // stay in sync with #mediaBar's layout in widget.html. Clicking either
     // one switches which app the label below is watching.
-    private static readonly Rect YoutubeIconRect = new(34, 187, 18, 20);
-    private static readonly Rect SpotifyIconRect = new(62, 187, 18, 20);
+    private static readonly Rect YoutubeIconRect = new(42, 187, 18, 20);
+    private static readonly Rect SpotifyIconRect = new(70, 187, 18, 20);
+    // The pause button inside the now-playing label itself — same
+    // coordinate space. Only acts while actually watching something
+    // (_watchedAumids is set); otherwise the label (and this button) isn't
+    // even shown.
+    private static readonly Rect PauseIconRect = new(116, 211, 22, 20);
 
     private static readonly string[] YoutubeAumids = { "edge", "chrome" };
     private static readonly string[] SpotifyAumids = { "spotify" };
@@ -47,7 +57,7 @@ public partial class MainWindow : Window
     // The app the label is currently following — set by clicking an icon,
     // kept live by _nowPlayingTimer until playback actually stops (rather
     // than a timed popup that hides itself regardless of whether the track
-    // is still going).
+    // is still going), or until the pause button stops it explicitly.
     private string[]? _watchedAumids;
     private DispatcherTimer? _nowPlayingTimer;
 
@@ -129,7 +139,18 @@ public partial class MainWindow : Window
     {
         _watchedAumids = aumidMatches;
         _nowPlayingTimer ??= CreateNowPlayingTimer();
+        _nowPlayingTimer.Start(); // idempotent — resumes it if the pause button stopped it earlier
         _ = RefreshWatchedNowPlaying();
+    }
+
+    // The pause button inside the label itself, not a fourth icon — stops
+    // polling immediately and hides the label, rather than waiting for the
+    // next 4s tick to notice "nothing" on its own.
+    private void StopWatching()
+    {
+        _watchedAumids = null;
+        _nowPlayingTimer?.Stop();
+        try { Web.CoreWebView2?.PostWebMessageAsJson("{\"type\":\"nowPlaying\",\"title\":null,\"artist\":null}"); } catch { }
     }
 
     private DispatcherTimer CreateNowPlayingTimer()
@@ -199,6 +220,11 @@ public partial class MainWindow : Window
         if (SpotifyIconRect.Contains(p))
         {
             WatchApp(SpotifyAumids);
+            return;
+        }
+        if (PauseIconRect.Contains(p) && _watchedAumids != null)
+        {
+            StopWatching();
             return;
         }
 
