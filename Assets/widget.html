@@ -52,17 +52,17 @@
   #iconYoutube{ background:#ff0033; }
   #iconYoutube .tri{ width:0; height:0; border-style:solid; border-width:4px 0 4px 6px; border-color:transparent transparent transparent #fff; margin-left:1.5px; }
   #iconSpotify{ background:#1db954; border-radius:50%; color:#fff; font-size:11px; line-height:1; }
-  #iconBell{ background:#5b6bd6; color:#fff; font-size:10px; line-height:1; }
+  #iconBell{ background:transparent; box-shadow:none; font-size:13px; line-height:1; }
   /* Lists every app currently holding a media session, in case something
      besides YouTube/Spotify is playing — a native popup menu (built and
      shown host-side, see ShowAppPicker in MainWindow.xaml.cs) rather than
      anything drawn on the page, since there's no room here for a real
      search UI. */
-  #iconSearch{ background:#6b6f76; color:#fff; font-size:10px; line-height:1; }
+  #iconSearch{ background:transparent; box-shadow:none; font-size:13px; line-height:1; }
   /* Shows the system's GPU(s) (via WMI, see GpuInfo.cs) in the same label
      the other icons use — static info, but reusing that mechanism beats
      building a separate one-shot display just for this. */
-  #iconGpu{ background:#2f9e6e; color:#fff; font-size:9px; line-height:1; }
+  #iconGpu{ background:transparent; box-shadow:none; font-size:12px; line-height:1; }
 
   /* What the watched app is playing (or the latest notification), sitting
      under the icons — hidden until the host reports something, and left
