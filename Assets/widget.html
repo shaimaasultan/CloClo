@@ -60,6 +60,11 @@
   #mediaBar .result .marquee span{ display:inline-block; font-size:9.5px; letter-spacing:.01em; }
   #mediaBar .result .marquee.scroll span{ animation:marquee 7s linear infinite; }
   @keyframes marquee{ 0%{ transform:translateX(100%); } 100%{ transform:translateX(-100%); } }
+  /* Jumps straight to the other app's result instead of waiting for the
+     auto-revert and clicking that app's icon again — see SwitchIconRect
+     in MainWindow.xaml.cs, which must stay in sync with this position
+     (last flex item, so it's always flush against the right padding). */
+  #mediaBar .result .switch{ flex:none; width:12px; height:12px; opacity:.8; font-size:11px; line-height:1; cursor:pointer; }
 
   /* Sun rays, shown behind the keeper on clear days. */
   .sun{ position:absolute; top:14px; right:10px; width:26px; height:26px; display:none; }
@@ -242,6 +247,7 @@
       <div class="result">
         <span class="note">♪</span>
         <span class="marquee"><span id="mediaResultText"></span></span>
+        <span class="switch" title="Check the other app">⟳</span>
       </div>
     </div>
   </div>
