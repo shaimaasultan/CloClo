@@ -12,6 +12,9 @@ public class WidgetSettings
     public double? WindowLeft { get; set; }
     public double? WindowTop { get; set; }
     public bool AlwaysOnTop { get; set; } = true;
+    // "auto" follows the real forecast; otherwise one of clear/rain/snow/storm,
+    // picked by hand from the right-click menu, overriding the live sky.
+    public string Sky { get; set; } = "auto";
 
     private static string FolderPath =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "CloCloWidget");

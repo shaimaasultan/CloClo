@@ -159,11 +159,15 @@
   </div>
 
 <script>
-  // ---- drag + context menu: relayed to the WPF host, which owns the window ----
+  // ---- drag + menu: relayed to the WPF host, which owns the window ----
+  // The host decides whether a click starts a drag or (on the second click
+  // of a double-click, timed on its side) opens the menu instead — see the
+  // note by ReassertTopmost in MainWindow.xaml.cs for why right-click alone
+  // wasn't reaching the widget reliably.
   const stage = document.getElementById('stage');
   stage.addEventListener('mousedown', (e) => {
     if (e.button !== 0) return;
-    window.chrome?.webview?.postMessage(JSON.stringify({ type: 'dragStart' }));
+    window.chrome?.webview?.postMessage(JSON.stringify({ type: 'dragStart', x: e.screenX, y: e.screenY }));
   });
   window.addEventListener('contextmenu', (e) => {
     e.preventDefault();
@@ -239,14 +243,19 @@
       show('sunglasses', true);
     }
   }
-  applyWeather('clear');
-
   // ---- live weather, from the query string CloClo's WPF host supplies ----
   const params = new URLSearchParams(location.search);
   const lat = params.get('lat');
   const lon = params.get('lon');
   const place = params.get('city') || '';
   document.getElementById('place').textContent = place;
+
+  // "auto" follows the real forecast below; anything else is a manual pick
+  // from the right-click menu, which wins over whatever the forecast says —
+  // the temperature and location still update live either way.
+  const skyOverride = params.get('sky') || 'auto';
+  if (skyOverride !== 'auto') applyWeather(skyOverride);
+  else applyWeather('clear');
 
   function codeToSky(code) {
     if ([51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82].includes(code)) return 'rain';
@@ -264,7 +273,7 @@
       const temp = Math.round(data.current.temperature_2m);
       const code = data.current.weather_code;
       document.getElementById('temp').textContent = `${temp}°`;
-      applyWeather(codeToSky(code));
+      if (skyOverride === 'auto') applyWeather(codeToSky(code));
     } catch (err) {
       document.getElementById('temp').textContent = '—°';
     }
