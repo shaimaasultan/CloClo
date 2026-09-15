@@ -39,26 +39,28 @@ public partial class MainWindow : Window
     private const double AvatarWidth = 140;
     private const double AvatarHeight = 231;
 
-    // The two "what's playing" icon buttons, always visible, in coordinates
-    // relative to _avatarWindow (i.e. already minus AvatarOffsetX/Y) — must
-    // stay in sync with #mediaBar's layout in widget.html. Clicking either
-    // one switches which app the label below is watching.
-    private static readonly Rect YoutubeIconRect = new(42, 187, 18, 20);
-    private static readonly Rect SpotifyIconRect = new(70, 187, 18, 20);
-    // The pause button inside the now-playing label itself — same
-    // coordinate space. Only acts while actually watching something
-    // (_watchedAumids is set); otherwise the label (and this button) isn't
-    // even shown.
+    // The three icon buttons, always visible, in coordinates relative to
+    // _avatarWindow (i.e. already minus AvatarOffsetX/Y) — must stay in
+    // sync with #mediaBar's layout in widget.html. Clicking one switches
+    // what the label below is watching.
+    private static readonly Rect YoutubeIconRect = new(28, 187, 18, 20);
+    private static readonly Rect SpotifyIconRect = new(56, 187, 18, 20);
+    private static readonly Rect BellIconRect = new(84, 187, 18, 20);
+    // The pause button inside the label itself — same coordinate space.
+    // Only acts while actually watching something (_watchedFetcher is
+    // set); otherwise the label (and this button) isn't even shown.
     private static readonly Rect PauseIconRect = new(116, 211, 22, 20);
 
     private static readonly string[] YoutubeAumids = { "edge", "chrome" };
     private static readonly string[] SpotifyAumids = { "spotify" };
 
-    // The app the label is currently following — set by clicking an icon,
-    // kept live by _nowPlayingTimer until playback actually stops (rather
-    // than a timed popup that hides itself regardless of whether the track
-    // is still going), or until the pause button stops it explicitly.
-    private string[]? _watchedAumids;
+    // Whatever the label is currently following — set by clicking an icon,
+    // kept live by _nowPlayingTimer until it actually stops (rather than a
+    // timed popup that hides itself regardless of whether it's still
+    // relevant), or until the pause button stops it explicitly. A plain
+    // fetcher delegate so the same watch/poll/pause machinery works for
+    // both "what's playing in this app" and "the latest notification".
+    private Func<Task<(string Title, string Subtitle)?>>? _watchedFetcher;
     private DispatcherTimer? _nowPlayingTimer;
 
     [DllImport("user32.dll")] private static extern int GetWindowLong(IntPtr hWnd, int nIndex);
@@ -123,7 +125,7 @@ public partial class MainWindow : Window
         // was showing. Push a fresh one once the new page is actually ready,
         // rather than relying on "did it change" — from the host's side
         // nothing changed, but the page lost it regardless.
-        Web.CoreWebView2.NavigationCompleted += (_, _) => _ = RefreshWatchedNowPlaying();
+        Web.CoreWebView2.NavigationCompleted += (_, _) => _ = RefreshWatched();
 
         NavigateToWidget();
     }
@@ -132,15 +134,27 @@ public partial class MainWindow : Window
     // at what's relevant — whichever app last had media-key focus — which
     // could stick to a browser tab that wasn't even playing anymore instead
     // of actually-playing Spotify. Clicking an icon instead asks about one
-    // specific app, and keeps watching it — the label stays up for as long
-    // as that app keeps playing, and disappears once it actually stops,
+    // specific thing, and keeps watching it — the label stays up for as
+    // long as it's still relevant, and disappears once it actually isn't,
     // rather than hiding itself after a fixed delay regardless.
-    private void WatchApp(string[] aumidMatches)
+    private void WatchApp(string[] aumidMatches) => Watch(async () =>
     {
-        _watchedAumids = aumidMatches;
+        var info = await NowPlaying.GetForAppAsync(aumidMatches);
+        return info is { } np ? (np.Title, np.Artist) : ((string, string)?)null;
+    });
+
+    private void WatchNotifications() => Watch(async () =>
+    {
+        var n = await NotificationWatcher.GetLatestAsync();
+        return n is { } latest ? ($"{latest.AppName}: {latest.Title}", latest.Body) : ((string, string)?)null;
+    });
+
+    private void Watch(Func<Task<(string Title, string Subtitle)?>> fetcher)
+    {
+        _watchedFetcher = fetcher;
         _nowPlayingTimer ??= CreateNowPlayingTimer();
         _nowPlayingTimer.Start(); // idempotent — resumes it if the pause button stopped it earlier
-        _ = RefreshWatchedNowPlaying();
+        _ = RefreshWatched();
     }
 
     // The pause button inside the label itself, not a fourth icon — stops
@@ -148,7 +162,7 @@ public partial class MainWindow : Window
     // next 4s tick to notice "nothing" on its own.
     private void StopWatching()
     {
-        _watchedAumids = null;
+        _watchedFetcher = null;
         _nowPlayingTimer?.Stop();
         try { Web.CoreWebView2?.PostWebMessageAsJson("{\"type\":\"nowPlaying\",\"title\":null,\"artist\":null}"); } catch { }
     }
@@ -156,17 +170,17 @@ public partial class MainWindow : Window
     private DispatcherTimer CreateNowPlayingTimer()
     {
         var timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(4) };
-        timer.Tick += async (_, _) => await RefreshWatchedNowPlaying();
+        timer.Tick += async (_, _) => await RefreshWatched();
         timer.Start();
         return timer;
     }
 
-    private async Task RefreshWatchedNowPlaying()
+    private async Task RefreshWatched()
     {
-        if (_watchedAumids == null) return;
-        var info = await NowPlaying.GetForAppAsync(_watchedAumids);
-        var json = info is { } np
-            ? $"{{\"type\":\"nowPlaying\",\"title\":{JsonSerializer.Serialize(np.Title)},\"artist\":{JsonSerializer.Serialize(np.Artist)}}}"
+        if (_watchedFetcher == null) return;
+        var result = await _watchedFetcher();
+        var json = result is { } r
+            ? $"{{\"type\":\"nowPlaying\",\"title\":{JsonSerializer.Serialize(r.Title)},\"artist\":{JsonSerializer.Serialize(r.Subtitle)}}}"
             : "{\"type\":\"nowPlaying\",\"title\":null,\"artist\":null}";
         try { Web.CoreWebView2?.PostWebMessageAsJson(json); } catch { /* page not ready yet */ }
     }
@@ -222,7 +236,12 @@ public partial class MainWindow : Window
             WatchApp(SpotifyAumids);
             return;
         }
-        if (PauseIconRect.Contains(p) && _watchedAumids != null)
+        if (BellIconRect.Contains(p))
+        {
+            WatchNotifications();
+            return;
+        }
+        if (PauseIconRect.Contains(p) && _watchedFetcher != null)
         {
             StopWatching();
             return;
