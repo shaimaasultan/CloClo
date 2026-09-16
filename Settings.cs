@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
 
@@ -20,6 +21,15 @@ public class WidgetSettings
     // restarts so "append" keeps landing in the same file until the user
     // explicitly starts a new one.
     public string? DictationFilePath { get; set; }
+    // Which media-bar icons are currently shown — the bar only has room
+    // for about 7 at once (see MainWindow.xaml.cs's icon layout math), so
+    // this is how the "Icons" menu lets newer/less-essential ones (convert,
+    // color) be swapped in without silently overflowing the bar. Defaults
+    // to exactly the icons that existed before this became configurable.
+    public HashSet<string> EnabledIcons { get; set; } = new()
+    {
+        "youtube", "spotify", "bell", "search", "gpu", "read", "mic",
+    };
 
     private static string FolderPath =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "CloCloWidget");

@@ -46,24 +46,23 @@ public partial class MainWindow : Window
     private const double AvatarWidth = 140 * Scale;
     private const double AvatarHeight = 245 * Scale;
 
-    // The seven icon buttons, always visible, in coordinates relative to
-    // _avatarWindow (i.e. already minus AvatarOffsetX/Y) — must stay in
-    // sync with #mediaBar's layout in widget.html. Clicking one switches
-    // what the label below is watching (search/GPU show informational
-    // content instead of something that plays). x positions assume
-    // #mediaBar is anchored at stage x=10 (matching AvatarOffsetX, i.e.
-    // relative x=0) with a 2px gap, which is what fits all seven within the
-    // stage's 150px width.
-    private static readonly Rect YoutubeIconRect = new(1 * Scale, 187 * Scale, 18 * Scale, 20 * Scale);
-    private static readonly Rect SpotifyIconRect = new(21 * Scale, 187 * Scale, 18 * Scale, 20 * Scale);
-    private static readonly Rect BellIconRect = new(41 * Scale, 187 * Scale, 18 * Scale, 20 * Scale);
-    private static readonly Rect SearchIconRect = new(61 * Scale, 187 * Scale, 18 * Scale, 20 * Scale);
-    private static readonly Rect GpuIconRect = new(81 * Scale, 187 * Scale, 18 * Scale, 20 * Scale);
-    private static readonly Rect ReadIconRect = new(101 * Scale, 187 * Scale, 18 * Scale, 20 * Scale);
-    // Left-click dictates in English, right-click in Arabic (handled where
-    // MouseRightButtonUp is wired, not here — this rect is just the hit
-    // area both share).
-    private static readonly Rect MicIconRect = new(121 * Scale, 187 * Scale, 18 * Scale, 20 * Scale);
+    // The full set of possible media-bar icons, in display order — which
+    // ones are actually shown (see WidgetSettings.EnabledIcons) is user
+    // configurable via the "Icons" menu, since the bar only fits about 7 at
+    // once. Positions are no longer fixed constants because of that: see
+    // ComputeIconRects, which mirrors #mediaBar's flexbox layout in
+    // widget.html (same icon width/gap/anchor) for whichever subset is
+    // currently enabled.
+    private static readonly string[] IconOrder =
+    {
+        "youtube", "spotify", "bell", "search", "gpu", "read", "mic", "convert", "color",
+    };
+    private const double IconWidth = 18, IconGap = 2, IconTop = 187, IconHeight = 20;
+    // Matches #mediaBar's own left:10px anchor (stage x=10, i.e. relative
+    // x=0) through to the stage's right edge (150) — the full width
+    // available for the icon row, in avatarWindow-relative stage units.
+    private const double IconBarWidth = 140;
+    private const int MaxVisibleIcons = 7;
     // The pause button inside the label itself — same coordinate space.
     // Only acts while actually watching something (_watchedFetcher is
     // set); otherwise the label (and this button) isn't even shown. Spans
@@ -109,12 +108,20 @@ public partial class MainWindow : Window
     private IntPtr _lastExternalForegroundWindow;
     private DispatcherTimer? _foregroundTrackTimer;
 
+    // Eyedropper state — a live-preview poll rather than a real hook, so
+    // (see StartColorPicking) it can only observe clicks, not swallow them.
+    private DispatcherTimer? _colorPickTimer;
+    private bool _colorPickButtonWasDown;
+
     [DllImport("user32.dll")] private static extern int GetWindowLong(IntPtr hWnd, int nIndex);
     [DllImport("user32.dll")] private static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
     [DllImport("user32.dll")] private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int x, int y, int cx, int cy, uint flags);
     [DllImport("user32.dll")] private static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
     [DllImport("user32.dll")] private static extern IntPtr GetForegroundWindow();
     [DllImport("user32.dll")] private static extern int GetWindowThreadProcessId(IntPtr hWnd, out int lpdwProcessId);
+    [DllImport("user32.dll")] private static extern short GetAsyncKeyState(int vKey);
+    private const int VK_LBUTTON = 0x01;
+    private const int VK_ESCAPE = 0x1B;
     private const byte VK_LWIN = 0x5B;
     private const byte VK_N = 0x4E;
     private const uint KEYEVENTF_KEYUP = 0x0002;
@@ -299,6 +306,86 @@ public partial class MainWindow : Window
         ShowOneShotLabel(title, $"Saved to {Path.GetFileName(path)}");
     }
 
+    // Grabs the current selection the same way ReadSelection does, then
+    // tries to parse it as "<number> <unit>" and show the converted value —
+    // see UnitConverter.cs for what's actually recognized. One-shot for the
+    // same reason as ReadSelection: nothing here should repeat on a timer.
+    private void ConvertSelection()
+    {
+        _watchingNotifications = false;
+        _ = ConvertSelectionAsync();
+    }
+
+    private async Task ConvertSelectionAsync()
+    {
+        var target = _lastExternalForegroundWindow;
+        if (target == IntPtr.Zero) return;
+
+        var text = await TextSelectionReader.ReadSelectedTextAsync(target);
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            ShowOneShotLabel("Nothing selected", "Highlight a number and unit, then click again.");
+            return;
+        }
+
+        var (result, error) = await UnitConverter.ConvertAsync(text);
+        if (error != null)
+        {
+            ShowOneShotLabel("Couldn't convert that", error);
+            return;
+        }
+        ShowOneShotLabel(result!, "");
+    }
+
+    // Eyedropper: live hex preview while hovering anywhere on screen (not
+    // just this widget — a global cursor-position poll, since there's no
+    // web API that reaches outside the browser for this), click to copy.
+    // Uses GetAsyncKeyState to notice a new left-click rather than a real
+    // low-level mouse hook — simpler, but can only observe the click, not
+    // swallow it, so whatever's actually under the cursor also receives it
+    // normally. Escape cancels without copying anything.
+    private void StartColorPicking()
+    {
+        _watchingNotifications = false;
+        StopColorPicking(); // in case a previous pick session is still running
+
+        _colorPickButtonWasDown = (GetAsyncKeyState(VK_LBUTTON) & 0x8000) != 0;
+        _colorPickTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(60) };
+        _colorPickTimer.Tick += (_, _) => ColorPickTick();
+        _colorPickTimer.Start();
+    }
+
+    private void ColorPickTick()
+    {
+        var pos = DrawingForms.Cursor.Position;
+        var color = ColorPicker.GetColorAt(pos);
+        var hex = ColorPicker.ToHex(color);
+        ShowOneShotLabel(hex, "Click to copy, Esc to cancel");
+
+        if ((GetAsyncKeyState(VK_ESCAPE) & 0x8000) != 0)
+        {
+            StopColorPicking();
+            ShowOneShotLabel("Cancelled", "");
+            return;
+        }
+
+        var buttonDown = (GetAsyncKeyState(VK_LBUTTON) & 0x8000) != 0;
+        if (buttonDown && !_colorPickButtonWasDown)
+        {
+            StopColorPicking();
+            System.Windows.Clipboard.SetText(hex);
+            ShowOneShotLabel(hex, "Copied to clipboard");
+            return;
+        }
+        _colorPickButtonWasDown = buttonDown;
+    }
+
+    private void StopColorPicking()
+    {
+        _colorPickTimer?.Stop();
+        _colorPickTimer = null;
+    }
+
     // "Start new dictation file" menu action — the counterpart to
     // DictateAsync's default of appending to whatever file is already
     // current. Deliberately not on the icon bar itself (no room left, and
@@ -339,6 +426,7 @@ public partial class MainWindow : Window
         _watchedAppUserModelId = null;
         _nowPlayingTimer?.Stop();
         SpeechReader.Stop();
+        StopColorPicking();
         try { Web.CoreWebView2?.PostWebMessageAsJson("{\"type\":\"nowPlaying\",\"title\":null,\"artist\":null,\"icon\":null}"); } catch { }
     }
 
@@ -496,25 +584,48 @@ public partial class MainWindow : Window
         _avatarWindow.Show();
     }
 
+    // Mirrors #mediaBar's own flexbox layout in widget.html for whichever
+    // icons are currently enabled — width/gap/anchor must stay in sync with
+    // the CSS there. Computed fresh per click rather than cached, since
+    // it's cheap and only needs to be correct at the moment of a click, not
+    // continuously.
+    private Dictionary<string, Rect> ComputeIconRects()
+    {
+        var visible = IconOrder.Where(k => _settings.EnabledIcons.Contains(k)).ToList();
+        var contentWidth = visible.Count * IconWidth + Math.Max(0, visible.Count - 1) * IconGap;
+        var margin = (IconBarWidth - contentWidth) / 2;
+
+        var result = new Dictionary<string, Rect>();
+        var x = margin;
+        foreach (var key in visible)
+        {
+            result[key] = new Rect(x * Scale, IconTop * Scale, IconWidth * Scale, IconHeight * Scale);
+            x += IconWidth + IconGap;
+        }
+        return result;
+    }
+
     private void AvatarWindow_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         var p = e.GetPosition(_avatarWindow);
-        if (YoutubeIconRect.Contains(p))
+        var icons = ComputeIconRects();
+
+        if (icons.TryGetValue("youtube", out var youtubeRect) && youtubeRect.Contains(p))
         {
             WatchApp(YoutubeAumids);
             return;
         }
-        if (SpotifyIconRect.Contains(p))
+        if (icons.TryGetValue("spotify", out var spotifyRect) && spotifyRect.Contains(p))
         {
             WatchApp(SpotifyAumids);
             return;
         }
-        if (BellIconRect.Contains(p))
+        if (icons.TryGetValue("bell", out var bellRect) && bellRect.Contains(p))
         {
             WatchNotifications();
             return;
         }
-        if (SearchIconRect.Contains(p))
+        if (icons.TryGetValue("search", out var searchRect) && searchRect.Contains(p))
         {
             // Plain arithmetic rather than _avatarWindow.PointToScreen(p) or
             // a separate DrawingForms.Cursor.Position read — both of those
@@ -527,19 +638,29 @@ public partial class MainWindow : Window
             ShowAppPicker(_avatarWindow!.Left + p.X, _avatarWindow.Top + p.Y);
             return;
         }
-        if (GpuIconRect.Contains(p))
+        if (icons.TryGetValue("gpu", out var gpuRect) && gpuRect.Contains(p))
         {
             WatchGpus();
             return;
         }
-        if (ReadIconRect.Contains(p))
+        if (icons.TryGetValue("read", out var readRect) && readRect.Contains(p))
         {
             ReadSelection();
             return;
         }
-        if (MicIconRect.Contains(p))
+        if (icons.TryGetValue("mic", out var micRect) && micRect.Contains(p))
         {
             OpenDictationCapture();
+            return;
+        }
+        if (icons.TryGetValue("convert", out var convertRect) && convertRect.Contains(p))
+        {
+            ConvertSelection();
+            return;
+        }
+        if (icons.TryGetValue("color", out var colorRect) && colorRect.Contains(p))
+        {
+            StartColorPicking();
             return;
         }
         if (PauseIconRect.Contains(p) && _watchedFetcher != null)
@@ -632,7 +753,8 @@ public partial class MainWindow : Window
             $"?lat={_settings.Latitude.ToString(System.Globalization.CultureInfo.InvariantCulture)}" +
             $"&lon={_settings.Longitude.ToString(System.Globalization.CultureInfo.InvariantCulture)}" +
             $"&city={Uri.EscapeDataString(_settings.City)}" +
-            $"&sky={Uri.EscapeDataString(_settings.Sky)}";
+            $"&sky={Uri.EscapeDataString(_settings.Sky)}" +
+            $"&icons={Uri.EscapeDataString(string.Join(",", IconOrder.Where(k => _settings.EnabledIcons.Contains(k))))}";
         Web.CoreWebView2.Navigate(new Uri(htmlPath).AbsoluteUri + query);
     }
 
@@ -721,6 +843,7 @@ public partial class MainWindow : Window
         }
         menu.Items.Add("Set location…", null, (_, _) => OpenLocationDialog());
         menu.Items.Add(BuildSkyMenu());
+        menu.Items.Add(BuildIconsMenu());
         menu.Items.Add("Refresh weather", null, (_, _) => NavigateToWidget());
         menu.Items.Add("Start new dictation file", null, (_, _) => StartNewDictationFile());
         var topMost = new DrawingForms.ToolStripMenuItem("Always on top", null, (_, _) => ToggleAlwaysOnTop()) { Checked = _settings.AlwaysOnTop };
@@ -749,6 +872,63 @@ public partial class MainWindow : Window
             weather.DropDownItems.Add(items[i]);
         }
         return weather;
+    }
+
+    // Display names for the same keys ComputeIconRects/IconOrder use —
+    // separate from that array since menu labels need to be human-readable
+    // and IconOrder needs to stay a plain ordered key list.
+    private static readonly (string Key, string Label)[] IconOptions =
+    {
+        ("youtube", "YouTube"),
+        ("spotify", "Spotify"),
+        ("bell", "Notifications"),
+        ("search", "Search other apps"),
+        ("gpu", "GPU info"),
+        ("read", "Read selection aloud"),
+        ("mic", "Dictate"),
+        ("convert", "Convert unit/currency"),
+        ("color", "Color picker"),
+    };
+
+    private DrawingForms.ToolStripMenuItem BuildIconsMenu()
+    {
+        var iconsMenu = new DrawingForms.ToolStripMenuItem("Icons");
+        var items = IconOptions
+            .Select(opt => new DrawingForms.ToolStripMenuItem(opt.Label) { Checked = _settings.EnabledIcons.Contains(opt.Key) })
+            .ToArray();
+        for (int i = 0; i < items.Length; i++)
+        {
+            var key = IconOptions[i].Key;
+            items[i].Click += (_, _) => ToggleIcon(key, items[i]);
+            iconsMenu.DropDownItems.Add(items[i]);
+        }
+        return iconsMenu;
+    }
+
+    // The media bar only fits about MaxVisibleIcons at once (see
+    // ComputeIconRects) — enabling one more than that would silently
+    // overflow past the window's edge, the same clipping bug class hit
+    // (and fixed) repeatedly earlier for the fixed 6/7-icon layouts, so
+    // this refuses instead of letting the count grow unbounded.
+    private void ToggleIcon(string key, DrawingForms.ToolStripMenuItem item)
+    {
+        if (_settings.EnabledIcons.Contains(key))
+        {
+            _settings.EnabledIcons.Remove(key);
+            item.Checked = false;
+        }
+        else
+        {
+            if (_settings.EnabledIcons.Count >= MaxVisibleIcons)
+            {
+                ShowOneShotLabel("Icon bar is full", "Turn off another icon first to add this one.");
+                return;
+            }
+            _settings.EnabledIcons.Add(key);
+            item.Checked = true;
+        }
+        _settings.Save();
+        NavigateToWidget();
     }
 
     private void SetSky(string sky)

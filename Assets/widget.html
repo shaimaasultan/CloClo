@@ -39,19 +39,24 @@
   #temp{ font-size:19px; font-weight:800; line-height:1; }
   #place{ font-size:10px; opacity:.9; letter-spacing:.02em; max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 
-  /* Seven small buttons, always visible — click one to ask specifically
-     about that thing, rather than guessing at a single system-wide
-     "current" session (that turned out to mean "whichever app last had
-     media-key focus", not "whatever's actually playing"). Fixed
-     position/size, so nothing else on the stage ever has to reflow around
-     it — see YoutubeIconRect/SpotifyIconRect/BellIconRect/SearchIconRect/
-     GpuIconRect/ReadIconRect/MicIconRect in MainWindow.xaml.cs, which must
-     stay in sync with this layout. left:10px (not 0) matches where the
-     separate, genuinely-interactive _avatarWindow's hit-testing actually
-     starts (AvatarOffsetX) — anchoring here instead of centering across the
+  /* Up to nine possible buttons, though the bar only has room to show
+     about seven at once (see MainWindow.xaml.cs's ComputeIconRects) — which
+     ones are actually visible is driven by the ?icons= query param the host
+     supplies (from the "Icons" menu), toggled below via plain display:none;
+     flexbox naturally recenters and closes the gap around whichever subset
+     is shown, so no layout math lives here for that part. Click one to ask
+     specifically about that thing, rather than guessing at a single
+     system-wide "current" session (that turned out to mean "whichever app
+     last had media-key focus", not "whatever's actually playing"). Fixed
+     position/size otherwise, so nothing else on the stage ever has to
+     reflow around it — see MainWindow.xaml.cs's ComputeIconRects, which
+     must stay in sync with this layout (icon order, width, gap). left:10px
+     (not 0) matches where the separate, genuinely-interactive
+     _avatarWindow's hit-testing actually starts (AvatarOffsetX) —
+     anchoring here instead of centering across the
      full 150px stage reclaims the margin the old centered layout wasted
      symmetrically on both edges just to keep the left edge inside that hit
-     zone, which is exactly the room the 7th icon needed. */
+     zone, which is exactly the room a 7th icon needed in the first place. */
   #mediaBar{ position:absolute; left:10px; right:0; bottom:42px; height:20px; display:flex; align-items:center; justify-content:center; gap:2px; }
   .mediaIcon{ width:18px; height:18px; border-radius:5px; display:flex; align-items:center; justify-content:center; box-shadow:0 1px 2px rgba(0,0,0,.4); cursor:pointer; }
   #iconYoutube{ background:#ff0033; }
@@ -83,6 +88,16 @@
      its own language switching, so there's no separate Arabic click here.
      Appended to a running text file, so nothing needs copying out by hand. */
   #iconMic{ background:transparent; box-shadow:none; font-size:12px; line-height:1; }
+  /* Converts a selected "<number> <unit>" phrase (see UnitConverter.cs) —
+     length/weight/temperature done locally, currency via a live exchange
+     rate lookup. One-shot, like Read/Mic above. */
+  #iconConvert{ background:transparent; box-shadow:none; font-size:12px; line-height:1; }
+  /* Eyedropper — click, then hover anywhere on screen (not just this
+     widget) to see the live hex code under the cursor, click again to copy
+     it. Host-driven (MainWindow.xaml.cs polls the cursor since there's no
+     web API for "any pixel on the user's screen, even outside the
+     browser"), this icon is just the trigger. */
+  #iconColor{ background:transparent; box-shadow:none; font-size:12px; line-height:1; }
 
   /* What the watched app is playing (or the latest notification), sitting
      under the icons — hidden until the host reports something, and left
@@ -370,6 +385,8 @@
       <div class="mediaIcon" id="iconGpu" title="GPUs in this system">🖥️</div>
       <div class="mediaIcon" id="iconRead" title="Read selected text aloud">🗣️</div>
       <div class="mediaIcon" id="iconMic" title="Dictate (opens Windows Voice Typing)">🎤</div>
+      <div class="mediaIcon" id="iconConvert" title="Convert selected unit or currency">💱</div>
+      <div class="mediaIcon" id="iconColor" title="Pick a color from the screen">🎨</div>
     </div>
 
     <div id="nowPlaying">
@@ -520,6 +537,20 @@
   const lon = params.get('lon');
   const place = params.get('city') || '';
   document.getElementById('place').textContent = place;
+
+  // Which media-bar icons to show — driven by the "Icons" menu host-side
+  // (see WidgetSettings.EnabledIcons), not decided here. Hiding the rest
+  // via plain display:none lets flexbox recenter/close the gap on its own.
+  const iconIdByKey = {
+    youtube: 'iconYoutube', spotify: 'iconSpotify', bell: 'iconBell',
+    search: 'iconSearch', gpu: 'iconGpu', read: 'iconRead', mic: 'iconMic',
+    convert: 'iconConvert', color: 'iconColor',
+  };
+  const enabledIcons = (params.get('icons') || 'youtube,spotify,bell,search,gpu,read,mic').split(',');
+  for (const [key, id] of Object.entries(iconIdByKey)) {
+    const el = document.getElementById(id);
+    if (el) el.style.display = enabledIcons.includes(key) ? '' : 'none';
+  }
 
   // "auto" follows the real forecast below; anything else is a manual pick
   // from the right-click menu, which wins over whatever the forecast says —
