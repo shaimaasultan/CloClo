@@ -1,0 +1,75 @@
+Calls
+
+Missed-call note: after a missed call, the keeper pins a sticky note by the door with the caller's initial. Tapping it opens Recents.
+Getting ready while it rings: in the second or two before you answer, the keeper tidies their hair or puts the book down.
+Listening during a call: they nod when the caller's line appears, and lean in with a hand to their ear when Clarity is off and the audio is "muddy".
+Hanging up: a short and happy call gets a wave. A long call leaves them stretching or yawning.
+Mute: they put a finger to their lips, or zip their mouth.
+Privacy mode: they draw a curtain across the window and turn their back to the phone number readout.
+
+The caller's world
+
+Local time: night callers ("11:05 PM their time") dim the room, the keeper yawns, and the lamp comes on. Morning callers bring bright light and a coffee mug.
+What they're doing: "Driving" puts a steering wheel in the keeper's hands. "At the gym" gets a towel, and "At home" gets slippers.
+Keepsakes: each regular caller leaves an object on the shelf, like a postcard from Nadia or a snow globe from Mama. The shelf grows the more you talk.
+Their ringtone: the keeper dances a little differently to Chime versus Retro buzz.
+
+Weather
+
+Stronger outdoor effects: rain streaks down the window, snow slowly piles on the sill, and lightning briefly lights the keeper's shadow on the wall.
+Changing weather: when the sky changes, the keeper swaps outfits in a quick spin rather than jumping straight to the new look.
+Clear skies: they water a plant by the window, and it grows over the day.
+
+Mood and time
+
+A day-by-day mood: it builds from the day's calls, so the room gets messier when you haven't called anyone and tidier when you have. The existing "call someone soon" note already hints at this.
+Bedtime: after midnight the keeper falls asleep in bed, not standing up.
+Seasons and holidays: lanterns during Ramadan, and a cake on birthdays taken from a contact's details.
+
+Things you can tap
+
+Lamp: tap to switch it on or off. The keeper looks up.
+Window: tap to open it; rain sounds get louder, and so does the keeper's shiver in a storm.
+The keeper: tap to poke them. They giggle, and poking three times in a row gets a grumpy face.
+Dragging: move the keeper to the bed to nap, or to the door to peek outside at the caller's weather.
+Plant and shelf items: give each one a small reaction.
+
+Theme and language
+
+Case colour: switching it repaints the keeper's sweater and the room's wallpaper, not just the phone.
+Arabic: the keeper's book shows Arabic script and the room layout mirrors. Their speech bubble could say "أهلاً".
+
+What I'd do first:
+
+Missed-call note and caller keepsakes. They make the room reflect your real call history.
+Local-time lighting and the caller's activity props. They build on the weather system and data that already exist.
+Tap on the lamp, window and keeper. It's cheap to add and makes the room feel alive.
+
+
+show caller birthday
+add/ remove / update to  contacts
+add contact objects (mug , ...) 
+add line in use and hangup a call 
+add mute 
+
+
+Web  WARN  "shadow*" style props are deprecated. Use "boxShadow".
+Web Bundled 81ms node_modules\expo-router\entry.js (1 module)
+Web  INFO  %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+Web  LOG  Running application "main" with appParams:
+ {"hydrate": undefined, "rootTag": "#root"}
+Development-level warnings: ON.
+Performance optimizations: OFF.
+Web  WARN  "shadow*" style props are deprecated. Use "boxShadow".
+Web  WARN  requestPermissionsAsync is not supported on web. Returning a granted permission response.
+Web  WARN  requestPermissionsAsync is not supported on web. Returning a granted permission response.
+Web  WARN  requestPermissionsAsync is not supported on web. Returning a granted permission response.
+Web  WARN  requestPermissionsAsync is not supported on web. Returning a granted permission response.
+Web  WARN  requestPermissionsAsync is not supported on web. Returning a granted permission response.
+Web Bundled 40ms node_modules\expo-router\entry.js (1 module)
+Web  INFO  %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold
+Web  LOG  Running application "main" with appParams:
+ {"hydrate": undefined, "rootTag": "#root"}
+Development-level warnings: ON.
+Performance optimizations: OFF.
+Web  WARN  "shadow*" style props are deprecated. Use "boxShadow".
