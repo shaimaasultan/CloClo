@@ -899,8 +899,15 @@ public partial class MainWindow : Window
         for (int i = 0; i < items.Length; i++)
         {
             var key = IconOptions[i].Key;
-            items[i].Click += (_, _) => ToggleIcon(key, items[i]);
-            iconsMenu.DropDownItems.Add(items[i]);
+            var item = items[i];
+            // Capturing `item` (fresh per iteration) rather than indexing
+            // items[i] inside the closure — i is shared across every
+            // iteration, so by the time any of these actually fire (well
+            // after the loop finishes), it already equals items.Length,
+            // one past the end. Confirmed via a live IndexOutOfRangeException
+            // report before this fix.
+            item.Click += (_, _) => ToggleIcon(key, item);
+            iconsMenu.DropDownItems.Add(item);
         }
         return iconsMenu;
     }
