@@ -22,26 +22,41 @@
             <Setter Property="BorderBrush" Value="#8a6a2f" />
             <Setter Property="VerticalContentAlignment" Value="Center" />
         </Style>
+        <!-- Black, not the cream used everywhere else — the dropdown
+             popup's list items render on their own default light
+             background regardless of the Background setter above (a known
+             WPF ComboBox chrome quirk), so light text there is unreadable
+             even though the closed selection box (which does pick up
+             Background correctly) would have been fine with either. -->
         <Style TargetType="ComboBox">
             <Setter Property="Padding" Value="6" />
             <Setter Property="Background" Value="#1e1610" />
-            <Setter Property="Foreground" Value="#f3ecdd" />
+            <Setter Property="Foreground" Value="Black" />
         </Style>
-        <Style TargetType="TextBlock">
+        <!-- Keyed, not an implicit TargetType="TextBlock" style — an
+             implicit one applies to every TextBlock in the window,
+             including ones auto-generated inside other controls' own
+             default templates (e.g. the ComboBoxItem's own content
+             TextBlock), silently overriding their correct inherited
+             Foreground. Confirmed this was exactly what broke the
+             dropdown's black text: the ComboBoxItem itself correctly had
+             Foreground=Black, but its inner TextBlock still showed the
+             cream color from this style. -->
+        <Style x:Key="LabelText" TargetType="TextBlock">
             <Setter Property="Foreground" Value="#f3ecdd" />
         </Style>
     </Window.Resources>
     <StackPanel Margin="16">
-        <TextBlock Text="Number" FontWeight="Bold" Margin="0,0,0,4" />
+        <TextBlock Text="Number" Style="{StaticResource LabelText}" FontWeight="Bold" Margin="0,0,0,4" />
         <TextBox x:Name="ValueBox" Margin="0,0,0,12" />
 
-        <TextBlock Text="From" FontWeight="Bold" Margin="0,0,0,4" />
+        <TextBlock Text="From" Style="{StaticResource LabelText}" FontWeight="Bold" Margin="0,0,0,4" />
         <ComboBox x:Name="FromCombo" Margin="0,0,0,12" />
 
-        <TextBlock Text="To" FontWeight="Bold" Margin="0,0,0,4" />
+        <TextBlock Text="To" Style="{StaticResource LabelText}" FontWeight="Bold" Margin="0,0,0,4" />
         <ComboBox x:Name="ToCombo" Margin="0,0,0,14" />
 
-        <TextBlock Text="Result" FontWeight="Bold" Margin="0,0,0,4" />
+        <TextBlock Text="Result" Style="{StaticResource LabelText}" FontWeight="Bold" Margin="0,0,0,4" />
         <Grid Margin="0,0,0,14">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
