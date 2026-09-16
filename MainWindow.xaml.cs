@@ -660,9 +660,10 @@ public partial class MainWindow : Window
 
     private void SetupTrayIcon()
     {
+        var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "icon.ico");
         _trayIcon = new DrawingForms.NotifyIcon
         {
-            Icon = System.Drawing.SystemIcons.Application,
+            Icon = File.Exists(iconPath) ? new System.Drawing.Icon(iconPath) : System.Drawing.SystemIcons.Application,
             Visible = true,
             Text = "CloClo weather",
         };
