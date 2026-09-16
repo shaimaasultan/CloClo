@@ -72,4 +72,25 @@ Web  LOG  Running application "main" with appParams:
  {"hydrate": undefined, "rootTag": "#root"}
 Development-level warnings: ON.
 Performance optimizations: OFF.
-Web  WARN  "shadow*" style props are deprecated. Use "boxShadow".
+
+A few more ideas, grouped by what they'd build on:
+
+Reusing the "select text → do something" pattern (same TextSelectionReader we already have):
+
+Quick translate — select text, click, see it translated in the label (and optionally read aloud in that language's voice, which the multi-voice speech reader already supports).
+Unit/currency conversion — select "20 USD" or "5 km", click, see the converted value.
+Color picker (eyedropper) — click an icon, hover anywhere on screen, grab the hex code under the cursor, copy it.
+Reusing the "static info in the label" pattern (same as GPU info):
+
+Battery status — percentage, charging state, time remaining.
+System stats — CPU/RAM/disk usage at a glance.
+Next calendar event — pulls from Windows' Calendar API.
+New standalone utilities:
+
+QR code from selected text/URL — handy for getting a link to your phone without any companion-app work, since it's just something the phone's camera scans.
+Quick countdown timer — small dialog to set one, Keeper reacts (jump/wave) when it's done, plus a system notification.
+Clipboard history — last few things you've copied, click to re-copy.
+Volume/mute toggle — quick control, label briefly shows the level.
+Pure personality/polish (no new icon, just Keeper reacting more):
+
+Idle-time reactions (falls asleep after inactivity, like the sleep behavior already designed for the phone app).
