@@ -147,6 +147,25 @@
   #nowPlaying .list{ display:none; position:absolute; right:21px; top:5px; width:11px; height:11px; opacity:.8; font-size:9px; line-height:1; cursor:pointer; }
   #nowPlaying.notif .list{ display:block; }
 
+  /* Battery status — top-left, the mirror spot of the sky icon (sun/cloud/
+     moon, all top-right below). Hidden entirely rather than showing a
+     meaningless reading when the host has no battery (a desktop PC) — see
+     BatteryInfo.cs, which reports null in that case. */
+  #battery{
+    position:absolute; top:15px; left:8px; display:none;
+    align-items:center; gap:3px; color:var(--face);
+    text-shadow:0 1px 3px rgba(0,0,0,.85), 0 0 10px rgba(0,0,0,.55);
+    font-size:10px; font-weight:700; letter-spacing:.02em;
+  }
+  #battery.show{ display:flex; }
+  #battery .icon{ position:relative; width:15px; height:8px; border:1.2px solid var(--face); border-radius:2px; box-sizing:border-box; flex:none; }
+  #battery .icon::after{ content:''; position:absolute; right:-3px; top:2px; width:1.5px; height:3px; background:var(--face); border-radius:0 1px 1px 0; }
+  #battery .fill{ position:absolute; left:1px; top:1px; bottom:1px; width:2px; border-radius:1px; background:var(--face); }
+  #battery.charging .fill{ background:var(--highlight); }
+  #battery.low .fill{ background:#e2665c; }
+  #battery .bolt{ display:none; font-size:9px; line-height:1; }
+  #battery.charging .bolt{ display:inline; }
+
   /* Sun rays, shown behind the keeper on clear days. */
   .sun{ position:absolute; top:14px; right:10px; width:26px; height:26px; display:none; }
   body.sky-clear .sun{ display:block; }
@@ -377,6 +396,12 @@
       <div id="place">…</div>
     </div>
 
+    <div id="battery" title="">
+      <span class="icon"><span class="fill"></span></span>
+      <span id="batteryPercent">--%</span>
+      <span class="bolt">⚡</span>
+    </div>
+
     <div id="mediaBar">
       <div class="mediaIcon" id="iconYoutube" title="What's playing on YouTube"><span class="tri"></span></div>
       <div class="mediaIcon" id="iconSpotify" title="What's playing on Spotify">♪</div>
@@ -454,6 +479,33 @@
     // Only scroll a line if it actually overflows — a short one just sits still.
     fitLine(titleTextEl, titleLineEl);
     if (msg.artist) fitLine(subtitleTextEl, subtitleLineEl);
+  });
+
+  // ---- battery: percentage, charging state, time remaining — pushed by
+  // the host on a slow timer (see RefreshBattery in MainWindow.xaml.cs),
+  // same PostWebMessageAsJson channel as now-playing above ----
+  const batteryEl = document.getElementById('battery');
+  const batteryFillEl = document.querySelector('#battery .fill');
+  const batteryPercentEl = document.getElementById('batteryPercent');
+  const BATTERY_FILL_MAX = 11; // inner width of the .icon glyph, in px
+
+  window.chrome?.webview?.addEventListener('message', (e) => {
+    const msg = e.data;
+    if (!msg || msg.type !== 'battery') return;
+
+    if (msg.percent == null) {
+      batteryEl.classList.remove('show');
+      return;
+    }
+
+    batteryPercentEl.textContent = Math.round(msg.percent) + '%';
+    batteryFillEl.style.width = Math.max(1, Math.round(msg.percent / 100 * BATTERY_FILL_MAX)) + 'px';
+    batteryEl.classList.toggle('charging', !!msg.charging);
+    batteryEl.classList.toggle('low', msg.percent <= 15 && !msg.charging);
+    batteryEl.title = msg.charging
+      ? 'Charging'
+      : (msg.timeRemaining ? `${msg.timeRemaining} remaining` : `${Math.round(msg.percent)}% battery`);
+    batteryEl.classList.add('show');
   });
 
   // ---- blink, purely decorative ----

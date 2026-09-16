@@ -18,6 +18,7 @@ public partial class MainWindow : Window
     private WidgetSettings _settings = WidgetSettings.Load();
     private DrawingForms.NotifyIcon? _trayIcon;
     private DispatcherTimer? _topmostTimer;
+    private DispatcherTimer? _batteryTimer;
     private Window? _avatarWindow;
 
     private const int GWL_EXSTYLE = -20;
@@ -174,6 +175,7 @@ public partial class MainWindow : Window
         Topmost = _settings.AlwaysOnTop;
         SetupTopmostTimer();
         SetupForegroundTracking();
+        SetupBatteryTimer();
 
         await Web.EnsureCoreWebView2Async();
         Web.DefaultBackgroundColor = System.Drawing.Color.Transparent;
@@ -185,7 +187,7 @@ public partial class MainWindow : Window
         // was showing. Push a fresh one once the new page is actually ready,
         // rather than relying on "did it change" — from the host's side
         // nothing changed, but the page lost it regardless.
-        Web.CoreWebView2.NavigationCompleted += (_, _) => _ = RefreshWatched();
+        Web.CoreWebView2.NavigationCompleted += (_, _) => { _ = RefreshWatched(); RefreshBattery(); };
 
         NavigateToWidget();
     }
@@ -689,6 +691,27 @@ public partial class MainWindow : Window
         _topmostTimer.Tick += (_, _) => ReassertTopmost();
         _topmostTimer.Start();
         ReassertTopmost();
+    }
+
+    // Battery is local, synchronous info (see BatteryInfo.cs) — polled on a
+    // slow timer purely because it can change (plugged in, unplugged) while
+    // the widget sits there, not because reading it is expensive. Pushed to
+    // the page the same way now-playing already is: PostWebMessageAsJson,
+    // not a page reload.
+    private void SetupBatteryTimer()
+    {
+        _batteryTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(30) };
+        _batteryTimer.Tick += (_, _) => RefreshBattery();
+        _batteryTimer.Start();
+    }
+
+    private void RefreshBattery()
+    {
+        var status = BatteryInfo.Read();
+        var json = status is { } s
+            ? $"{{\"type\":\"battery\",\"percent\":{s.Percent.ToString(System.Globalization.CultureInfo.InvariantCulture)},\"charging\":{(s.Charging ? "true" : "false")},\"timeRemaining\":{JsonSerializer.Serialize(s.TimeRemaining)}}}"
+            : "{\"type\":\"battery\",\"percent\":null,\"charging\":false,\"timeRemaining\":null}";
+        try { Web.CoreWebView2?.PostWebMessageAsJson(json); } catch { /* page not ready yet */ }
     }
 
     private void SetupForegroundTracking()
