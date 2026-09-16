@@ -56,7 +56,7 @@ public partial class MainWindow : Window
     // currently enabled.
     private static readonly string[] IconOrder =
     {
-        "youtube", "spotify", "bell", "search", "gpu", "read", "mic", "convert", "color",
+        "youtube", "spotify", "bell", "search", "gpu", "read", "mic", "convert", "color", "qr",
     };
     private const double IconWidth = 18, IconGap = 2, IconTop = 187, IconHeight = 20;
     // Matches #mediaBar's own left:10px anchor (stage x=10, i.e. relative
@@ -269,6 +269,38 @@ public partial class MainWindow : Window
         var subtitle = text.Length > titleLimit ? text : "";
         ShowOneShotLabel(title, subtitle);
         SpeechReader.Speak(text);
+    }
+
+    // Same one-shot pattern as ReadSelection — grabs whatever's currently
+    // highlighted and opens a QR code for it, rather than polling.
+    private void ShowQrCode()
+    {
+        _watchingNotifications = false;
+        _ = ShowQrCodeAsync();
+    }
+
+    private async Task ShowQrCodeAsync()
+    {
+        var target = _lastExternalForegroundWindow;
+        if (target == IntPtr.Zero) return;
+
+        var text = await TextSelectionReader.ReadSelectedTextAsync(target);
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            ShowOneShotLabel("Nothing selected", "Highlight some text, then click again.");
+            return;
+        }
+
+        try
+        {
+            new QrCodeWindow(text.Trim()) { Owner = this }.Show();
+        }
+        catch
+        {
+            // QR codes have a real capacity limit — a whole paragraph
+            // accidentally selected instead of a link will blow past it.
+            ShowOneShotLabel("Too much text for a QR code", "Try selecting just a link or a short line.");
+        }
     }
 
     // Voice dictation, appended to a running text file rather than just
@@ -645,6 +677,11 @@ public partial class MainWindow : Window
             StartColorPicking();
             return;
         }
+        if (icons.TryGetValue("qr", out var qrRect) && qrRect.Contains(p))
+        {
+            ShowQrCode();
+            return;
+        }
         if (PauseIconRect.Contains(p) && _watchedFetcher != null)
         {
             StopWatching();
@@ -891,6 +928,7 @@ public partial class MainWindow : Window
         ("mic", "Dictate"),
         ("convert", "Convert units"),
         ("color", "Color picker"),
+        ("qr", "QR code from selection"),
     };
 
     private DrawingForms.ToolStripMenuItem BuildIconsMenu()
