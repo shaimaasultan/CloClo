@@ -123,7 +123,7 @@ public partial class MainWindow : Window
     {
         ("auto", "Auto (live)"),
         ("clear", "Clear"),
-        ("cloudy", "Cloudy"),
+        ("cloudy", "Partly Cloudy"),
         ("mostlycloudy", "Mostly Cloudy"),
         ("windy", "Windy"),
         ("fog", "Fog"),
