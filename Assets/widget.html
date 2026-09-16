@@ -39,17 +39,20 @@
   #temp{ font-size:19px; font-weight:800; line-height:1; }
   #place{ font-size:10px; opacity:.9; letter-spacing:.02em; max-width:140px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 
-  /* Six small buttons, always visible — click one to ask specifically
+  /* Seven small buttons, always visible — click one to ask specifically
      about that thing, rather than guessing at a single system-wide
      "current" session (that turned out to mean "whichever app last had
      media-key focus", not "whatever's actually playing"). Fixed
      position/size, so nothing else on the stage ever has to reflow around
      it — see YoutubeIconRect/SpotifyIconRect/BellIconRect/SearchIconRect/
-     GpuIconRect/ReadIconRect in MainWindow.xaml.cs, which must stay in sync
-     with this layout. Gap is tighter than a natural 10px so all six still
-     fit within the stage's 150px width without spilling past the window's
-     own edge (which would just get clipped, not wrapped). */
-  #mediaBar{ position:absolute; left:0; right:0; bottom:42px; height:20px; display:flex; align-items:center; justify-content:center; gap:4px; }
+     GpuIconRect/ReadIconRect/MicIconRect in MainWindow.xaml.cs, which must
+     stay in sync with this layout. left:10px (not 0) matches where the
+     separate, genuinely-interactive _avatarWindow's hit-testing actually
+     starts (AvatarOffsetX) — anchoring here instead of centering across the
+     full 150px stage reclaims the margin the old centered layout wasted
+     symmetrically on both edges just to keep the left edge inside that hit
+     zone, which is exactly the room the 7th icon needed. */
+  #mediaBar{ position:absolute; left:10px; right:0; bottom:42px; height:20px; display:flex; align-items:center; justify-content:center; gap:2px; }
   .mediaIcon{ width:18px; height:18px; border-radius:5px; display:flex; align-items:center; justify-content:center; box-shadow:0 1px 2px rgba(0,0,0,.4); cursor:pointer; }
   #iconYoutube{ background:#ff0033; }
   #iconYoutube .tri{ width:0; height:0; border-style:solid; border-width:4px 0 4px 6px; border-color:transparent transparent transparent #fff; margin-left:1.5px; }
@@ -72,6 +75,12 @@
      like the others, since re-simulating Ctrl+C every few seconds into
      whatever now has focus would be actively disruptive. */
   #iconRead{ background:transparent; box-shadow:none; font-size:12px; line-height:1; }
+  /* One-shot voice dictation (see SpeechToText.cs) — left-click dictates in
+     English, right-click in Arabic (there's no way to auto-detect which
+     language you're about to speak the way ReadSelection can detect a
+     script after the fact), appended to a running text file rather than
+     just shown here, so nothing needs copying out of the label by hand. */
+  #iconMic{ background:transparent; box-shadow:none; font-size:12px; line-height:1; }
 
   /* What the watched app is playing (or the latest notification), sitting
      under the icons — hidden until the host reports something, and left
@@ -319,6 +328,7 @@
       <div class="mediaIcon" id="iconSearch" title="Other apps playing media">🔍</div>
       <div class="mediaIcon" id="iconGpu" title="GPUs in this system">🖥️</div>
       <div class="mediaIcon" id="iconRead" title="Read selected text aloud">🗣️</div>
+      <div class="mediaIcon" id="iconMic" title="Dictate: click = English, right-click = Arabic">🎤</div>
     </div>
 
     <div id="nowPlaying">

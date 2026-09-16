@@ -15,6 +15,11 @@ public class WidgetSettings
     // "auto" follows the real forecast; otherwise one of clear/rain/snow/storm,
     // picked by hand from the right-click menu, overriding the live sky.
     public string Sky { get; set; } = "auto";
+    // Where dictated text (see SpeechToText.cs) currently gets appended —
+    // null until the first dictation ever happens, then persists across
+    // restarts so "append" keeps landing in the same file until the user
+    // explicitly starts a new one.
+    public string? DictationFilePath { get; set; }
 
     private static string FolderPath =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "CloCloWidget");

@@ -46,19 +46,24 @@ public partial class MainWindow : Window
     private const double AvatarWidth = 140 * Scale;
     private const double AvatarHeight = 245 * Scale;
 
-    // The six icon buttons, always visible, in coordinates relative to
+    // The seven icon buttons, always visible, in coordinates relative to
     // _avatarWindow (i.e. already minus AvatarOffsetX/Y) — must stay in
     // sync with #mediaBar's layout in widget.html. Clicking one switches
     // what the label below is watching (search/GPU show informational
-    // content instead of something that plays). x positions assume the
-    // tighter 4px gap #mediaBar uses to fit all six within the stage's
-    // 150px width.
+    // content instead of something that plays). x positions assume
+    // #mediaBar is anchored at stage x=10 (matching AvatarOffsetX, i.e.
+    // relative x=0) with a 2px gap, which is what fits all seven within the
+    // stage's 150px width.
     private static readonly Rect YoutubeIconRect = new(1 * Scale, 187 * Scale, 18 * Scale, 20 * Scale);
-    private static readonly Rect SpotifyIconRect = new(23 * Scale, 187 * Scale, 18 * Scale, 20 * Scale);
-    private static readonly Rect BellIconRect = new(45 * Scale, 187 * Scale, 18 * Scale, 20 * Scale);
-    private static readonly Rect SearchIconRect = new(67 * Scale, 187 * Scale, 18 * Scale, 20 * Scale);
-    private static readonly Rect GpuIconRect = new(89 * Scale, 187 * Scale, 18 * Scale, 20 * Scale);
-    private static readonly Rect ReadIconRect = new(111 * Scale, 187 * Scale, 18 * Scale, 20 * Scale);
+    private static readonly Rect SpotifyIconRect = new(21 * Scale, 187 * Scale, 18 * Scale, 20 * Scale);
+    private static readonly Rect BellIconRect = new(41 * Scale, 187 * Scale, 18 * Scale, 20 * Scale);
+    private static readonly Rect SearchIconRect = new(61 * Scale, 187 * Scale, 18 * Scale, 20 * Scale);
+    private static readonly Rect GpuIconRect = new(81 * Scale, 187 * Scale, 18 * Scale, 20 * Scale);
+    private static readonly Rect ReadIconRect = new(101 * Scale, 187 * Scale, 18 * Scale, 20 * Scale);
+    // Left-click dictates in English, right-click in Arabic (handled where
+    // MouseRightButtonUp is wired, not here — this rect is just the hit
+    // area both share).
+    private static readonly Rect MicIconRect = new(121 * Scale, 187 * Scale, 18 * Scale, 20 * Scale);
     // The pause button inside the label itself — same coordinate space.
     // Only acts while actually watching something (_watchedFetcher is
     // set); otherwise the label (and this button) isn't even shown. Spans
@@ -259,6 +264,49 @@ public partial class MainWindow : Window
         SpeechReader.Speak(text);
     }
 
+    // Voice dictation, appended to a running text file rather than just
+    // shown in the label — there's nothing to copy/paste, it's just there
+    // the next time you open the file. Also a one-shot action like
+    // ReadSelection above, for the same reason: nothing here should repeat
+    // itself on a timer.
+    private async Task DictateAsync(string languageTag)
+    {
+        _watchingNotifications = false;
+        ShowOneShotLabel("Listening…", "");
+
+        var (text, error) = await SpeechToText.RecognizeAsync(languageTag);
+        if (error != null)
+        {
+            ShowOneShotLabel("Dictation failed", error);
+            return;
+        }
+
+        var path = _settings.DictationFilePath;
+        if (string.IsNullOrEmpty(path) || !File.Exists(path))
+        {
+            path = SpeechToText.CreateNewFile();
+            _settings.DictationFilePath = path;
+            _settings.Save();
+        }
+        SpeechToText.Append(path, text!);
+
+        const int titleLimit = 60;
+        var title = text!.Length > titleLimit ? text[..titleLimit] + "…" : text;
+        ShowOneShotLabel(title, $"Saved to {Path.GetFileName(path)}");
+    }
+
+    // "Start new dictation file" menu action — the counterpart to
+    // DictateAsync's default of appending to whatever file is already
+    // current. Deliberately not on the icon bar itself (no room left, and
+    // it's a rare, deliberate action compared to dictating itself).
+    private void StartNewDictationFile()
+    {
+        var path = SpeechToText.CreateNewFile();
+        _settings.DictationFilePath = path;
+        _settings.Save();
+        ShowOneShotLabel("New dictation file", Path.GetFileName(path));
+    }
+
     // Pushes a single label update without starting _nowPlayingTimer, for
     // one-shot results like ReadSelection() above where re-fetching on a
     // timer would be wrong rather than just wasteful.
@@ -435,7 +483,20 @@ public partial class MainWindow : Window
             Top = Top + AvatarOffsetY,
         };
         _avatarWindow.PreviewMouseLeftButtonDown += AvatarWindow_MouseLeftButtonDown;
-        _avatarWindow.MouseRightButtonUp += (_, _) => ShowContextMenuAtCursor();
+        _avatarWindow.MouseRightButtonUp += (_, e) =>
+        {
+            // Right-click normally opens the context menu everywhere on the
+            // avatar — except over the mic icon, which uses it for Arabic
+            // dictation instead (there's no icon-bar room for a second mic
+            // icon, and unlike ReadSelection there's no way to detect which
+            // language you're about to speak before you've said it).
+            if (MicIconRect.Contains(e.GetPosition(_avatarWindow)))
+            {
+                _ = DictateAsync(SpeechToText.ArabicLanguageTag);
+                return;
+            }
+            ShowContextMenuAtCursor();
+        };
         _avatarWindow.LocationChanged += (_, _) =>
         {
             Left = _avatarWindow.Left - AvatarOffsetX;
@@ -483,6 +544,11 @@ public partial class MainWindow : Window
         if (ReadIconRect.Contains(p))
         {
             ReadSelection();
+            return;
+        }
+        if (MicIconRect.Contains(p))
+        {
+            _ = DictateAsync(SpeechToText.EnglishLanguageTag);
             return;
         }
         if (PauseIconRect.Contains(p) && _watchedFetcher != null)
@@ -647,6 +713,7 @@ public partial class MainWindow : Window
         menu.Items.Add("Set location…", null, (_, _) => OpenLocationDialog());
         menu.Items.Add(BuildSkyMenu());
         menu.Items.Add("Refresh weather", null, (_, _) => NavigateToWidget());
+        menu.Items.Add("Start new dictation file", null, (_, _) => StartNewDictationFile());
         var topMost = new DrawingForms.ToolStripMenuItem("Always on top", null, (_, _) => ToggleAlwaysOnTop()) { Checked = _settings.AlwaysOnTop };
         menu.Items.Add(topMost);
         var startup = new DrawingForms.ToolStripMenuItem("Start with Windows", null, (_, _) => ToggleStartWithWindows()) { Checked = StartupRegistration.IsEnabled() };
