@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Net.Http;
@@ -8,31 +9,74 @@ using System.Threading.Tasks;
 
 namespace CloCloWidget;
 
-// Converts a selected "<number> <unit>" phrase (e.g. "20 USD", "5 km") to
-// a paired unit — length/weight/temperature done locally, currency via a
-// free no-API-key exchange-rate service (same "free, no key" spirit as the
-// open-meteo weather/geocoding calls already used elsewhere).
+// Parses a selected "<number> <unit>" phrase (e.g. "20 USD", "5 km") and
+// converts it — length/weight/temperature done locally via a shared base
+// unit per category (so any unit in a category can convert to any other,
+// not just one fixed pair), currency via a free no-API-key exchange-rate
+// service (frankfurter.app — same "free, no key" spirit as the
+// weather/geocoding APIs already used elsewhere).
 public static class UnitConverter
 {
+    public record UnitDef(string Key, string Label, Func<double, double> ToBase, Func<double, double> FromBase)
+    {
+        public override string ToString() => Label;
+    }
+
+    // Base units: km (length), kg (weight), °C (temperature) — arbitrary
+    // choices, any unit converts to any other in its category via this
+    // shared intermediate rather than needing an entry per pair.
+    public static readonly Dictionary<string, UnitDef[]> Categories = new()
+    {
+        ["length"] = new[]
+        {
+            new UnitDef("km", "km", v => v, v => v),
+            new UnitDef("mi", "mi", v => v * 1.60934, v => v * 0.621371),
+            new UnitDef("m", "m", v => v / 1000, v => v * 1000),
+            new UnitDef("ft", "ft", v => v * 0.0003048, v => v * 3280.84),
+        },
+        ["weight"] = new[]
+        {
+            new UnitDef("kg", "kg", v => v, v => v),
+            new UnitDef("lb", "lb", v => v * 0.453592, v => v * 2.20462),
+        },
+        ["temperature"] = new[]
+        {
+            new UnitDef("c", "°C", v => v, v => v),
+            new UnitDef("f", "°F", v => (v - 32) * 5 / 9, v => v * 9 / 5 + 32),
+            new UnitDef("k", "K", v => v - 273.15, v => v + 273.15),
+        },
+    };
+
+    // Shown together whenever any currency is recognized — a fixed,
+    // practical set rather than every ISO code, matching the same
+    // "common peers" idea the local unit categories use.
+    public static readonly string[] CommonCurrencies = { "USD", "CAD", "EUR", "GBP", "JPY" };
+
     private static readonly HttpClient Http = new();
     private static readonly Regex Pattern = new(@"^\s*(-?\d+(?:\.\d+)?)\s*°?\s*([a-zA-Z]+)\s*$", RegexOptions.Compiled);
 
-    // Each local unit converts to exactly one other — a fixed pairing
-    // rather than a full N-way system, since the point is a quick glance
-    // at "the other common unit", not a general converter.
-    private static readonly (string[] Names, string ToName, Func<double, double> Convert)[] LocalUnits =
+    // Aliases accepted when parsing free-text selections, mapped to a
+    // canonical (category, key) pair — separate from Categories' own keys
+    // since a selection might say "kilometers" where the category table
+    // only needs to know "km".
+    private static readonly (string[] Aliases, string Category, string Key)[] UnitAliases =
     {
-        (new[] { "km", "kilometer", "kilometers", "kilometre", "kilometres" }, "mi", v => v * 0.621371),
-        (new[] { "mi", "mile", "miles" }, "km", v => v * 1.60934),
-        (new[] { "m", "meter", "meters", "metre", "metres" }, "ft", v => v * 3.28084),
-        (new[] { "ft", "foot", "feet" }, "m", v => v * 0.3048),
-        (new[] { "kg", "kilogram", "kilograms", "kilo", "kilos" }, "lb", v => v * 2.20462),
-        (new[] { "lb", "lbs", "pound", "pounds" }, "kg", v => v * 0.453592),
-        (new[] { "c", "celsius" }, "°F", v => v * 9 / 5 + 32),
-        (new[] { "f", "fahrenheit" }, "°C", v => (v - 32) * 5 / 9),
+        (new[] { "km", "kilometer", "kilometers", "kilometre", "kilometres" }, "length", "km"),
+        (new[] { "mi", "mile", "miles" }, "length", "mi"),
+        (new[] { "m", "meter", "meters", "metre", "metres" }, "length", "m"),
+        (new[] { "ft", "foot", "feet" }, "length", "ft"),
+        (new[] { "kg", "kilogram", "kilograms", "kilo", "kilos" }, "weight", "kg"),
+        (new[] { "lb", "lbs", "pound", "pounds" }, "weight", "lb"),
+        (new[] { "c", "celsius" }, "temperature", "c"),
+        (new[] { "f", "fahrenheit" }, "temperature", "f"),
+        (new[] { "k", "kelvin" }, "temperature", "k"),
     };
 
-    public static async Task<(string? Result, string? Error)> ConvertAsync(string text)
+    public record ParsedSelection(double Value, string Category, string UnitKey);
+
+    // Category is "length"/"weight"/"temperature" for the local units
+    // above, or "currency" for any recognized 3-letter code.
+    public static (ParsedSelection? Parsed, string? Error) ParseSelection(string text)
     {
         var match = Pattern.Match(text.Trim());
         if (!match.Success)
@@ -41,41 +85,62 @@ public static class UnitConverter
         }
 
         var value = double.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture);
-        var unit = match.Groups[2].Value;
+        var unitText = match.Groups[2].Value;
 
-        var local = LocalUnits.FirstOrDefault(u => u.Names.Contains(unit, StringComparer.OrdinalIgnoreCase));
-        if (local.Names != null)
+        var alias = UnitAliases.FirstOrDefault(u => u.Aliases.Contains(unitText, StringComparer.OrdinalIgnoreCase));
+        if (alias.Aliases != null)
         {
-            var converted = local.Convert(value);
-            return ($"{FormatNumber(value)} {unit} = {FormatNumber(converted)} {local.ToName}", null);
+            return (new ParsedSelection(value, alias.Category, alias.Key), null);
         }
 
-        if (unit.Length == 3 && unit.All(char.IsLetter))
+        if (unitText.Length == 3 && unitText.All(char.IsLetter))
         {
-            return await ConvertCurrencyAsync(value, unit.ToUpperInvariant());
+            return (new ParsedSelection(value, "currency", unitText.ToUpperInvariant()), null);
         }
 
-        return (null, $"\"{unit}\" isn't a unit or currency I recognize.");
+        return (null, $"\"{unitText}\" isn't a unit or currency I recognize.");
     }
 
-    private static async Task<(string? Result, string? Error)> ConvertCurrencyAsync(double amount, string fromCode)
+    // Converts within a local category, returning every OTHER unit's value
+    // (the caller already knows fromKey's own value — it's whatever was
+    // typed).
+    public static Dictionary<string, double> ConvertLocal(string category, string fromKey, double value)
     {
-        // CAD as the "home" currency (this widget's own location is set up
-        // for a Canadian user) — converting an amount already in CAD goes
-        // to USD instead, since that's the most likely second currency
-        // someone would want.
-        var toCode = fromCode == "CAD" ? "USD" : "CAD";
+        var units = Categories[category];
+        var from = units.First(u => u.Key == fromKey);
+        var baseValue = from.ToBase(value);
+
+        var result = new Dictionary<string, double>();
+        foreach (var u in units)
+        {
+            if (u.Key == fromKey) continue;
+            result[u.Key] = u.FromBase(baseValue);
+        }
+        return result;
+    }
+
+    public static async Task<(Dictionary<string, double>? Results, string? Error)> ConvertCurrencyMultiAsync(double amount, string fromCode)
+    {
+        var targets = CommonCurrencies.Where(c => c != fromCode).ToArray();
+        if (targets.Length == 0) return (new Dictionary<string, double>(), null);
+
         try
         {
-            var url = $"https://api.frankfurter.app/latest?amount={amount.ToString(CultureInfo.InvariantCulture)}&from={fromCode}&to={toCode}";
+            var url = "https://api.frankfurter.app/latest?amount=" +
+                $"{amount.ToString(CultureInfo.InvariantCulture)}&from={fromCode}&to={string.Join(",", targets)}";
             var json = await Http.GetStringAsync(url);
             using var doc = JsonDocument.Parse(json);
-            if (!doc.RootElement.TryGetProperty("rates", out var rates) || !rates.TryGetProperty(toCode, out var rateEl))
+            if (!doc.RootElement.TryGetProperty("rates", out var rates))
             {
                 return (null, $"\"{fromCode}\" isn't a currency code I could look up.");
             }
-            var converted = rateEl.GetDouble();
-            return ($"{FormatNumber(amount)} {fromCode} = {FormatNumber(converted)} {toCode}", null);
+
+            var result = new Dictionary<string, double>();
+            foreach (var t in targets)
+            {
+                if (rates.TryGetProperty(t, out var el)) result[t] = el.GetDouble();
+            }
+            return (result, null);
         }
         catch (HttpRequestException ex) when (ex.StatusCode.HasValue)
         {
@@ -92,5 +157,5 @@ public static class UnitConverter
         }
     }
 
-    private static string FormatNumber(double v) => Math.Round(v, 2).ToString("0.##", CultureInfo.InvariantCulture);
+    public static string FormatNumber(double v) => Math.Round(v, 2).ToString("0.##", CultureInfo.InvariantCulture);
 }

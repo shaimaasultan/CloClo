@@ -298,10 +298,11 @@ public partial class MainWindow : Window
         ShowOneShotLabel(title, $"Saved to {Path.GetFileName(path)}");
     }
 
-    // Grabs the current selection the same way ReadSelection does, then
-    // tries to parse it as "<number> <unit>" and show the converted value —
-    // see UnitConverter.cs for what's actually recognized. One-shot for the
-    // same reason as ReadSelection: nothing here should repeat on a timer.
+    // Grabs the current selection the same way ReadSelection does, parses
+    // it as "<number> <unit>" (see UnitConverter.cs for what's actually
+    // recognized), then opens a real converter window — editable value and
+    // source unit, every other unit/currency in the same category
+    // converting alongside it — rather than a single fixed-pair result.
     private void ConvertSelection()
     {
         _watchingNotifications = false;
@@ -320,13 +321,13 @@ public partial class MainWindow : Window
             return;
         }
 
-        var (result, error) = await UnitConverter.ConvertAsync(text);
+        var (parsed, error) = UnitConverter.ParseSelection(text);
         if (error != null)
         {
             ShowOneShotLabel("Couldn't convert that", error);
             return;
         }
-        ShowOneShotLabel(result!, "");
+        new UnitConverterWindow(parsed!) { Owner = this }.Show();
     }
 
     // Eyedropper: live hex preview while hovering anywhere on screen (not
