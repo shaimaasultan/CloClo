@@ -153,11 +153,12 @@
      BatteryInfo.cs, which reports null in that case. */
   #battery{
     position:absolute; top:15px; left:8px; display:none;
-    align-items:center; gap:3px; color:var(--face);
+    flex-direction:column; align-items:flex-start; gap:1px; color:var(--face);
     text-shadow:0 1px 3px rgba(0,0,0,.85), 0 0 10px rgba(0,0,0,.55);
     font-size:10px; font-weight:700; letter-spacing:.02em;
   }
   #battery.show{ display:flex; }
+  #battery .batteryRow{ display:flex; align-items:center; gap:3px; }
   #battery .icon{ position:relative; width:15px; height:8px; border:1.2px solid var(--face); border-radius:2px; box-sizing:border-box; flex:none; }
   #battery .icon::after{ content:''; position:absolute; right:-3px; top:2px; width:1.5px; height:3px; background:var(--face); border-radius:0 1px 1px 0; }
   #battery .fill{ position:absolute; left:1px; top:1px; bottom:1px; width:2px; border-radius:1px; background:var(--face); }
@@ -165,6 +166,11 @@
   #battery.low .fill{ background:#e2665c; }
   #battery .bolt{ display:none; font-size:9px; line-height:1; }
   #battery.charging .bolt{ display:inline; }
+  /* Only shown while actually discharging with a known estimate — Windows
+     doesn't expose a time-to-full while charging, so there's nothing
+     truthful to put here in that state (see BatteryInfo.cs). */
+  #batteryTime{ display:none; font-size:8.5px; font-weight:600; opacity:.85; letter-spacing:.01em; padding-left:1px; }
+  #battery.hasTime #batteryTime{ display:block; }
 
   /* Sun rays, shown behind the keeper on clear days. */
   .sun{ position:absolute; top:14px; right:10px; width:26px; height:26px; display:none; }
@@ -397,9 +403,12 @@
     </div>
 
     <div id="battery" title="">
-      <span class="icon"><span class="fill"></span></span>
-      <span id="batteryPercent">--%</span>
-      <span class="bolt">⚡</span>
+      <div class="batteryRow">
+        <span class="icon"><span class="fill"></span></span>
+        <span id="batteryPercent">--%</span>
+        <span class="bolt">⚡</span>
+      </div>
+      <div id="batteryTime"></div>
     </div>
 
     <div id="mediaBar">
@@ -487,6 +496,7 @@
   const batteryEl = document.getElementById('battery');
   const batteryFillEl = document.querySelector('#battery .fill');
   const batteryPercentEl = document.getElementById('batteryPercent');
+  const batteryTimeEl = document.getElementById('batteryTime');
   const BATTERY_FILL_MAX = 11; // inner width of the .icon glyph, in px
 
   window.chrome?.webview?.addEventListener('message', (e) => {
@@ -502,6 +512,8 @@
     batteryFillEl.style.width = Math.max(1, Math.round(msg.percent / 100 * BATTERY_FILL_MAX)) + 'px';
     batteryEl.classList.toggle('charging', !!msg.charging);
     batteryEl.classList.toggle('low', msg.percent <= 15 && !msg.charging);
+    batteryEl.classList.toggle('hasTime', !!msg.timeRemaining);
+    batteryTimeEl.textContent = msg.timeRemaining ? `${msg.timeRemaining} left` : '';
     batteryEl.title = msg.charging
       ? 'Charging'
       : (msg.timeRemaining ? `${msg.timeRemaining} remaining` : `${Math.round(msg.percent)}% battery`);
