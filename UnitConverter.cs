@@ -86,22 +86,27 @@ public static class UnitConverter
         return (null, $"\"{unitText}\" isn't a unit I recognize.");
     }
 
-    // Converts within a category, returning every OTHER unit's value (the
-    // caller already knows fromKey's own value — it's whatever was typed).
-    public static Dictionary<string, double> ConvertLocal(string category, string fromKey, double value)
+    // A real type, not a ValueTuple — WPF's ComboBox binds to this via
+    // reflection (DisplayMemberPath, SelectedItem casts), and a named
+    // tuple's element names ("Category", "Unit") are compile-time-only
+    // sugar over the real runtime properties Item1/Item2, which reflection
+    // can't see under the names the C# compiler shows. Confirmed this
+    // broke the display (ComboBox.Text came back empty) before switching
+    // to this.
+    public record CategoryUnit(string Category, UnitDef Unit)
     {
-        var units = Categories[category];
-        var from = units.First(u => u.Key == fromKey);
-        var baseValue = from.ToBase(value);
-
-        var result = new Dictionary<string, double>();
-        foreach (var u in units)
-        {
-            if (u.Key == fromKey) continue;
-            result[u.Key] = u.FromBase(baseValue);
-        }
-        return result;
+        public override string ToString() => Unit.Label;
     }
+
+    // Every unit across every category, flattened — the From dropdown picks
+    // from this whole list; the To dropdown is then scoped to whichever
+    // category From turns out to belong to (see SiblingUnits).
+    public static IEnumerable<CategoryUnit> AllUnits =>
+        Categories.SelectMany(kv => kv.Value.Select(u => new CategoryUnit(kv.Key, u)));
+
+    public static UnitDef[] SiblingUnits(string category) => Categories[category];
+
+    public static double Convert(UnitDef from, UnitDef to, double value) => to.FromBase(from.ToBase(value));
 
     public static string FormatNumber(double v) => Math.Round(v, 2).ToString("0.##", CultureInfo.InvariantCulture);
 }

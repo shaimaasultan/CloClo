@@ -1,89 +1,65 @@
 using System.Globalization;
 using System.Linq;
 using System.Windows;
-using System.Windows.Media;
-using Controls = System.Windows.Controls;
-using MediaColor = System.Windows.Media.Color;
 
 namespace CloCloWidget;
 
-// A real converter, not just a one-shot lookup — the value and source unit
-// are both editable, and every other unit in the same category converts
-// and updates live alongside it, entirely locally (no network call).
+// A classic From/To converter — type a number, pick the From unit, pick
+// the To unit, see one result. Replaces an earlier design that showed
+// every other unit in the category at once; this is more direct when you
+// already know exactly which two units you care about.
 public partial class UnitConverterWindow : Window
 {
-    private readonly string _category;
-
-    public UnitConverterWindow(UnitConverter.ParsedSelection parsed)
+    // parsed is optional — a text selection like "5 km" pre-fills the
+    // number and From unit as a convenience, but the window is just as
+    // usable with nothing selected at all, defaulting to 1 km -> mi.
+    public UnitConverterWindow(UnitConverter.ParsedSelection? parsed)
     {
         InitializeComponent();
-        _category = parsed.Category;
-        ValueBox.Text = UnitConverter.FormatNumber(parsed.Value);
 
-        var units = UnitConverter.Categories[_category];
-        UnitCombo.ItemsSource = units;
-        UnitCombo.SelectedItem = units.First(u => u.Key == parsed.UnitKey);
+        var defaultCategory = parsed?.Category ?? "length";
+        var defaultFromKey = parsed?.UnitKey ?? "km";
+        ValueBox.Text = UnitConverter.FormatNumber(parsed?.Value ?? 1);
 
-        ValueBox.TextChanged += (_, _) => RecalculateLocal();
-        UnitCombo.SelectionChanged += (_, _) => RecalculateLocal();
+        FromCombo.ItemsSource = UnitConverter.AllUnits.ToList();
+        FromCombo.SelectedItem = UnitConverter.AllUnits.First(u => u.Category == defaultCategory && u.Unit.Key == defaultFromKey);
 
-        RecalculateLocal();
+        FromCombo.SelectionChanged += (_, _) => RebuildToOptions();
+        ToCombo.SelectionChanged += (_, _) => Recalculate();
+        ValueBox.TextChanged += (_, _) => Recalculate();
+
+        RebuildToOptions();
     }
 
-    private void RecalculateLocal()
+    // Scopes To's choices to whichever category From currently belongs to
+    // (converting km to kg makes no sense), excluding From itself so
+    // picking a pair always means an actual conversion.
+    private void RebuildToOptions()
     {
-        ResultsPanel.Children.Clear();
-        if (UnitCombo.SelectedItem is not UnitConverter.UnitDef fromUnit) return;
+        if (FromCombo.SelectedItem is not UnitConverter.CategoryUnit from) return;
+
+        var siblings = UnitConverter.SiblingUnits(from.Category).Where(u => u.Key != from.Unit.Key).ToList();
+        ToCombo.ItemsSource = siblings;
+        ToCombo.SelectedItem = siblings.FirstOrDefault();
+        Recalculate();
+    }
+
+    private void Recalculate()
+    {
+        ResultBox.Text = "";
+        if (FromCombo.SelectedItem is not UnitConverter.CategoryUnit fromUnit) return;
+        if (ToCombo.SelectedItem is not UnitConverter.UnitDef toUnit) return;
         if (!double.TryParse(ValueBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var value)) return;
 
-        var results = UnitConverter.ConvertLocal(_category, fromUnit.Key, value);
-        foreach (var u in UnitConverter.Categories[_category])
-        {
-            if (u.Key == fromUnit.Key) continue;
-            AddResultRow(u.Label, UnitConverter.FormatNumber(results[u.Key]));
-        }
+        var result = UnitConverter.Convert(fromUnit.Unit, toUnit, value);
+        ResultBox.Text = UnitConverter.FormatNumber(result);
     }
 
-    private void AddResultRow(string label, string value)
+    private void Copy_Click(object sender, RoutedEventArgs e)
     {
-        var grid = new Controls.Grid { Margin = new Thickness(0, 0, 0, 8) };
-        grid.ColumnDefinitions.Add(new Controls.ColumnDefinition { Width = new GridLength(42) });
-        grid.ColumnDefinitions.Add(new Controls.ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        grid.ColumnDefinitions.Add(new Controls.ColumnDefinition { Width = GridLength.Auto });
-
-        var labelBlock = new Controls.TextBlock
-        {
-            Text = label,
-            Foreground = new SolidColorBrush(MediaColor.FromRgb(0xf3, 0xec, 0xdd)),
-            VerticalAlignment = VerticalAlignment.Center,
-            FontWeight = FontWeights.Bold,
-        };
-        Controls.Grid.SetColumn(labelBlock, 0);
-
-        // Background/Foreground/BorderBrush/padding come from the window's
-        // own implicit TextBox style (see UnitConverterWindow.xaml) — only
-        // IsReadOnly needs setting explicitly here, since ValueBox (the
-        // one editable TextBox in this window) must NOT share that.
-        var textBox = new Controls.TextBox
-        {
-            Text = value,
-            Margin = new Thickness(0, 0, 6, 0),
-            IsReadOnly = true,
-        };
-        Controls.Grid.SetColumn(textBox, 1);
-
-        var copyButton = new Controls.Button { Content = "Copy" };
-        Controls.Grid.SetColumn(copyButton, 2);
-        copyButton.Click += (_, _) =>
-        {
-            System.Windows.Clipboard.SetText(value);
-            copyButton.Content = "Copied!";
-        };
-
-        grid.Children.Add(labelBlock);
-        grid.Children.Add(textBox);
-        grid.Children.Add(copyButton);
-        ResultsPanel.Children.Add(grid);
+        if (string.IsNullOrEmpty(ResultBox.Text)) return;
+        System.Windows.Clipboard.SetText(ResultBox.Text);
+        CopyButton.Content = "Copied!";
     }
 
     private void Close_Click(object sender, RoutedEventArgs e) => Close();

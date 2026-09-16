@@ -298,11 +298,10 @@ public partial class MainWindow : Window
         ShowOneShotLabel(title, $"Saved to {Path.GetFileName(path)}");
     }
 
-    // Grabs the current selection the same way ReadSelection does, parses
-    // it as "<number> <unit>" (see UnitConverter.cs for what's actually
-    // recognized), then opens a real converter window — editable value and
-    // source unit, every other unit in the same category converting
-    // alongside it — rather than a single fixed-pair result.
+    // Always opens the converter window — a text selection like "5 km" is
+    // used as a convenience pre-fill (same TextSelectionReader ReadSelection
+    // uses) when there's a valid one, but isn't required; the window itself
+    // is a plain From/To/Number converter you can drive entirely by hand.
     private void ConvertSelection()
     {
         _watchingNotifications = false;
@@ -311,23 +310,19 @@ public partial class MainWindow : Window
 
     private async Task ConvertSelectionAsync()
     {
+        UnitConverter.ParsedSelection? parsed = null;
+
         var target = _lastExternalForegroundWindow;
-        if (target == IntPtr.Zero) return;
-
-        var text = await TextSelectionReader.ReadSelectedTextAsync(target);
-        if (string.IsNullOrWhiteSpace(text))
+        if (target != IntPtr.Zero)
         {
-            ShowOneShotLabel("Nothing selected", "Highlight a number and unit, then click again.");
-            return;
+            var text = await TextSelectionReader.ReadSelectedTextAsync(target);
+            if (!string.IsNullOrWhiteSpace(text))
+            {
+                (parsed, _) = UnitConverter.ParseSelection(text);
+            }
         }
 
-        var (parsed, error) = UnitConverter.ParseSelection(text);
-        if (error != null)
-        {
-            ShowOneShotLabel("Couldn't convert that", error);
-            return;
-        }
-        new UnitConverterWindow(parsed!) { Owner = this }.Show();
+        new UnitConverterWindow(parsed) { Owner = this }.Show();
     }
 
     // Eyedropper: live hex preview while hovering anywhere on screen (not
