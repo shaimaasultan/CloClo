@@ -108,20 +108,12 @@ public partial class MainWindow : Window
     private IntPtr _lastExternalForegroundWindow;
     private DispatcherTimer? _foregroundTrackTimer;
 
-    // Eyedropper state — a live-preview poll rather than a real hook, so
-    // (see StartColorPicking) it can only observe clicks, not swallow them.
-    private DispatcherTimer? _colorPickTimer;
-    private bool _colorPickButtonWasDown;
-
     [DllImport("user32.dll")] private static extern int GetWindowLong(IntPtr hWnd, int nIndex);
     [DllImport("user32.dll")] private static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
     [DllImport("user32.dll")] private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int x, int y, int cx, int cy, uint flags);
     [DllImport("user32.dll")] private static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
     [DllImport("user32.dll")] private static extern IntPtr GetForegroundWindow();
     [DllImport("user32.dll")] private static extern int GetWindowThreadProcessId(IntPtr hWnd, out int lpdwProcessId);
-    [DllImport("user32.dll")] private static extern short GetAsyncKeyState(int vKey);
-    private const int VK_LBUTTON = 0x01;
-    private const int VK_ESCAPE = 0x1B;
     private const byte VK_LWIN = 0x5B;
     private const byte VK_N = 0x4E;
     private const uint KEYEVENTF_KEYUP = 0x0002;
@@ -338,52 +330,43 @@ public partial class MainWindow : Window
     }
 
     // Eyedropper: live hex preview while hovering anywhere on screen (not
-    // just this widget — a global cursor-position poll, since there's no
-    // web API that reaches outside the browser for this), click to copy.
-    // Uses GetAsyncKeyState to notice a new left-click rather than a real
-    // low-level mouse hook — simpler, but can only observe the click, not
-    // swallow it, so whatever's actually under the cursor also receives it
-    // normally. Escape cancels without copying anything.
+    // just this widget), click to copy, Escape to cancel — delegated to
+    // ColorPickerOverlay, a real fullscreen window that genuinely owns the
+    // cursor and the click while it's up. A first attempt polled
+    // GetAsyncKeyState from a background timer instead of using a real
+    // window; that couldn't change the system cursor (whatever real window
+    // was actually under the pointer controlled that) and couldn't stop a
+    // click from also reaching whatever was underneath — both confirmed
+    // broken by user report before switching to this approach.
+    private ColorPickerOverlay? _colorPickerOverlay;
+
     private void StartColorPicking()
     {
         _watchingNotifications = false;
         StopColorPicking(); // in case a previous pick session is still running
 
-        _colorPickButtonWasDown = (GetAsyncKeyState(VK_LBUTTON) & 0x8000) != 0;
-        _colorPickTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(60) };
-        _colorPickTimer.Tick += (_, _) => ColorPickTick();
-        _colorPickTimer.Start();
-    }
-
-    private void ColorPickTick()
-    {
-        var pos = DrawingForms.Cursor.Position;
-        var color = ColorPicker.GetColorAt(pos);
-        var hex = ColorPicker.ToHex(color);
-        ShowOneShotLabel(hex, "Click to copy, Esc to cancel");
-
-        if ((GetAsyncKeyState(VK_ESCAPE) & 0x8000) != 0)
+        _colorPickerOverlay = new ColorPickerOverlay();
+        _colorPickerOverlay.Previewed += color =>
+            ShowOneShotLabel(ColorPicker.ToHex(color), "Click to copy, Esc to cancel");
+        _colorPickerOverlay.Picked += color =>
         {
-            StopColorPicking();
-            ShowOneShotLabel("Cancelled", "");
-            return;
-        }
-
-        var buttonDown = (GetAsyncKeyState(VK_LBUTTON) & 0x8000) != 0;
-        if (buttonDown && !_colorPickButtonWasDown)
-        {
-            StopColorPicking();
+            var hex = ColorPicker.ToHex(color);
             System.Windows.Clipboard.SetText(hex);
             ShowOneShotLabel(hex, "Copied to clipboard");
-            return;
-        }
-        _colorPickButtonWasDown = buttonDown;
+            _colorPickerOverlay = null;
+        };
+        _colorPickerOverlay.Cancelled += () =>
+        {
+            ShowOneShotLabel("Cancelled", "");
+            _colorPickerOverlay = null;
+        };
+        _colorPickerOverlay.Show();
     }
 
     private void StopColorPicking()
     {
-        _colorPickTimer?.Stop();
-        _colorPickTimer = null;
+        _colorPickerOverlay?.Close();
+        _colorPickerOverlay = null;
     }
 
     // "Start new dictation file" menu action — the counterpart to
