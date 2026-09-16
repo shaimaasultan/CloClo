@@ -119,12 +119,18 @@ public partial class MainWindow : Window
     private const byte VK_N = 0x4E;
     private const uint KEYEVENTF_KEYUP = 0x0002;
 
+    // Ordered by actual cloud density (see cloudCoverToSky in widget.html),
+    // not alphabetically — "Mostly Cloudy" (a sun peeking through) is
+    // lighter than "Cloudy" (solid overcast, no sun at all), matching the
+    // same convention Windows' own weather icons use despite how the names
+    // read at first glance.
     private static readonly (string Value, string Label)[] SkyOptions =
     {
         ("auto", "Auto (live)"),
         ("clear", "Clear"),
         ("cloudy", "Partly Cloudy"),
         ("mostlycloudy", "Mostly Cloudy"),
+        ("overcast", "Cloudy"),
         ("windy", "Windy"),
         ("fog", "Fog"),
         ("drizzle", "Drizzle"),
