@@ -98,11 +98,6 @@
      window, since there's no web API for "any pixel on the user's screen,
      even outside the browser"), this icon is just the trigger. */
   #iconColor{ background:transparent; box-shadow:none; font-size:12px; line-height:1; }
-  /* Static-ish info in the label, same mechanism as #iconGpu — the next
-     upcoming item from whatever calendars Windows itself knows about (see
-     CalendarInfo.cs / WatchCalendar in MainWindow.xaml.cs). No AUMID, so
-     clicking the label body afterward does nothing, same as GPU. */
-  #iconCalendar{ background:transparent; box-shadow:none; font-size:12px; line-height:1; }
 
   /* What the watched app is playing (or the latest notification), sitting
      under the icons — hidden until the host reports something, and left
@@ -426,7 +421,6 @@
       <div class="mediaIcon" id="iconMic" title="Dictate (opens Windows Voice Typing)">🎤</div>
       <div class="mediaIcon" id="iconConvert" title="Convert selected unit">💱</div>
       <div class="mediaIcon" id="iconColor" title="Pick a color from the screen">🎨</div>
-      <div class="mediaIcon" id="iconCalendar" title="Next calendar event">📅</div>
     </div>
 
     <div id="nowPlaying">
@@ -614,7 +608,7 @@
   const iconIdByKey = {
     youtube: 'iconYoutube', spotify: 'iconSpotify', bell: 'iconBell',
     search: 'iconSearch', gpu: 'iconGpu', read: 'iconRead', mic: 'iconMic',
-    convert: 'iconConvert', color: 'iconColor', calendar: 'iconCalendar',
+    convert: 'iconConvert', color: 'iconColor',
   };
   const enabledIcons = (params.get('icons') || 'youtube,spotify,bell,search,gpu,read,mic').split(',');
   for (const [key, id] of Object.entries(iconIdByKey)) {
