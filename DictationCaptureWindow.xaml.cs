@@ -1,9 +1,12 @@
 using System;
 using System.Diagnostics;
+using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Input;
+using Media = System.Windows.Media;
 
 namespace CloCloWidget;
 
@@ -31,11 +34,19 @@ public partial class DictationCaptureWindow : Window
     private const uint WM_CLOSE = 0x0010;
     private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
 
+    private const string EnglishLanguageTag = "en-US";
+    private const string ArabicLanguageTag = "ar-EG";
+    private static readonly Media.Brush ActiveLangBrush = new Media.SolidColorBrush(Media.Color.FromRgb(0xc9, 0xa2, 0x4b));
+    private static readonly Media.Brush InactiveLangBrush = new Media.SolidColorBrush(Media.Color.FromRgb(0x3c, 0x2f, 0x1a));
+
+    private string _currentLanguageTag = EnglishLanguageTag;
+
     public string CapturedText { get; private set; } = "";
 
     public DictationCaptureWindow()
     {
         InitializeComponent();
+        UpdateLanguageHighlight();
         Loaded += async (_, _) =>
         {
             CaptureBox.Focus();
@@ -44,8 +55,36 @@ public partial class DictationCaptureWindow : Window
             // Loaded risked it targeting a still-transitioning focus state
             // during testing.
             await Task.Delay(300);
+            InputLanguageManager.Current.CurrentInputLanguage = CultureInfo.GetCultureInfo(_currentLanguageTag);
             OpenVoiceTyping();
         };
+    }
+
+    // There's no public API to tell Voice Typing which language to listen
+    // in — the only lever available is Windows' own active input language,
+    // which it appears to follow. A session already listening doesn't
+    // retroactively pick up a change to that, so switching languages closes
+    // and reopens it rather than just flipping CurrentInputLanguage.
+    private async void English_Click(object sender, RoutedEventArgs e) => await SwitchLanguageAsync(EnglishLanguageTag);
+    private async void Arabic_Click(object sender, RoutedEventArgs e) => await SwitchLanguageAsync(ArabicLanguageTag);
+
+    private async Task SwitchLanguageAsync(string cultureTag)
+    {
+        if (cultureTag == _currentLanguageTag) return;
+        _currentLanguageTag = cultureTag;
+        UpdateLanguageHighlight();
+
+        CloseVoiceTyping();
+        CaptureBox.Focus();
+        InputLanguageManager.Current.CurrentInputLanguage = CultureInfo.GetCultureInfo(cultureTag);
+        await Task.Delay(300);
+        OpenVoiceTyping();
+    }
+
+    private void UpdateLanguageHighlight()
+    {
+        EnglishButton.Background = _currentLanguageTag == EnglishLanguageTag ? ActiveLangBrush : InactiveLangBrush;
+        ArabicButton.Background = _currentLanguageTag == ArabicLanguageTag ? ActiveLangBrush : InactiveLangBrush;
     }
 
     private static void OpenVoiceTyping()
