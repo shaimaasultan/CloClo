@@ -1,4 +1,7 @@
+using System;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
 
@@ -15,11 +18,18 @@ namespace CloCloWidget;
 // focused text target.
 public partial class DictationCaptureWindow : Window
 {
-    [DllImport("user32.dll")] private static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, System.UIntPtr dwExtraInfo);
+    [DllImport("user32.dll")] private static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
     private const byte VK_LWIN = 0x5B;
     private const byte VK_H = 0x48;
-    private const byte VK_ESCAPE = 0x1B;
     private const uint KEYEVENTF_KEYUP = 0x0002;
+
+    [DllImport("user32.dll")] private static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
+    [DllImport("user32.dll")] private static extern int GetClassName(IntPtr hWnd, StringBuilder lpClassName, int nMaxCount);
+    [DllImport("user32.dll")] private static extern bool IsWindowVisible(IntPtr hWnd);
+    [DllImport("user32.dll")] private static extern int GetWindowThreadProcessId(IntPtr hWnd, out int lpdwProcessId);
+    [DllImport("user32.dll")] private static extern bool PostMessage(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
+    private const uint WM_CLOSE = 0x0010;
+    private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
 
     public string CapturedText { get; private set; } = "";
 
@@ -40,22 +50,44 @@ public partial class DictationCaptureWindow : Window
 
     private static void OpenVoiceTyping()
     {
-        keybd_event(VK_LWIN, 0, 0, System.UIntPtr.Zero);
-        keybd_event(VK_H, 0, 0, System.UIntPtr.Zero);
-        keybd_event(VK_H, 0, KEYEVENTF_KEYUP, System.UIntPtr.Zero);
-        keybd_event(VK_LWIN, 0, KEYEVENTF_KEYUP, System.UIntPtr.Zero);
+        keybd_event(VK_LWIN, 0, 0, UIntPtr.Zero);
+        keybd_event(VK_H, 0, 0, UIntPtr.Zero);
+        keybd_event(VK_H, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
+        keybd_event(VK_LWIN, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
     }
 
-    // Escape dismisses Voice Typing's floating UI if it's open, and is a
-    // harmless no-op if it isn't — unlike sending Win+H again, which
-    // TOGGLES it, so if it had already auto-closed on its own (e.g. after a
-    // pause in speech) that would have reopened a fresh instance instead of
-    // closing anything. There's no public API to just ask it to close, or
-    // to check whether it's currently open at all.
+    // Neither re-sending Win+H (it TOGGLES, so it can reopen a session that
+    // already auto-closed on its own) nor sending Escape (Voice Typing's
+    // floating bar never actually takes keyboard focus away from this
+    // window's own textbox, so Escape has nothing to land on) reliably
+    // closes it — confirmed both leaving it open during testing. Its
+    // floating toolbar turned out to just be a normal top-level window
+    // (class "Windows.UI.Core.CoreWindow", hosted by TextInputHost.exe),
+    // so closing it directly with WM_CLOSE is what actually works.
     private static void CloseVoiceTyping()
     {
-        keybd_event(VK_ESCAPE, 0, 0, System.UIntPtr.Zero);
-        keybd_event(VK_ESCAPE, 0, KEYEVENTF_KEYUP, System.UIntPtr.Zero);
+        IntPtr target = IntPtr.Zero;
+        EnumWindows((hWnd, _) =>
+        {
+            if (!IsWindowVisible(hWnd)) return true;
+            var className = new StringBuilder(256);
+            GetClassName(hWnd, className, className.Capacity);
+            if (className.ToString() != "Windows.UI.Core.CoreWindow") return true;
+
+            GetWindowThreadProcessId(hWnd, out var pid);
+            try
+            {
+                if (Process.GetProcessById(pid).ProcessName == "TextInputHost")
+                {
+                    target = hWnd;
+                    return false; // found it, stop enumerating
+                }
+            }
+            catch { /* process exited between enumeration and lookup */ }
+            return true;
+        }, IntPtr.Zero);
+
+        if (target != IntPtr.Zero) PostMessage(target, WM_CLOSE, IntPtr.Zero, IntPtr.Zero);
     }
 
     private void Save_Click(object sender, RoutedEventArgs e)
