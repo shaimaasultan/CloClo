@@ -660,10 +660,27 @@ public partial class MainWindow : Window
 
     private void SetupTrayIcon()
     {
-        var iconPath = Path.Combine(AppContext.BaseDirectory, "Assets", "icon.ico");
+        // Extracted from the exe's own embedded icon (set via ApplicationIcon
+        // in the csproj) rather than loaded from a loose Assets/icon.ico —
+        // that file mysteriously vanished from `dotnet publish`'s output
+        // (present in plain `dotnet build` output, absent after publish)
+        // once ApplicationIcon also pointed at it, so File.Exists() was
+        // silently failing and falling back to the generic system icon.
+        // The exe's own resource doesn't have that problem: it's always
+        // there, in exactly the build that's actually running.
+        System.Drawing.Icon trayIcon;
+        try
+        {
+            trayIcon = System.Drawing.Icon.ExtractAssociatedIcon(Environment.ProcessPath!)
+                ?? System.Drawing.SystemIcons.Application;
+        }
+        catch
+        {
+            trayIcon = System.Drawing.SystemIcons.Application;
+        }
         _trayIcon = new DrawingForms.NotifyIcon
         {
-            Icon = File.Exists(iconPath) ? new System.Drawing.Icon(iconPath) : System.Drawing.SystemIcons.Application,
+            Icon = trayIcon,
             Visible = true,
             Text = "CloClo weather",
         };
