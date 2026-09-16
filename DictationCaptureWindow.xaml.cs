@@ -18,6 +18,7 @@ public partial class DictationCaptureWindow : Window
     [DllImport("user32.dll")] private static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, System.UIntPtr dwExtraInfo);
     private const byte VK_LWIN = 0x5B;
     private const byte VK_H = 0x48;
+    private const byte VK_ESCAPE = 0x1B;
     private const uint KEYEVENTF_KEYUP = 0x0002;
 
     public string CapturedText { get; private set; } = "";
@@ -33,14 +34,11 @@ public partial class DictationCaptureWindow : Window
             // Loaded risked it targeting a still-transitioning focus state
             // during testing.
             await Task.Delay(300);
-            ToggleVoiceTyping();
+            OpenVoiceTyping();
         };
     }
 
-    // Win+H toggles Voice Typing's floating UI open/closed, so sending it
-    // again on the way out closes whatever's left listening — otherwise it
-    // stays open (still listening into nothing) after this window closes.
-    private static void ToggleVoiceTyping()
+    private static void OpenVoiceTyping()
     {
         keybd_event(VK_LWIN, 0, 0, System.UIntPtr.Zero);
         keybd_event(VK_H, 0, 0, System.UIntPtr.Zero);
@@ -48,17 +46,29 @@ public partial class DictationCaptureWindow : Window
         keybd_event(VK_LWIN, 0, KEYEVENTF_KEYUP, System.UIntPtr.Zero);
     }
 
+    // Escape dismisses Voice Typing's floating UI if it's open, and is a
+    // harmless no-op if it isn't — unlike sending Win+H again, which
+    // TOGGLES it, so if it had already auto-closed on its own (e.g. after a
+    // pause in speech) that would have reopened a fresh instance instead of
+    // closing anything. There's no public API to just ask it to close, or
+    // to check whether it's currently open at all.
+    private static void CloseVoiceTyping()
+    {
+        keybd_event(VK_ESCAPE, 0, 0, System.UIntPtr.Zero);
+        keybd_event(VK_ESCAPE, 0, KEYEVENTF_KEYUP, System.UIntPtr.Zero);
+    }
+
     private void Save_Click(object sender, RoutedEventArgs e)
     {
         CapturedText = CaptureBox.Text.Trim();
-        ToggleVoiceTyping();
+        CloseVoiceTyping();
         DialogResult = true;
         Close();
     }
 
     private void Cancel_Click(object sender, RoutedEventArgs e)
     {
-        ToggleVoiceTyping();
+        CloseVoiceTyping();
         DialogResult = false;
         Close();
     }
