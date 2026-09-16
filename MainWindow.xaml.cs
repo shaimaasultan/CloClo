@@ -83,6 +83,24 @@ public partial class MainWindow : Window
 
     private static readonly string[] YoutubeAumids = { "edge", "chrome" };
     private static readonly string[] SpotifyAumids = { "spotify" };
+    // Whichever of these Windows actually recognizes on this machine gets
+    // opened — no single "the Calendar app" AUMID exists across Windows
+    // versions/installs. Tried in this order because new Outlook is what
+    // AppointmentStore's own "Microsoft account" calendar is backed by on
+    // a modern Windows 11 setup; the other two cover machines still on
+    // classic Mail & Calendar or classic desktop Outlook. Deep-linking to
+    // the specific appointment/contact (AppointmentManager.
+    // ShowAppointmentDetailsAsync / ContactManager.ShowContactCard) was
+    // tried first and confirmed NOT to work for an unpackaged app like this
+    // one — the former throws ERROR_NOT_SUPPORTED even with a real HWND
+    // initialized, the latter returns without throwing but never actually
+    // shows anything — so this just opens the app itself instead.
+    private static readonly string[] CalendarAumids =
+    {
+        "Microsoft.OutlookForWindows_8wekyb3d8bbwe!Microsoft.OutlookforWindows",
+        "microsoft.windowscommunicationsapps_8wekyb3d8bbwe!microsoft.windowslive.calendar",
+        "Microsoft.Office.OUTLOOK.EXE.15",
+    };
 
     // Whatever the label is currently following — set by clicking an icon,
     // kept live by _nowPlayingTimer until it actually stops (rather than a
@@ -93,6 +111,12 @@ public partial class MainWindow : Window
     // Icon is a data: URI (notifications only — media has none) or null.
     private Func<Task<(string Title, string Subtitle, string? Icon, string? AppUserModelId)?>>? _watchedFetcher;
     private string? _watchedAppUserModelId;
+    // Set only by WatchCalendar, cleared whenever a different Watch*/
+    // ShowOneShotLabel call starts — there's no single AUMID for "whatever
+    // handles Calendar/Contacts" the way there is for a specific running
+    // media session, so this is a priority list tried at click time instead
+    // (see AppLauncher.TryActivateFirst).
+    private string[]? _watchedAppUserModelIdCandidates;
     // Notifications aren't really "one app" the way media is — the label
     // shows only the latest of possibly several, so clicking it opens
     // Windows' own notification flyout (the full list) rather than
@@ -241,16 +265,19 @@ public partial class MainWindow : Window
     // Same reasoning as WatchGpus — not something that actually changes
     // second to second, but reusing the label/poll/pause mechanism beats a
     // separate one-shot display, and re-querying Windows' AppointmentStore
-    // every few seconds is cheap (see CalendarInfo.cs). No AUMID either —
-    // there's no single app to launch for "a calendar event" in general.
+    // every few seconds is cheap (see CalendarInfo.cs). Clicking the label
+    // opens whichever calendar/contacts app is actually installed (see
+    // CalendarAumids) rather than the specific event — there's no reliable
+    // way to deep-link one from an unpackaged app.
     private void WatchCalendar()
     {
         _watchingNotifications = false;
         Watch(async () =>
         {
             var next = await CalendarInfo.GetNextAsync();
+            _watchedAppUserModelIdCandidates = CalendarAumids;
             return next == null
-                ? ("No upcoming events", "Nothing on your calendar in the next 14 days.", (string?)null, (string?)null)
+                ? ("No upcoming events", "Nothing on your calendar or contacts' birthdays.", (string?)null, (string?)null)
                 : (next.Subject, FormatEventTime(next), (string?)null, (string?)null);
         });
     }
@@ -417,6 +444,7 @@ public partial class MainWindow : Window
     {
         _watchedFetcher = () => Task.FromResult<(string, string, string?, string?)?>((title, subtitle, null, null));
         _watchedAppUserModelId = null;
+        _watchedAppUserModelIdCandidates = null;
         _nowPlayingTimer?.Stop();
         _ = RefreshWatched();
     }
@@ -424,6 +452,7 @@ public partial class MainWindow : Window
     private void Watch(Func<Task<(string Title, string Subtitle, string? Icon, string? AppUserModelId)?>> fetcher)
     {
         _watchedFetcher = fetcher;
+        _watchedAppUserModelIdCandidates = null;
         _nowPlayingTimer ??= CreateNowPlayingTimer();
         _nowPlayingTimer.Start(); // idempotent — resumes it if the pause button stopped it earlier
         _ = RefreshWatched();
@@ -436,6 +465,7 @@ public partial class MainWindow : Window
     {
         _watchedFetcher = null;
         _watchedAppUserModelId = null;
+        _watchedAppUserModelIdCandidates = null;
         _nowPlayingTimer?.Stop();
         SpeechReader.Stop();
         StopColorPicking();
@@ -446,7 +476,11 @@ public partial class MainWindow : Window
     // launches whichever app it's showing — media or notification alike —
     // using the AUMID captured from the last successful poll rather than
     // re-querying on click.
-    private void OpenWatchedApp() => AppLauncher.TryActivate(_watchedAppUserModelId);
+    private void OpenWatchedApp()
+    {
+        if (_watchedAppUserModelIdCandidates != null) AppLauncher.TryActivateFirst(_watchedAppUserModelIdCandidates);
+        else AppLauncher.TryActivate(_watchedAppUserModelId);
+    }
 
     // The list button, notifications only — opens the full list instead
     // of launching just the one app that sent the latest notification.
@@ -690,7 +724,7 @@ public partial class MainWindow : Window
             OpenNotificationFlyout();
             return;
         }
-        if (LabelBodyRect.Contains(p) && _watchedFetcher != null && _watchedAppUserModelId != null)
+        if (LabelBodyRect.Contains(p) && _watchedFetcher != null && (_watchedAppUserModelId != null || _watchedAppUserModelIdCandidates != null))
         {
             OpenWatchedApp();
             return;

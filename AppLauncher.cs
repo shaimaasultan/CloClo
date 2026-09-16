@@ -12,16 +12,39 @@ public static class AppLauncher
     public static void TryActivate(string? appUserModelId)
     {
         if (string.IsNullOrWhiteSpace(appUserModelId)) return;
+        TryActivateChecked(appUserModelId);
+    }
+
+    // For cases where we know roughly which app should handle something
+    // (e.g. "whatever handles Calendar/Contacts") but not exactly which one
+    // is installed, since that varies by machine and Windows version — new
+    // Outlook vs. classic Mail & Calendar vs. classic desktop Outlook, etc.
+    // Tries each in order and stops at the first one Windows actually
+    // recognizes, checked via the real HRESULT rather than just "didn't
+    // throw" (ActivateApplication uses PreserveSig — a bad AUMID returns a
+    // failure code here, it doesn't throw).
+    public static void TryActivateFirst(params string[] appUserModelIds)
+    {
+        foreach (var id in appUserModelIds)
+        {
+            if (TryActivateChecked(id)) return;
+        }
+    }
+
+    private static bool TryActivateChecked(string appUserModelId)
+    {
         try
         {
             var manager = (IApplicationActivationManager)new ApplicationActivationManager();
-            manager.ActivateApplication(appUserModelId, string.Empty, ActivateOptions.None, out _);
+            var hr = manager.ActivateApplication(appUserModelId, string.Empty, ActivateOptions.None, out _);
+            return hr == 0;
         }
         catch
         {
             // Not every AUMID we see is activatable this way (e.g. a
             // browser's own generic id without a specific PWA registration)
             // — best-effort, nothing to do if it fails.
+            return false;
         }
     }
 
