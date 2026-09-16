@@ -266,21 +266,19 @@ public partial class MainWindow : Window
 
     // Voice dictation, appended to a running text file rather than just
     // shown in the label — there's nothing to copy/paste, it's just there
-    // the next time you open the file. Also a one-shot action like
-    // ReadSelection above, for the same reason: nothing here should repeat
-    // itself on a timer.
-    private async Task DictateAsync(string languageTag)
+    // the next time you open the file. Delegates the actual listening to
+    // Windows' own Voice Typing (see DictationCaptureWindow) rather than
+    // calling WinRT's SpeechRecognizer directly (still available in
+    // SpeechToText.RecognizeAsync) — Voice Typing reliably captured real
+    // audio on this machine when SpeechRecognizer did not, traced to which
+    // input device held Windows' "Default Device" role.
+    private void OpenDictationCapture()
     {
         _watchingNotifications = false;
-        ShowOneShotLabel("Listening…", "");
+        var dialog = new DictationCaptureWindow { Owner = this };
+        if (dialog.ShowDialog() != true || string.IsNullOrWhiteSpace(dialog.CapturedText)) return;
 
-        var (text, error) = await SpeechToText.RecognizeAsync(languageTag);
-        if (error != null)
-        {
-            ShowOneShotLabel("Dictation failed", error);
-            return;
-        }
-
+        var text = dialog.CapturedText;
         var path = _settings.DictationFilePath;
         if (string.IsNullOrEmpty(path) || !File.Exists(path))
         {
@@ -288,10 +286,10 @@ public partial class MainWindow : Window
             _settings.DictationFilePath = path;
             _settings.Save();
         }
-        SpeechToText.Append(path, text!);
+        SpeechToText.Append(path, text);
 
         const int titleLimit = 60;
-        var title = text!.Length > titleLimit ? text[..titleLimit] + "…" : text;
+        var title = text.Length > titleLimit ? text[..titleLimit] + "…" : text;
         ShowOneShotLabel(title, $"Saved to {Path.GetFileName(path)}");
     }
 
@@ -483,20 +481,7 @@ public partial class MainWindow : Window
             Top = Top + AvatarOffsetY,
         };
         _avatarWindow.PreviewMouseLeftButtonDown += AvatarWindow_MouseLeftButtonDown;
-        _avatarWindow.MouseRightButtonUp += (_, e) =>
-        {
-            // Right-click normally opens the context menu everywhere on the
-            // avatar — except over the mic icon, which uses it for Arabic
-            // dictation instead (there's no icon-bar room for a second mic
-            // icon, and unlike ReadSelection there's no way to detect which
-            // language you're about to speak before you've said it).
-            if (MicIconRect.Contains(e.GetPosition(_avatarWindow)))
-            {
-                _ = DictateAsync(SpeechToText.ArabicLanguageTag);
-                return;
-            }
-            ShowContextMenuAtCursor();
-        };
+        _avatarWindow.MouseRightButtonUp += (_, _) => ShowContextMenuAtCursor();
         _avatarWindow.LocationChanged += (_, _) =>
         {
             Left = _avatarWindow.Left - AvatarOffsetX;
@@ -548,7 +533,7 @@ public partial class MainWindow : Window
         }
         if (MicIconRect.Contains(p))
         {
-            _ = DictateAsync(SpeechToText.EnglishLanguageTag);
+            OpenDictationCapture();
             return;
         }
         if (PauseIconRect.Contains(p) && _watchedFetcher != null)

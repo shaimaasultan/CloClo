@@ -75,11 +75,13 @@
      like the others, since re-simulating Ctrl+C every few seconds into
      whatever now has focus would be actively disruptive. */
   #iconRead{ background:transparent; box-shadow:none; font-size:12px; line-height:1; }
-  /* One-shot voice dictation (see SpeechToText.cs) — left-click dictates in
-     English, right-click in Arabic (there's no way to auto-detect which
-     language you're about to speak the way ReadSelection can detect a
-     script after the fact), appended to a running text file rather than
-     just shown here, so nothing needs copying out of the label by hand. */
+  /* Voice dictation — opens a small text-capture window (see
+     DictationCaptureWindow.xaml.cs) and triggers Windows' own Voice Typing
+     (Win+H) to type into it, rather than calling WinRT's SpeechRecognizer
+     directly (see SpeechToText.cs) — Voice Typing reliably captured real
+     audio on the dev machine when SpeechRecognizer did not, and it handles
+     its own language switching, so there's no separate Arabic click here.
+     Appended to a running text file, so nothing needs copying out by hand. */
   #iconMic{ background:transparent; box-shadow:none; font-size:12px; line-height:1; }
 
   /* What the watched app is playing (or the latest notification), sitting
@@ -328,7 +330,7 @@
       <div class="mediaIcon" id="iconSearch" title="Other apps playing media">🔍</div>
       <div class="mediaIcon" id="iconGpu" title="GPUs in this system">🖥️</div>
       <div class="mediaIcon" id="iconRead" title="Read selected text aloud">🗣️</div>
-      <div class="mediaIcon" id="iconMic" title="Dictate: click = English, right-click = Arabic">🎤</div>
+      <div class="mediaIcon" id="iconMic" title="Dictate (opens Windows Voice Typing)">🎤</div>
     </div>
 
     <div id="nowPlaying">
