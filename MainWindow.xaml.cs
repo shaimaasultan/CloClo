@@ -353,6 +353,7 @@ public partial class MainWindow : Window
             var hex = ColorPicker.ToHex(color);
             System.Windows.Clipboard.SetText(hex);
             ShowOneShotLabel(hex, "Copied to clipboard");
+            new ColorViewerWindow(color) { Owner = this }.Show();
             _colorPickerOverlay = null;
         };
         _colorPickerOverlay.Cancelled += () =>
