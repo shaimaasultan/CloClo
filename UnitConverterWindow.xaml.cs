@@ -1,19 +1,15 @@
 using System.Globalization;
 using System.Linq;
 using System.Windows;
-using System.Windows.Input;
 using System.Windows.Media;
 using Controls = System.Windows.Controls;
 using MediaColor = System.Windows.Media.Color;
 
 namespace CloCloWidget;
 
-// A real converter, not just a one-shot lookup — the value and source
-// unit/currency are both editable, and every other unit in the same
-// category converts and updates alongside it. Local categories (length/
-// weight/temperature) recompute live on every keystroke since it's cheap
-// local math; currency needs a network call, so it converts on Enter/the
-// Convert button instead of on every keystroke.
+// A real converter, not just a one-shot lookup — the value and source unit
+// are both editable, and every other unit in the same category converts
+// and updates live alongside it, entirely locally (no network call).
 public partial class UnitConverterWindow : Window
 {
     private readonly string _category;
@@ -24,32 +20,14 @@ public partial class UnitConverterWindow : Window
         _category = parsed.Category;
         ValueBox.Text = UnitConverter.FormatNumber(parsed.Value);
 
-        if (_category == "currency")
-        {
-            var codes = UnitConverter.CommonCurrencies.Contains(parsed.UnitKey)
-                ? UnitConverter.CommonCurrencies
-                : new[] { parsed.UnitKey }.Concat(UnitConverter.CommonCurrencies).ToArray();
-            foreach (var code in codes) UnitCombo.Items.Add(code);
-            UnitCombo.SelectedItem = parsed.UnitKey;
+        var units = UnitConverter.Categories[_category];
+        UnitCombo.ItemsSource = units;
+        UnitCombo.SelectedItem = units.First(u => u.Key == parsed.UnitKey);
 
-            CurrencyConvertButton.Visibility = Visibility.Visible;
-            CurrencyConvertButton.Click += (_, _) => _ = RecalculateCurrencyAsync();
-            ValueBox.KeyDown += (_, e) => { if (e.Key == Key.Return) _ = RecalculateCurrencyAsync(); };
-            UnitCombo.SelectionChanged += (_, _) => _ = RecalculateCurrencyAsync();
+        ValueBox.TextChanged += (_, _) => RecalculateLocal();
+        UnitCombo.SelectionChanged += (_, _) => RecalculateLocal();
 
-            _ = RecalculateCurrencyAsync();
-        }
-        else
-        {
-            var units = UnitConverter.Categories[_category];
-            UnitCombo.ItemsSource = units;
-            UnitCombo.SelectedItem = units.First(u => u.Key == parsed.UnitKey);
-
-            ValueBox.TextChanged += (_, _) => RecalculateLocal();
-            UnitCombo.SelectionChanged += (_, _) => RecalculateLocal();
-
-            RecalculateLocal();
-        }
+        RecalculateLocal();
     }
 
     private void RecalculateLocal()
@@ -63,33 +41,6 @@ public partial class UnitConverterWindow : Window
         {
             if (u.Key == fromUnit.Key) continue;
             AddResultRow(u.Label, UnitConverter.FormatNumber(results[u.Key]));
-        }
-    }
-
-    private async System.Threading.Tasks.Task RecalculateCurrencyAsync()
-    {
-        if (UnitCombo.SelectedItem is not string fromCode) return;
-        if (!double.TryParse(ValueBox.Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var value))
-        {
-            ResultsPanel.Children.Clear();
-            return;
-        }
-
-        var (results, error) = await UnitConverter.ConvertCurrencyMultiAsync(value, fromCode);
-        ResultsPanel.Children.Clear();
-        if (error != null)
-        {
-            ResultsPanel.Children.Add(new Controls.TextBlock
-            {
-                Text = error,
-                Foreground = new SolidColorBrush(MediaColor.FromRgb(0xc9, 0xa2, 0x4b)),
-                TextWrapping = TextWrapping.Wrap,
-            });
-            return;
-        }
-        foreach (var (code, val) in results!)
-        {
-            AddResultRow(code, UnitConverter.FormatNumber(val));
         }
     }
 

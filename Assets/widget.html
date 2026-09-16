@@ -89,8 +89,8 @@
      Appended to a running text file, so nothing needs copying out by hand. */
   #iconMic{ background:transparent; box-shadow:none; font-size:12px; line-height:1; }
   /* Converts a selected "<number> <unit>" phrase (see UnitConverter.cs) —
-     length/weight/temperature done locally, currency via a live exchange
-     rate lookup. One-shot, like Read/Mic above. */
+     length/weight/temperature, done entirely locally, no network call.
+     Opens an editable converter window rather than a one-shot result. */
   #iconConvert{ background:transparent; box-shadow:none; font-size:12px; line-height:1; }
   /* Eyedropper — click, then hover anywhere on screen (not just this
      widget) to see the live hex code under the cursor, click again to copy
@@ -385,7 +385,7 @@
       <div class="mediaIcon" id="iconGpu" title="GPUs in this system">🖥️</div>
       <div class="mediaIcon" id="iconRead" title="Read selected text aloud">🗣️</div>
       <div class="mediaIcon" id="iconMic" title="Dictate (opens Windows Voice Typing)">🎤</div>
-      <div class="mediaIcon" id="iconConvert" title="Convert selected unit or currency">💱</div>
+      <div class="mediaIcon" id="iconConvert" title="Convert selected unit">💱</div>
       <div class="mediaIcon" id="iconColor" title="Pick a color from the screen">🎨</div>
     </div>
 

@@ -301,8 +301,8 @@ public partial class MainWindow : Window
     // Grabs the current selection the same way ReadSelection does, parses
     // it as "<number> <unit>" (see UnitConverter.cs for what's actually
     // recognized), then opens a real converter window — editable value and
-    // source unit, every other unit/currency in the same category
-    // converting alongside it — rather than a single fixed-pair result.
+    // source unit, every other unit in the same category converting
+    // alongside it — rather than a single fixed-pair result.
     private void ConvertSelection()
     {
         _watchingNotifications = false;
@@ -871,7 +871,7 @@ public partial class MainWindow : Window
         ("gpu", "GPU info"),
         ("read", "Read selection aloud"),
         ("mic", "Dictate"),
-        ("convert", "Convert unit/currency"),
+        ("convert", "Convert units"),
         ("color", "Color picker"),
     };
 
