@@ -56,7 +56,7 @@ public partial class MainWindow : Window
     // currently enabled.
     private static readonly string[] IconOrder =
     {
-        "youtube", "spotify", "bell", "search", "gpu", "read", "mic", "convert", "color", "qr",
+        "youtube", "spotify", "bell", "search", "gpu", "read", "mic", "convert", "color", "qr", "volume",
     };
     private const double IconWidth = 18, IconGap = 2, IconTop = 187, IconHeight = 20;
     // Matches #mediaBar's own left:10px anchor (stage x=10, i.e. relative
@@ -301,6 +301,24 @@ public partial class MainWindow : Window
             // accidentally selected instead of a link will blow past it.
             ShowOneShotLabel("Too much text for a QR code", "Try selecting just a link or a short line.");
         }
+    }
+
+    // A quick toggle, not a watch or a window — mute state can (and does)
+    // change from outside the widget too (hardware keys, other apps), so
+    // this always reads+flips the real current state rather than tracking
+    // its own, and just flashes the result in the label rather than
+    // keeping something continuously in sync with it.
+    private void ToggleVolume()
+    {
+        _watchingNotifications = false;
+        var state = VolumeControl.ToggleMute();
+        if (state == null)
+        {
+            ShowOneShotLabel("Couldn't reach volume control", "");
+            return;
+        }
+        var title = state.Muted ? "Muted" : $"{Math.Round(state.Level * 100)}% volume";
+        ShowOneShotLabel(title, "");
     }
 
     // Voice dictation, appended to a running text file rather than just
@@ -682,6 +700,11 @@ public partial class MainWindow : Window
             ShowQrCode();
             return;
         }
+        if (icons.TryGetValue("volume", out var volumeRect) && volumeRect.Contains(p))
+        {
+            ToggleVolume();
+            return;
+        }
         if (PauseIconRect.Contains(p) && _watchedFetcher != null)
         {
             StopWatching();
@@ -929,6 +952,7 @@ public partial class MainWindow : Window
         ("convert", "Convert units"),
         ("color", "Color picker"),
         ("qr", "QR code from selection"),
+        ("volume", "Volume/mute toggle"),
     };
 
     private DrawingForms.ToolStripMenuItem BuildIconsMenu()
