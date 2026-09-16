@@ -56,7 +56,7 @@ public partial class MainWindow : Window
     // currently enabled.
     private static readonly string[] IconOrder =
     {
-        "youtube", "spotify", "bell", "search", "gpu", "read", "mic", "convert", "color",
+        "youtube", "spotify", "bell", "search", "gpu", "read", "mic", "convert", "color", "calendar",
     };
     private const double IconWidth = 18, IconGap = 2, IconTop = 187, IconHeight = 20;
     // Matches #mediaBar's own left:10px anchor (stage x=10, i.e. relative
@@ -236,6 +236,36 @@ public partial class MainWindow : Window
             var subtitle = names.Count > 1 ? string.Join(", ", names.Skip(1)) : "";
             return (title, subtitle, (string?)null, (string?)null);
         });
+    }
+
+    // Same reasoning as WatchGpus — not something that actually changes
+    // second to second, but reusing the label/poll/pause mechanism beats a
+    // separate one-shot display, and re-querying Windows' AppointmentStore
+    // every few seconds is cheap (see CalendarInfo.cs). No AUMID either —
+    // there's no single app to launch for "a calendar event" in general.
+    private void WatchCalendar()
+    {
+        _watchingNotifications = false;
+        Watch(async () =>
+        {
+            var next = await CalendarInfo.GetNextAsync();
+            return next == null
+                ? ("No upcoming events", "Nothing on your calendar in the next 14 days.", (string?)null, (string?)null)
+                : (next.Subject, FormatEventTime(next), (string?)null, (string?)null);
+        });
+    }
+
+    private static string FormatEventTime(CalendarInfo.NextEvent next)
+    {
+        var start = next.StartTime;
+        var today = DateTimeOffset.Now.Date;
+        if (next.IsAllDay)
+        {
+            return start.Date == today ? "All day, today" : start.ToString("ddd, MMM d");
+        }
+        if (start.Date == today) return $"Today, {start:h:mm tt}";
+        if (start.Date == today.AddDays(1)) return $"Tomorrow, {start:h:mm tt}";
+        return start.ToString("ddd, MMM d, h:mm tt");
     }
 
     // A one-shot action, not a watch — grabs whatever's currently
@@ -645,6 +675,11 @@ public partial class MainWindow : Window
             StartColorPicking();
             return;
         }
+        if (icons.TryGetValue("calendar", out var calendarRect) && calendarRect.Contains(p))
+        {
+            WatchCalendar();
+            return;
+        }
         if (PauseIconRect.Contains(p) && _watchedFetcher != null)
         {
             StopWatching();
@@ -891,6 +926,7 @@ public partial class MainWindow : Window
         ("mic", "Dictate"),
         ("convert", "Convert units"),
         ("color", "Color picker"),
+        ("calendar", "Next calendar event"),
     };
 
     private DrawingForms.ToolStripMenuItem BuildIconsMenu()
