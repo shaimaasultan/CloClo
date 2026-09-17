@@ -34,6 +34,10 @@ public class WidgetSettings
     // IdleDetection.cs) before Keeper visually falls asleep — 0 means
     // never. Picked from the right-click menu's "Sleep after" submenu.
     public int SleepAfterMinutes { get; set; } = 5;
+    // How long a stretch of continuous activity (no break of at least a
+    // couple of minutes) before Keeper nudges a stretch break — 0 means
+    // never. Picked from the right-click menu's "Workout reminder" submenu.
+    public int WorkoutAfterMinutes { get; set; } = 15;
 
     private static string FolderPath =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "CloCloWidget");

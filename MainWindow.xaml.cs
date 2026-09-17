@@ -20,7 +20,13 @@ public partial class MainWindow : Window
     private DispatcherTimer? _topmostTimer;
     private DispatcherTimer? _batteryTimer;
     private DispatcherTimer? _idleTimer;
-    private bool _isAsleep;
+    // "awake", "asleep", or "workout" — see UpdateActivityState.
+    private string _activityState = "awake";
+    // When the current unbroken stretch of activity began — reset every
+    // time a real break (BreakThreshold) is seen, so WorkoutAfterMinutes
+    // measures time since the last actual pause, not time since launch.
+    private DateTime _activeStreakStart = DateTime.Now;
+    private static readonly TimeSpan BreakThreshold = TimeSpan.FromMinutes(2);
     private Window? _avatarWindow;
 
     private const int GWL_EXSTYLE = -20;
@@ -190,7 +196,7 @@ public partial class MainWindow : Window
         // was showing. Push a fresh one once the new page is actually ready,
         // rather than relying on "did it change" — from the host's side
         // nothing changed, but the page lost it regardless.
-        Web.CoreWebView2.NavigationCompleted += (_, _) => { _ = RefreshWatched(); RefreshBattery(); PushSleepState(); };
+        Web.CoreWebView2.NavigationCompleted += (_, _) => { _ = RefreshWatched(); RefreshBattery(); PushActivityState(); };
 
         NavigateToWidget();
     }
@@ -828,27 +834,43 @@ public partial class MainWindow : Window
     // idle counter (see IdleDetection.cs) on a slow timer, same shape as
     // the battery timer above. Nothing is "listening" for input; this just
     // asks, occasionally, how long it's been. Every icon still works
-    // exactly the same whether Keeper's asleep or not.
+    // exactly the same in any activity state.
     private void SetupIdleTimer()
     {
         _idleTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(15) };
-        _idleTimer.Tick += (_, _) => UpdateSleepState();
+        _idleTimer.Tick += (_, _) => UpdateActivityState();
         _idleTimer.Start();
     }
 
-    private void UpdateSleepState()
+    // Three states, sleep takes priority over the workout nudge (if you've
+    // actually stepped away, you don't also need a "take a break" pose):
+    // - asleep: idle for at least SleepAfterMinutes.
+    // - workout: SleepAfterMinutes hasn't tripped, but it's been at least
+    //   WorkoutAfterMinutes since the last real break (any idle stretch of
+    //   BreakThreshold+, which resets the streak clock below).
+    // - awake: neither.
+    private void UpdateActivityState()
     {
-        var threshold = _settings.SleepAfterMinutes;
-        var shouldSleep = threshold > 0 && IdleDetection.TimeSinceLastInput() >= TimeSpan.FromMinutes(threshold);
-        if (shouldSleep == _isAsleep) return;
+        var idle = IdleDetection.TimeSinceLastInput();
+        if (idle >= BreakThreshold) _activeStreakStart = DateTime.Now;
 
-        _isAsleep = shouldSleep;
-        PushSleepState();
+        var sleepThreshold = _settings.SleepAfterMinutes;
+        var isAsleep = sleepThreshold > 0 && idle >= TimeSpan.FromMinutes(sleepThreshold);
+
+        var workoutThreshold = _settings.WorkoutAfterMinutes;
+        var isWorkoutTime = !isAsleep && workoutThreshold > 0
+            && DateTime.Now - _activeStreakStart >= TimeSpan.FromMinutes(workoutThreshold);
+
+        var state = isAsleep ? "asleep" : isWorkoutTime ? "workout" : "awake";
+        if (state == _activityState) return;
+
+        _activityState = state;
+        PushActivityState();
     }
 
-    private void PushSleepState()
+    private void PushActivityState()
     {
-        try { Web.CoreWebView2?.PostWebMessageAsJson($"{{\"type\":\"sleep\",\"asleep\":{(_isAsleep ? "true" : "false")}}}"); } catch { /* page not ready yet */ }
+        try { Web.CoreWebView2?.PostWebMessageAsJson($"{{\"type\":\"activity\",\"state\":{JsonSerializer.Serialize(_activityState)}}}"); } catch { /* page not ready yet */ }
     }
 
     private void SetupForegroundTracking()
@@ -985,6 +1007,7 @@ public partial class MainWindow : Window
         menu.Items.Add(BuildSkyMenu());
         menu.Items.Add(BuildIconsMenu());
         menu.Items.Add(BuildSleepMenu());
+        menu.Items.Add(BuildWorkoutMenu());
         menu.Items.Add("Refresh weather", null, (_, _) => NavigateToWidget());
         menu.Items.Add("Start new dictation file", null, (_, _) => StartNewDictationFile());
         var topMost = new DrawingForms.ToolStripMenuItem("Always on top", null, (_, _) => ToggleAlwaysOnTop()) { Checked = _settings.AlwaysOnTop };
@@ -1038,11 +1061,43 @@ public partial class MainWindow : Window
                 _settings.Save();
                 foreach (var it in items) it.Checked = false;
                 items[Array.FindIndex(SleepOptions, o => o.Minutes == minutes)].Checked = true;
-                UpdateSleepState(); // e.g. picking "Never" wakes it right away
+                UpdateActivityState(); // e.g. picking "Never" wakes it right away
             };
             sleepMenu.DropDownItems.Add(items[i]);
         }
         return sleepMenu;
+    }
+
+    private static readonly (int Minutes, string Label)[] WorkoutOptions =
+    {
+        (0, "Off"),
+        (15, "15 minutes"),
+        (30, "30 minutes"),
+        (45, "45 minutes"),
+        (60, "1 hour"),
+    };
+
+    private DrawingForms.ToolStripMenuItem BuildWorkoutMenu()
+    {
+        var workoutMenu = new DrawingForms.ToolStripMenuItem("Workout reminder");
+        var items = WorkoutOptions
+            .Select(opt => new DrawingForms.ToolStripMenuItem(opt.Label) { Checked = _settings.WorkoutAfterMinutes == opt.Minutes })
+            .ToArray();
+        for (int i = 0; i < items.Length; i++)
+        {
+            var minutes = WorkoutOptions[i].Minutes;
+            items[i].Click += (_, _) =>
+            {
+                _settings.WorkoutAfterMinutes = minutes;
+                _settings.Save();
+                foreach (var it in items) it.Checked = false;
+                items[Array.FindIndex(WorkoutOptions, o => o.Minutes == minutes)].Checked = true;
+                _activeStreakStart = DateTime.Now; // start the new threshold's countdown fresh, not mid-streak
+                UpdateActivityState();
+            };
+            workoutMenu.DropDownItems.Add(items[i]);
+        }
+        return workoutMenu;
     }
 
     // Display names for the same keys ComputeIconRects/IconOrder use —
