@@ -426,9 +426,9 @@
         </g>
 
         <path id="armL" d="M35 80 Q28 92 31 102" stroke="var(--sweater)" stroke-width="7" stroke-linecap="round" fill="none" />
-        <circle cx="31" cy="102" r="4" fill="#e8b98c" />
+        <circle id="handL" cx="31" cy="102" r="4" fill="#e8b98c" />
         <path id="armR" d="M65 80 Q72 92 69 102" stroke="var(--sweater)" stroke-width="7" stroke-linecap="round" fill="none" />
-        <circle cx="69" cy="102" r="4" fill="#e8b98c" />
+        <circle id="handR" cx="69" cy="102" r="4" fill="#e8b98c" />
 
         <!-- Arms-overhead stretch, shown instead of the normal hanging arms
              above during a workout-reminder (see the "activity" message
@@ -620,6 +620,8 @@
   const zzzEl = document.getElementById('zzz');
   const armL = document.getElementById('armL');
   const armR = document.getElementById('armR');
+  const handL = document.getElementById('handL');
+  const handR = document.getElementById('handR');
   const workoutArms = document.getElementById('workoutArms');
   const workoutCountdownEl = document.getElementById('workoutCountdown');
 
@@ -640,6 +642,8 @@
       eyesClosed.style.display = sleeping ? '' : 'none';
       armL.style.display = working ? 'none' : '';
       armR.style.display = working ? 'none' : '';
+      handL.style.display = working ? 'none' : '';
+      handR.style.display = working ? 'none' : '';
       workoutArms.style.display = working ? '' : 'none';
       workoutCountdownEl.style.display = working ? '' : 'none';
     }
