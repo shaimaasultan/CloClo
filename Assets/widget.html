@@ -372,6 +372,15 @@
           <path d="M24 94 Q50 88 76 94" stroke="var(--metal1)" stroke-opacity="0.3" stroke-width="1" fill="none" />
         </g>
 
+        <!-- Counts down the break Keeper's taking during a workout nudge
+             (see PushActivityState in MainWindow.xaml.cs) — right on the
+             shirt since that's exactly where a real stopwatch would sit.
+             Ends on its own once secondsLeft hits 0, regardless of
+             whether you've actually stopped, then back to normal. -->
+        <text id="workoutCountdown" x="50" y="93" text-anchor="middle"
+              font-family="'IBM Plex Mono', 'Segoe UI', monospace" font-weight="700"
+              font-size="9" fill="#f3ecdd" style="display:none">2:00</text>
+
         <g id="head">
           <circle id="raincoatHoodBack" cx="50" cy="49" r="27" fill="#e2b640" style="display:none" />
           <circle cx="27.5" cy="53" r="4.5" fill="#e8b98c" />
@@ -612,30 +621,41 @@
   const armL = document.getElementById('armL');
   const armR = document.getElementById('armR');
   const workoutArms = document.getElementById('workoutArms');
+  const workoutCountdownEl = document.getElementById('workoutCountdown');
 
-  function setActivityState(state) {
-    if (state === activityState) return;
-    activityState = state;
-    const sleeping = state === 'asleep';
-    const working = state === 'workout';
+  function setActivityState(state, secondsLeft) {
+    if (state !== activityState) {
+      activityState = state;
+      const sleeping = state === 'asleep';
+      const working = state === 'workout';
 
-    document.body.classList.toggle('sleeping', sleeping);
-    document.body.classList.toggle('working-out', working);
+      document.body.classList.toggle('sleeping', sleeping);
+      document.body.classList.toggle('working-out', working);
 
-    mouthAwake.style.display = (sleeping || working) ? 'none' : '';
-    mouthSleep.style.display = sleeping ? '' : 'none';
-    mouthWorkout.style.display = working ? '' : 'none';
-    zzzEl.style.display = sleeping ? '' : 'none';
-    eyesOpen.style.display = sleeping ? 'none' : '';
-    eyesClosed.style.display = sleeping ? '' : 'none';
-    armL.style.display = working ? 'none' : '';
-    armR.style.display = working ? 'none' : '';
-    workoutArms.style.display = working ? '' : 'none';
+      mouthAwake.style.display = (sleeping || working) ? 'none' : '';
+      mouthSleep.style.display = sleeping ? '' : 'none';
+      mouthWorkout.style.display = working ? '' : 'none';
+      zzzEl.style.display = sleeping ? '' : 'none';
+      eyesOpen.style.display = sleeping ? 'none' : '';
+      eyesClosed.style.display = sleeping ? '' : 'none';
+      armL.style.display = working ? 'none' : '';
+      armR.style.display = working ? 'none' : '';
+      workoutArms.style.display = working ? '' : 'none';
+      workoutCountdownEl.style.display = working ? '' : 'none';
+    }
+
+    // Updated every tick while working out, even though the state itself
+    // hasn't changed — this is the part that actually counts down.
+    if (state === 'workout' && typeof secondsLeft === 'number') {
+      const m = Math.floor(secondsLeft / 60);
+      const s = secondsLeft % 60;
+      workoutCountdownEl.textContent = `${m}:${String(s).padStart(2, '0')}`;
+    }
   }
   window.chrome?.webview?.addEventListener('message', (e) => {
     const msg = e.data;
     if (!msg || msg.type !== 'activity') return;
-    setActivityState(msg.state);
+    setActivityState(msg.state, msg.secondsLeft);
   });
 
   // ---- lightning flash, storm only ----

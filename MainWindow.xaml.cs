@@ -23,9 +23,15 @@ public partial class MainWindow : Window
     // "awake", "asleep", or "workout" — see UpdateActivityState.
     private string _activityState = "awake";
     // When the current unbroken stretch of activity began — reset every
-    // time a real break (BreakThreshold) is seen, so WorkoutAfterMinutes
-    // measures time since the last actual pause, not time since launch.
+    // time a real break (BreakThreshold) is seen before the workout pose
+    // ever triggers, so WorkoutAfterMinutes measures time since the last
+    // actual pause, not time since launch.
     private DateTime _activeStreakStart = DateTime.Now;
+    // Set the moment the workout pose starts, to BreakThreshold from then —
+    // the visible countdown on Keeper's shirt runs down to this and the
+    // pose ends on its own once time's up, whether or not you actually
+    // stopped, rather than waiting to detect a real pause.
+    private DateTime? _workoutCountdownEnd;
     private static readonly TimeSpan BreakThreshold = TimeSpan.FromMinutes(2);
     private Window? _avatarWindow;
 
@@ -831,13 +837,15 @@ public partial class MainWindow : Window
     }
 
     // Purely cosmetic and purely local — checks Windows' own system-wide
-    // idle counter (see IdleDetection.cs) on a slow timer, same shape as
-    // the battery timer above. Nothing is "listening" for input; this just
-    // asks, occasionally, how long it's been. Every icon still works
-    // exactly the same in any activity state.
+    // idle counter (see IdleDetection.cs) on a fast-ish timer, same shape
+    // as the battery timer above just quicker (matches the existing
+    // foreground-tracking timer's 400ms — a local GetLastInputInfo call is
+    // just as cheap), so the visible workout countdown ticks smoothly.
+    // Nothing is "listening" for input; this just asks, often, how long
+    // it's been. Every icon still works exactly the same in any state.
     private void SetupIdleTimer()
     {
-        _idleTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(15) };
+        _idleTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _idleTimer.Tick += (_, _) => UpdateActivityState();
         _idleTimer.Start();
     }
@@ -845,32 +853,67 @@ public partial class MainWindow : Window
     // Three states, sleep takes priority over the workout nudge (if you've
     // actually stepped away, you don't also need a "take a break" pose):
     // - asleep: idle for at least SleepAfterMinutes.
-    // - workout: SleepAfterMinutes hasn't tripped, but it's been at least
-    //   WorkoutAfterMinutes since the last real break (any idle stretch of
-    //   BreakThreshold+, which resets the streak clock below).
+    // - workout: it's been at least WorkoutAfterMinutes since the last real
+    //   break (an idle stretch of BreakThreshold+, before the pose ever
+    //   triggered). Once showing, it runs its own BreakThreshold-length
+    //   countdown to completion regardless of further activity — a visible,
+    //   predictable timer beats silently waiting to detect a real pause.
     // - awake: neither.
     private void UpdateActivityState()
     {
         var idle = IdleDetection.TimeSinceLastInput();
-        if (idle >= BreakThreshold) _activeStreakStart = DateTime.Now;
-
         var sleepThreshold = _settings.SleepAfterMinutes;
         var isAsleep = sleepThreshold > 0 && idle >= TimeSpan.FromMinutes(sleepThreshold);
 
+        if (isAsleep)
+        {
+            _workoutCountdownEnd = null;
+            SetActivityState("asleep");
+            return;
+        }
+
+        if (_activityState == "workout")
+        {
+            if (DateTime.Now >= _workoutCountdownEnd)
+            {
+                _activeStreakStart = DateTime.Now; // next work stretch starts fresh
+                _workoutCountdownEnd = null;
+                SetActivityState("awake");
+            }
+            else
+            {
+                PushActivityState(); // same state — just ticks the countdown
+            }
+            return;
+        }
+
+        if (idle >= BreakThreshold) _activeStreakStart = DateTime.Now;
+
         var workoutThreshold = _settings.WorkoutAfterMinutes;
-        var isWorkoutTime = !isAsleep && workoutThreshold > 0
-            && DateTime.Now - _activeStreakStart >= TimeSpan.FromMinutes(workoutThreshold);
+        if (workoutThreshold > 0 && DateTime.Now - _activeStreakStart >= TimeSpan.FromMinutes(workoutThreshold))
+        {
+            _workoutCountdownEnd = DateTime.Now + BreakThreshold;
+            SetActivityState("workout");
+            return;
+        }
 
-        var state = isAsleep ? "asleep" : isWorkoutTime ? "workout" : "awake";
+        SetActivityState("awake");
+    }
+
+    private void SetActivityState(string state)
+    {
         if (state == _activityState) return;
-
         _activityState = state;
         PushActivityState();
     }
 
     private void PushActivityState()
     {
-        try { Web.CoreWebView2?.PostWebMessageAsJson($"{{\"type\":\"activity\",\"state\":{JsonSerializer.Serialize(_activityState)}}}"); } catch { /* page not ready yet */ }
+        var secondsLeft = _workoutCountdownEnd is { } end
+            ? Math.Max(0, (int)Math.Ceiling((end - DateTime.Now).TotalSeconds))
+            : 0;
+        var json = $"{{\"type\":\"activity\",\"state\":{JsonSerializer.Serialize(_activityState)},\"secondsLeft\":{secondsLeft}}}";
+        try { Web.CoreWebView2?.PostWebMessageAsJson(json); } catch { /* page not ready yet */ }
     }
 
     private void SetupForegroundTracking()
