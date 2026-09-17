@@ -30,6 +30,10 @@ public class WidgetSettings
     {
         "youtube", "spotify", "bell", "search", "gpu", "read", "mic",
     };
+    // How long with no keyboard/mouse input anywhere on the system (see
+    // IdleDetection.cs) before Keeper visually falls asleep — 0 means
+    // never. Picked from the right-click menu's "Sleep after" submenu.
+    public int SleepAfterMinutes { get; set; } = 5;
 
     private static string FolderPath =>
         Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "CloCloWidget");

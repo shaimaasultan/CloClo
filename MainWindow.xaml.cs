@@ -19,6 +19,8 @@ public partial class MainWindow : Window
     private DrawingForms.NotifyIcon? _trayIcon;
     private DispatcherTimer? _topmostTimer;
     private DispatcherTimer? _batteryTimer;
+    private DispatcherTimer? _idleTimer;
+    private bool _isAsleep;
     private Window? _avatarWindow;
 
     private const int GWL_EXSTYLE = -20;
@@ -176,6 +178,7 @@ public partial class MainWindow : Window
         SetupTopmostTimer();
         SetupForegroundTracking();
         SetupBatteryTimer();
+        SetupIdleTimer();
 
         await Web.EnsureCoreWebView2Async();
         Web.DefaultBackgroundColor = System.Drawing.Color.Transparent;
@@ -187,7 +190,7 @@ public partial class MainWindow : Window
         // was showing. Push a fresh one once the new page is actually ready,
         // rather than relying on "did it change" — from the host's side
         // nothing changed, but the page lost it regardless.
-        Web.CoreWebView2.NavigationCompleted += (_, _) => { _ = RefreshWatched(); RefreshBattery(); };
+        Web.CoreWebView2.NavigationCompleted += (_, _) => { _ = RefreshWatched(); RefreshBattery(); PushSleepState(); };
 
         NavigateToWidget();
     }
@@ -821,6 +824,33 @@ public partial class MainWindow : Window
         try { Web.CoreWebView2?.PostWebMessageAsJson(json); } catch { /* page not ready yet */ }
     }
 
+    // Purely cosmetic and purely local — checks Windows' own system-wide
+    // idle counter (see IdleDetection.cs) on a slow timer, same shape as
+    // the battery timer above. Nothing is "listening" for input; this just
+    // asks, occasionally, how long it's been. Every icon still works
+    // exactly the same whether Keeper's asleep or not.
+    private void SetupIdleTimer()
+    {
+        _idleTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(15) };
+        _idleTimer.Tick += (_, _) => UpdateSleepState();
+        _idleTimer.Start();
+    }
+
+    private void UpdateSleepState()
+    {
+        var threshold = _settings.SleepAfterMinutes;
+        var shouldSleep = threshold > 0 && IdleDetection.TimeSinceLastInput() >= TimeSpan.FromMinutes(threshold);
+        if (shouldSleep == _isAsleep) return;
+
+        _isAsleep = shouldSleep;
+        PushSleepState();
+    }
+
+    private void PushSleepState()
+    {
+        try { Web.CoreWebView2?.PostWebMessageAsJson($"{{\"type\":\"sleep\",\"asleep\":{(_isAsleep ? "true" : "false")}}}"); } catch { /* page not ready yet */ }
+    }
+
     private void SetupForegroundTracking()
     {
         var ownProcessId = Environment.ProcessId;
@@ -954,6 +984,7 @@ public partial class MainWindow : Window
         menu.Items.Add("Set location…", null, (_, _) => OpenLocationDialog());
         menu.Items.Add(BuildSkyMenu());
         menu.Items.Add(BuildIconsMenu());
+        menu.Items.Add(BuildSleepMenu());
         menu.Items.Add("Refresh weather", null, (_, _) => NavigateToWidget());
         menu.Items.Add("Start new dictation file", null, (_, _) => StartNewDictationFile());
         var topMost = new DrawingForms.ToolStripMenuItem("Always on top", null, (_, _) => ToggleAlwaysOnTop()) { Checked = _settings.AlwaysOnTop };
@@ -982,6 +1013,36 @@ public partial class MainWindow : Window
             weather.DropDownItems.Add(items[i]);
         }
         return weather;
+    }
+
+    private static readonly (int Minutes, string Label)[] SleepOptions =
+    {
+        (2, "2 minutes"),
+        (5, "5 minutes"),
+        (15, "15 minutes"),
+        (0, "Never"),
+    };
+
+    private DrawingForms.ToolStripMenuItem BuildSleepMenu()
+    {
+        var sleepMenu = new DrawingForms.ToolStripMenuItem("Sleep after");
+        var items = SleepOptions
+            .Select(opt => new DrawingForms.ToolStripMenuItem(opt.Label) { Checked = _settings.SleepAfterMinutes == opt.Minutes })
+            .ToArray();
+        for (int i = 0; i < items.Length; i++)
+        {
+            var minutes = SleepOptions[i].Minutes;
+            items[i].Click += (_, _) =>
+            {
+                _settings.SleepAfterMinutes = minutes;
+                _settings.Save();
+                foreach (var it in items) it.Checked = false;
+                items[Array.FindIndex(SleepOptions, o => o.Minutes == minutes)].Checked = true;
+                UpdateSleepState(); // e.g. picking "Never" wakes it right away
+            };
+            sleepMenu.DropDownItems.Add(items[i]);
+        }
+        return sleepMenu;
     }
 
     // Display names for the same keys ComputeIconRects/IconOrder use —
