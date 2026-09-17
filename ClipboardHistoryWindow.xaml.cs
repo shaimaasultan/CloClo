@@ -6,9 +6,9 @@ using MediaColor = System.Windows.Media.Color;
 
 namespace CloCloWidget;
 
-// A snapshot of whatever MainWindow's WndProc has recorded via
-// WM_CLIPBOARDUPDATE since the widget opened — newest first, capped at a
-// handful of entries. Click a row to put that text back on the clipboard;
+// A snapshot of Windows' own Clipboard History, pulled fresh the moment
+// this opens (see ShowClipboardHistoryAsync in MainWindow.xaml.cs) —
+// newest first. Click a row to put that text back on the clipboard;
 // there's nothing to edit here, so the window just closes once you have.
 public partial class ClipboardHistoryWindow : Window
 {

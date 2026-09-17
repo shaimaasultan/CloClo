@@ -106,9 +106,9 @@
      system mute and the label briefly shows the result (see
      ToggleVolume in MainWindow.xaml.cs / VolumeControl.cs). */
   #iconVolume{ background:transparent; box-shadow:none; font-size:12px; line-height:1; }
-  /* Opens ClipboardHistoryWindow — the host's been quietly recording every
-     copy (see RecordClipboardChange in MainWindow.xaml.cs) since the
-     widget started, this just shows it. */
+  /* Opens ClipboardHistoryWindow — pulls Windows' own Clipboard History
+     fresh on click (see ShowClipboardHistoryAsync in MainWindow.xaml.cs),
+     nothing tracked in the background between clicks. */
   #iconClipboard{ background:transparent; box-shadow:none; font-size:12px; line-height:1; }
 
   /* What the watched app is playing (or the latest notification), sitting
