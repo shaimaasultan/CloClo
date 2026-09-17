@@ -1,0 +1,26 @@
+<Window x:Class="CloCloWidget.ClipboardHistoryWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="CloClo — Clipboard History"
+        Width="320" SizeToContent="Height"
+        WindowStartupLocation="CenterScreen"
+        ResizeMode="NoResize"
+        Background="#241a10">
+    <Window.Resources>
+        <Style TargetType="Button">
+            <Setter Property="Background" Value="#c9a24b" />
+            <Setter Property="Foreground" Value="#241e1a" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Padding" Value="10,5" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="Cursor" Value="Hand" />
+        </Style>
+    </Window.Resources>
+    <StackPanel Margin="16">
+        <TextBlock Text="Click an item to copy it again" Foreground="#f3ecdd" Opacity="0.75" FontSize="11" Margin="0,0,0,10" />
+        <ScrollViewer MaxHeight="320" VerticalScrollBarVisibility="Auto">
+            <StackPanel x:Name="ItemsPanel" />
+        </ScrollViewer>
+        <Button Content="Close" Click="Close_Click" HorizontalAlignment="Right" Margin="0,14,0,0" Background="#3c1512" Foreground="#f3ecdd" />
+    </StackPanel>
+</Window>

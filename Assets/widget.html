@@ -106,6 +106,10 @@
      system mute and the label briefly shows the result (see
      ToggleVolume in MainWindow.xaml.cs / VolumeControl.cs). */
   #iconVolume{ background:transparent; box-shadow:none; font-size:12px; line-height:1; }
+  /* Opens ClipboardHistoryWindow — the host's been quietly recording every
+     copy (see RecordClipboardChange in MainWindow.xaml.cs) since the
+     widget started, this just shows it. */
+  #iconClipboard{ background:transparent; box-shadow:none; font-size:12px; line-height:1; }
 
   /* What the watched app is playing (or the latest notification), sitting
      under the icons — hidden until the host reports something, and left
@@ -431,6 +435,7 @@
       <div class="mediaIcon" id="iconColor" title="Pick a color from the screen">🎨</div>
       <div class="mediaIcon" id="iconQr" title="QR code from selected text/link">📱</div>
       <div class="mediaIcon" id="iconVolume" title="Toggle mute">🔊</div>
+      <div class="mediaIcon" id="iconClipboard" title="Clipboard history">📋</div>
     </div>
 
     <div id="nowPlaying">
@@ -619,6 +624,7 @@
     youtube: 'iconYoutube', spotify: 'iconSpotify', bell: 'iconBell',
     search: 'iconSearch', gpu: 'iconGpu', read: 'iconRead', mic: 'iconMic',
     convert: 'iconConvert', color: 'iconColor', qr: 'iconQr', volume: 'iconVolume',
+    clipboard: 'iconClipboard',
   };
   const enabledIcons = (params.get('icons') || 'youtube,spotify,bell,search,gpu,read,mic').split(',');
   for (const [key, id] of Object.entries(iconIdByKey)) {

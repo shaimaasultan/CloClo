@@ -28,6 +28,15 @@ public partial class MainWindow : Window
     private const uint SWP_NOMOVE = 0x0002;
     private const uint SWP_NOACTIVATE = 0x0010;
 
+    // Windows posts this to every listening window the moment ANYTHING
+    // copies to the clipboard, system-wide — no polling needed. Registered
+    // once the real HWND exists (MainWindow_SourceInitialized) and
+    // unregistered on close.
+    private const int WM_CLIPBOARDUPDATE = 0x031D;
+    private const int MaxClipboardHistory = 8;
+    private readonly List<string> _clipboardHistory = new();
+    private string? _lastClipboardText;
+
     // The widget renders at 1.3x (see #stage's zoom in widget.html) — every
     // rect below is the original 150x270-canvas value times that same
     // factor, since WPF (unlike CSS) has no idea the page is zoomed and
@@ -56,7 +65,7 @@ public partial class MainWindow : Window
     // currently enabled.
     private static readonly string[] IconOrder =
     {
-        "youtube", "spotify", "bell", "search", "gpu", "read", "mic", "convert", "color", "qr", "volume",
+        "youtube", "spotify", "bell", "search", "gpu", "read", "mic", "convert", "color", "qr", "volume", "clipboard",
     };
     private const double IconWidth = 18, IconGap = 2, IconTop = 187, IconHeight = 20;
     // Matches #mediaBar's own left:10px anchor (stage x=10, i.e. relative
@@ -115,6 +124,8 @@ public partial class MainWindow : Window
     [DllImport("user32.dll")] private static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
     [DllImport("user32.dll")] private static extern IntPtr GetForegroundWindow();
     [DllImport("user32.dll")] private static extern int GetWindowThreadProcessId(IntPtr hWnd, out int lpdwProcessId);
+    [DllImport("user32.dll")] private static extern bool AddClipboardFormatListener(IntPtr hwnd);
+    [DllImport("user32.dll")] private static extern bool RemoveClipboardFormatListener(IntPtr hwnd);
     private const byte VK_LWIN = 0x5B;
     private const byte VK_N = 0x4E;
     private const uint KEYEVENTF_KEYUP = 0x0002;
@@ -147,6 +158,7 @@ public partial class MainWindow : Window
         Closing += (_, _) =>
         {
             SaveWindowPosition();
+            RemoveClipboardFormatListener(new WindowInteropHelper(this).Handle);
             _avatarWindow?.Close();
         };
     }
@@ -164,6 +176,42 @@ public partial class MainWindow : Window
         var exStyle = GetWindowLong(hwnd, GWL_EXSTYLE);
         exStyle |= WS_EX_TRANSPARENT;
         SetWindowLong(hwnd, GWL_EXSTYLE, exStyle);
+
+        AddClipboardFormatListener(hwnd);
+        HwndSource.FromHwnd(hwnd)!.AddHook(WndProc);
+    }
+
+    // The only Win32 message this window actually needs to react to —
+    // posted to every listening window the instant anything, anywhere,
+    // copies to the clipboard. Recording it here rather than polling
+    // Clipboard.GetText() on a timer, which would mean constantly opening
+    // the clipboard (a shared, single-owner resource other apps are also
+    // trying to use) for no reason most of the time.
+    private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+    {
+        if (msg == WM_CLIPBOARDUPDATE) RecordClipboardChange();
+        return IntPtr.Zero;
+    }
+
+    private void RecordClipboardChange()
+    {
+        try
+        {
+            if (!System.Windows.Clipboard.ContainsText()) return;
+            var text = System.Windows.Clipboard.GetText();
+            if (string.IsNullOrEmpty(text) || text == _lastClipboardText) return;
+
+            _lastClipboardText = text;
+            _clipboardHistory.Remove(text);
+            _clipboardHistory.Insert(0, text);
+            if (_clipboardHistory.Count > MaxClipboardHistory) _clipboardHistory.RemoveAt(_clipboardHistory.Count - 1);
+        }
+        catch
+        {
+            // The clipboard is a shared, single-owner resource — another
+            // app can be holding it open for the instant this fires.
+            // Missing one update isn't worth retrying for.
+        }
     }
 
     private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
@@ -319,6 +367,22 @@ public partial class MainWindow : Window
         }
         var title = state.Muted ? "Muted" : $"{Math.Round(state.Level * 100)}% volume";
         ShowOneShotLabel(title, "");
+    }
+
+    // A list, not a label — RecordClipboardChange (see WndProc) has been
+    // building this in the background the whole time the widget's been
+    // open, so this just shows a snapshot of it. Passing the live List
+    // reference rather than a copy is fine: the window only ever reads it
+    // once, at construction.
+    private void ShowClipboardHistory()
+    {
+        _watchingNotifications = false;
+        if (_clipboardHistory.Count == 0)
+        {
+            ShowOneShotLabel("Clipboard history is empty", "Copy something, then click again.");
+            return;
+        }
+        new ClipboardHistoryWindow(_clipboardHistory) { Owner = this }.Show();
     }
 
     // Voice dictation, appended to a running text file rather than just
@@ -705,6 +769,11 @@ public partial class MainWindow : Window
             ToggleVolume();
             return;
         }
+        if (icons.TryGetValue("clipboard", out var clipboardRect) && clipboardRect.Contains(p))
+        {
+            ShowClipboardHistory();
+            return;
+        }
         if (PauseIconRect.Contains(p) && _watchedFetcher != null)
         {
             StopWatching();
@@ -953,6 +1022,7 @@ public partial class MainWindow : Window
         ("color", "Color picker"),
         ("qr", "QR code from selection"),
         ("volume", "Volume/mute toggle"),
+        ("clipboard", "Clipboard history"),
     };
 
     private DrawingForms.ToolStripMenuItem BuildIconsMenu()
