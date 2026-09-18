@@ -1,0 +1,523 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ranah Calling Architecture</title>
+<meta name="description" content="Design for end-to-end encrypted, server-blind calling and texting in the Ranah app: pairing, relay, local storage, QR exchange, and WebRTC.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #241a10;
+    --ink-soft: #4a3b28;
+    --paper: #faf6ee;
+    --paper-raised: #ffffff;
+    --line: #e4d9c4;
+    --brass: #a9762f;
+    --brass-soft: #f1e6cd;
+    --slate: #6b6255;
+    --good: #3f6b52;
+    --good-bg: #e7f0e9;
+    --open: #a04e1f;
+    --open-bg: #f6e6da;
+    --code-bg: #2c2115;
+    --code-text: #f0e6d2;
+    --code-accent: #e0b26b;
+    --shadow: 0 1px 2px rgba(36,26,16,.06), 0 6px 20px rgba(36,26,16,.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ink: #f3ecdd;
+      --ink-soft: #cdbfa4;
+      --paper: #1b140d;
+      --paper-raised: #241a10;
+      --line: #3c2f1f;
+      --brass: #d7ac5f;
+      --brass-soft: #362a17;
+      --slate: #a89a7f;
+      --good: #8fc9a8;
+      --good-bg: #1f3226;
+      --open: #e2996a;
+      --open-bg: #3a2317;
+      --code-bg: #120d08;
+      --code-text: #f0e6d2;
+      --code-accent: #e7bd7c;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 30px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ink: #f3ecdd;
+    --ink-soft: #cdbfa4;
+    --paper: #1b140d;
+    --paper-raised: #241a10;
+    --line: #3c2f1f;
+    --brass: #d7ac5f;
+    --brass-soft: #362a17;
+    --slate: #a89a7f;
+    --good: #8fc9a8;
+    --good-bg: #1f3226;
+    --open: #e2996a;
+    --open-bg: #3a2317;
+    --code-bg: #120d08;
+    --code-text: #f0e6d2;
+    --code-accent: #e7bd7c;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 30px rgba(0,0,0,.35);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: auto; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'IBM Plex Sans', system-ui, sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+    padding-inline: 16px;
+  }
+  h1, h2, h3 { font-family: 'Fraunces', Georgia, serif; text-wrap: balance; color: var(--ink); }
+  a { color: var(--brass); }
+  code, .mono { font-family: 'IBM Plex Mono', ui-monospace, monospace; }
+
+  .page { max-width: 920px; margin: 0 auto; padding-block: 40px 80px; }
+
+  /* ---- header ---- */
+  .masthead { margin-bottom: 8px; }
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 600;
+    letter-spacing: .12em; text-transform: uppercase; color: var(--brass);
+  }
+  .eyebrow::before { content: ''; width: 18px; height: 1.5px; background: var(--brass); display: inline-block; }
+  h1 { font-size: clamp(28px, 4vw, 38px); font-weight: 700; margin: 10px 0 10px; line-height: 1.12; }
+  .dek { color: var(--slate); font-size: 16px; max-width: 62ch; margin: 0 0 28px; }
+  .meta-row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 36px; }
+  .meta-pill {
+    font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 500;
+    color: var(--slate); border: 1px solid var(--line); border-radius: 999px;
+    padding: 5px 12px; background: var(--paper-raised);
+  }
+
+  /* ---- scope summary table ---- */
+  .scope {
+    border: 1px solid var(--line); border-radius: 14px; background: var(--paper-raised);
+    box-shadow: var(--shadow); overflow: hidden; margin-bottom: 48px;
+  }
+  .scope-head {
+    padding: 16px 20px; border-bottom: 1px solid var(--line);
+    font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 600;
+    letter-spacing: .08em; text-transform: uppercase; color: var(--slate);
+  }
+  .scope-row {
+    display: grid; grid-template-columns: 28px 1fr auto; gap: 14px; align-items: start;
+    padding: 14px 20px; border-bottom: 1px solid var(--line);
+  }
+  .scope-row:last-child { border-bottom: none; }
+  .scope-num {
+    font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 600;
+    color: var(--brass); background: var(--brass-soft); border-radius: 7px;
+    width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;
+  }
+  .scope-title { font-weight: 600; font-size: 14.5px; }
+  .scope-sub { color: var(--slate); font-size: 13px; margin-top: 2px; }
+  .tag {
+    font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; font-weight: 600;
+    letter-spacing: .04em; padding: 3px 9px; border-radius: 999px; white-space: nowrap; align-self: center;
+  }
+  .tag.expo-go { color: var(--good); background: var(--good-bg); }
+  .tag.dev-client { color: var(--open); background: var(--open-bg); }
+
+  /* ---- toc ---- */
+  nav.toc { display: flex; flex-wrap: wrap; gap: 8px 18px; margin-bottom: 56px; padding-bottom: 24px; border-bottom: 1px solid var(--line); }
+  nav.toc a { font-size: 13px; font-weight: 500; color: var(--ink-soft); text-decoration: none; }
+  nav.toc a:hover { color: var(--brass); }
+
+  /* ---- sections ---- */
+  section.piece { margin-bottom: 64px; scroll-margin-top: 20px; }
+  .piece-head { display: flex; align-items: baseline; gap: 14px; margin-bottom: 4px; }
+  .piece-num { font-family: 'Fraunces', serif; font-size: 15px; font-weight: 600; color: var(--brass); }
+  h2 { font-size: 23px; font-weight: 600; margin: 0; }
+  .piece-tagline { color: var(--slate); font-size: 14.5px; max-width: 68ch; margin: 10px 0 22px; }
+
+  p { max-width: 70ch; }
+  .piece :is(h3) { font-size: 15.5px; font-weight: 600; margin: 26px 0 10px; font-family: 'IBM Plex Sans', sans-serif; }
+
+  ul, ol { padding-left: 22px; max-width: 68ch; }
+  li { margin-bottom: 7px; }
+  li::marker { color: var(--brass); }
+
+  code:not(pre code) {
+    font-size: 13px; background: var(--brass-soft); color: var(--ink-soft);
+    padding: 1px 6px; border-radius: 5px;
+  }
+  pre {
+    background: var(--code-bg); color: var(--code-text); border-radius: 12px;
+    padding: 16px 18px; overflow-x: auto; font-size: 12.5px; line-height: 1.65;
+    box-shadow: var(--shadow); margin: 16px 0;
+  }
+  pre .k { color: var(--code-accent); }
+  pre .s { color: #9fc9a1; }
+  pre .c { color: #9d8f78; font-style: italic; }
+
+  /* callouts */
+  .callout {
+    display: flex; gap: 12px; border-radius: 12px; padding: 14px 16px;
+    margin: 18px 0; max-width: 68ch; border: 1px solid transparent;
+  }
+  .callout .icon { font-family: 'IBM Plex Mono', monospace; font-weight: 700; font-size: 12px; flex: none; margin-top: 2px; }
+  .callout p { margin: 0; font-size: 13.5px; }
+  .callout.decided { background: var(--good-bg); border-color: color-mix(in srgb, var(--good) 30%, transparent); }
+  .callout.decided .icon { color: var(--good); }
+  .callout.open { background: var(--open-bg); border-color: color-mix(in srgb, var(--open) 30%, transparent); }
+  .callout.open .icon { color: var(--open); }
+
+  /* data shape cards */
+  .shape-label { font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--slate); margin: 22px 0 8px; }
+
+  /* flow diagram */
+  .flow {
+    display: flex; flex-direction: column; gap: 0; margin: 22px 0 8px;
+    border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: var(--paper-raised);
+    box-shadow: var(--shadow);
+  }
+  .flow-step {
+    display: grid; grid-template-columns: 34px 1fr; gap: 14px;
+    padding: 14px 18px; border-bottom: 1px solid var(--line); align-items: start;
+  }
+  .flow-step:last-child { border-bottom: none; }
+  .flow-dot {
+    width: 34px; height: 34px; border-radius: 50%; background: var(--brass-soft); color: var(--brass);
+    display: flex; align-items: center; justify-content: center; font-family: 'IBM Plex Mono', monospace;
+    font-weight: 700; font-size: 13px;
+  }
+  .flow-title { font-weight: 600; font-size: 14px; }
+  .flow-who { font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; color: var(--brass); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 3px; }
+  .flow-desc { color: var(--slate); font-size: 13px; margin-top: 3px; }
+
+  /* build order */
+  .order-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; margin: 20px 0; }
+  .order-card {
+    border: 1px solid var(--line); border-radius: 12px; padding: 16px; background: var(--paper-raised);
+    box-shadow: var(--shadow);
+  }
+  .order-card .n { font-family: 'Fraunces', serif; font-size: 22px; font-weight: 600; color: var(--brass); }
+  .order-card h4 { margin: 6px 0 4px; font-size: 14px; }
+  .order-card p { margin: 0; font-size: 12.5px; color: var(--slate); }
+
+  /* rate-limit table */
+  .rate-table-wrap { overflow-x: auto; margin: 16px 0; }
+  table.rate-table {
+    width: 100%; border-collapse: collapse; min-width: 480px;
+    border: 1px solid var(--line); border-radius: 12px; overflow: hidden;
+    background: var(--paper-raised); box-shadow: var(--shadow); font-size: 13px;
+  }
+  .rate-table th, .rate-table td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+  .rate-table th {
+    font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; font-weight: 600;
+    letter-spacing: .05em; text-transform: uppercase; color: var(--slate); background: var(--brass-soft);
+  }
+  .rate-table tr:last-child td { border-bottom: none; }
+  .rate-table td:nth-child(3) { font-family: 'IBM Plex Mono', monospace; color: var(--brass); white-space: nowrap; }
+
+  footer.doc-footer { margin-top: 60px; padding-top: 20px; border-top: 1px solid var(--line); color: var(--slate); font-size: 12.5px; }
+
+  @media (max-width: 560px) {
+    .scope-row { grid-template-columns: 24px 1fr; }
+    .tag { grid-column: 2; justify-self: start; margin-top: 4px; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="masthead">
+    <span class="eyebrow">Ranah &middot; architecture note</span>
+    <h1>Calling &amp; texting, without a server that remembers anything</h1>
+    <p class="dek">A design for end-to-end encrypted calls and texts between two Ranah installs — contacts, history and connection keys stay on-device; the server only ever forwards an opaque, encrypted blob through a push notification.</p>
+    <div class="meta-row">
+      <span class="meta-pill">v1 scope &middot; notification-triggered, not synchronous ring</span>
+      <span class="meta-pill">2026-09-17</span>
+    </div>
+  </header>
+
+  <div class="scope">
+    <div class="scope-head">Five pieces, in build order</div>
+    <div class="scope-row">
+      <span class="scope-num">1</span>
+      <div><div class="scope-title">E2E key exchange at pairing</div><div class="scope-sub">Each device's own keypair, exchanged as public keys only.</div></div>
+      <span class="tag expo-go">Expo Go</span>
+    </div>
+    <div class="scope-row">
+      <span class="scope-num">2</span>
+      <div><div class="scope-title">Relay server, stateless</div><div class="scope-sub">Forwards an encrypted blob to Expo Push. Nothing written to disk.</div></div>
+      <span class="tag expo-go">Expo Go</span>
+    </div>
+    <div class="scope-row">
+      <span class="scope-num">3</span>
+      <div><div class="scope-title">Local-only storage</div><div class="scope-sub">Already true today &mdash; confirmed, plus two new fields.</div></div>
+      <span class="tag expo-go">Expo Go</span>
+    </div>
+    <div class="scope-row">
+      <span class="scope-num">4</span>
+      <div><div class="scope-title">QR pairing UI</div><div class="scope-sub">Show-your-code / scan-theirs, feeding the existing contact model.</div></div>
+      <span class="tag expo-go">Expo Go</span>
+    </div>
+    <div class="scope-row">
+      <span class="scope-num">5</span>
+      <div><div class="scope-title">WebRTC calling</div><div class="scope-sub">Offer/answer/ICE riding inside the encrypted push payload.</div></div>
+      <span class="tag dev-client">Custom dev client</span>
+    </div>
+  </div>
+
+  <nav class="toc">
+    <a href="#pairing">1&nbsp;&middot; Pairing &amp; keys</a>
+    <a href="#relay">2&nbsp;&middot; Relay server</a>
+    <a href="#storage">3&nbsp;&middot; Local storage</a>
+    <a href="#qr">4&nbsp;&middot; QR pairing UI</a>
+    <a href="#webrtc">5&nbsp;&middot; WebRTC</a>
+    <a href="#order">Build order</a>
+  </nav>
+
+  <!-- 1: PAIRING -->
+  <section class="piece" id="pairing">
+    <div class="piece-head"><span class="piece-num">01</span><h2>E2E key exchange at pairing</h2></div>
+    <p class="piece-tagline">The "session key" this whole design hinges on isn't a thing the server hands out — it's derived fresh, every time, from two public keys the devices already hold.</p>
+
+    <p>Each device generates a keypair once, at first launch. <strong>tweetnacl</strong> (pure JS/WASM, X25519 + XSalsa20-Poly1305 — the standard NaCl "box") rather than a native crypto library, specifically so it runs identically on web and native with no config plugin or dev-client rebuild. Crypto stays decoupled from the WebRTC native-module migration entirely.</p>
+
+    <ul>
+      <li><strong>Private key</strong> &rarr; <code>expo-secure-store</code> (iOS Keychain / Android Keystore). Never AsyncStorage, never backed up.</li>
+      <li><strong>Public key</strong> &rarr; a new field on the existing <code>profile</code> object, already persisted, not sensitive.</li>
+      <li>After pairing, either side derives the shared secret fresh: <code>nacl.box(msg, nonce, theirPublicKey, myPrivateKey)</code>. Nothing about "the key" needs separate storage beyond each side's own keypair plus the other's public key, which pairing already delivered.</li>
+    </ul>
+
+    <div class="shape-label">Pairing QR payload</div>
+    <pre><span class="c">// everything one device needs to know about the other, encoded as JSON in the QR</span>
+{
+  <span class="k">"id"</span>: <span class="s">"me-8f2a1c"</span>,
+  <span class="k">"publicKey"</span>: <span class="s">"base64…"</span>,
+  <span class="k">"pushToken"</span>: <span class="s">"ExponentPushToken[…]"</span>,
+  <span class="k">"grant"</span>: { <span class="c">/* signed authorization for the relay — see §2 */</span> }
+}</pre>
+
+    <div class="callout decided">
+      <span class="icon">DECIDED</span>
+      <p>Scanning the code is a straight fit for the existing <code>addContact()</code> in <code>ContactsContext.tsx</code> — it just gets new fields to carry. The <code>grant</code> is what later lets the relay verify a sender with no lookup at all (see the relay section).</p>
+    </div>
+  </section>
+
+  <!-- 2: RELAY -->
+  <section class="piece" id="relay">
+    <div class="piece-head"><span class="piece-num">02</span><h2>Relay server, as a router</h2></div>
+    <p class="piece-tagline">Since the payload is already opaque to it, the server can be genuinely stateless — no database to even architect retention around.</p>
+
+    <p>One HTTP endpoint, best run as a single serverless function (Cloudflare Worker / Vercel Edge Function) rather than a hosted process — there's nothing for a long-running server to hold.</p>
+
+    <div class="shape-label">The entire request shape</div>
+    <pre><span class="k">POST</span> /relay
+{
+  <span class="k">"grant"</span>: { <span class="c">/* signed at pairing time, see below */</span> },
+  <span class="k">"senderPublicKey"</span>: <span class="s">"A's public key"</span>,
+  <span class="k">"signature"</span>: <span class="s">"sign_A(payload)"</span>,
+  <span class="k">"type"</span>: <span class="s">"call-offer"</span> <span class="c">// | call-ice | call-answer | call-end | text</span>
+  <span class="k">"payload"</span>: <span class="s">"&lt;nacl.box-encrypted blob, base64&gt;"</span>
+}</pre>
+
+    <p>The function does exactly one thing: verify the grant and signature below, then hand <code>payload</code> to <strong>Expo's push API</strong> (<code>exp.host/--/api/v2/push/send</code>), addressed to whatever push token the grant names. <code>type</code> only picks a notification title/sound — it's never used to interpret the encrypted contents. Because the app already uses <code>expo-notifications</code>, this means one unified API instead of separately integrating APNs and FCM.</p>
+
+    <h3>Who's allowed to reach you: a signed grant, not a lookup</h3>
+    <p>A bare <code>toPushToken</code> in the request isn't enough — the relay has no database, so it can't check "is this sender someone the recipient actually paired with." Worse, encryption alone doesn't help: the relay never decrypts anything, so it can't tell a real message from garbage either — a notification still lands on the recipient's phone before their app ever tries (and fails) to decrypt it. Confidentiality isn't delivery control.</p>
+
+    <p>The fix is a credential the relay can verify with <em>no lookup at all</em> — the same trust model as a self-signed certificate or a capability token. At pairing, alongside the public-key exchange, B also issues A a grant, signed with B's own key:</p>
+
+    <div class="shape-label">The grant, issued once at pairing</div>
+    <pre>{
+  <span class="k">"granteePublicKey"</span>: <span class="s">"A's public key"</span>,
+  <span class="k">"issuerPublicKey"</span>: <span class="s">"B's public key"</span>,
+  <span class="k">"pushToken"</span>: <span class="s">"B's current token"</span>,
+  <span class="k">"issuedAt"</span>: …, <span class="k">"expiresAt"</span>: …,
+  <span class="k">"signature"</span>: <span class="s">"sign_B(everything above)"</span>
+}</pre>
+
+    <p>Every field the relay needs to verify the grant travels <em>inside</em> the grant itself, so checking it needs nothing external:</p>
+    <ol>
+      <li>Verify <code>grant.signature</code> against <code>grant.issuerPublicKey</code> — proves B really issued it, nothing looked up.</li>
+      <li>Check <code>grant.granteePublicKey</code> matches the request's <code>senderPublicKey</code> — this grant names this sender.</li>
+      <li>Verify the sender's own <code>signature</code> over the request — proves it really came from whoever holds A's private key.</li>
+      <li>Route to <code>grant.pushToken</code>, never a bare token supplied separately.</li>
+      <li>Reject if <code>expiresAt</code> has passed.</li>
+    </ol>
+
+    <div class="callout decided">
+      <span class="icon">DECIDED</span>
+      <p>Someone who merely obtains a bare push token can't produce a valid grant for it — that only comes from actually pairing with the recipient, or stealing their private key outright. The grant refreshes the same piggyback way as the push token, so it never needs to be long-lived to stay usable.</p>
+    </div>
+    <h3>Rate limiting: sender id and receiver id, nothing else</h3>
+    <p>The grant stops <em>strangers</em>; it doesn't stop a legitimate but compromised or buggy paired contact from flooding. Deliberately <strong>no IP-based limiting</strong> &mdash; both counters below key on identifiers the relay already has to see to verify the grant in the first place (<code>senderPublicKey</code>, <code>grant.issuerPublicKey</code> as the recipient's own persistent id), so this adds no new visibility at all, rather than introducing IP as a fourth thing the server pays attention to. Both are short-lived, auto-expiring counters &mdash; not stored user data: no message content, no contacts, nothing beyond an opaque key for a few seconds to minutes before vanishing.</p>
+
+    <div class="rate-table-wrap">
+      <table class="rate-table">
+        <thead><tr><th>Layer</th><th>Keyed on</th><th>Rough budget</th><th>Catches</th></tr></thead>
+        <tbody>
+          <tr><td>Sender id</td><td><code>senderPublicKey</code></td><td>~30/min, ~300/hr</td><td>One identity stuck in a flood/retry loop</td></tr>
+          <tr><td>Receiver id</td><td><code>grant.issuerPublicKey</code></td><td>~60/min</td><td>One recipient, regardless of how many senders are hitting them</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p><strong>Order</strong>: verify grant + signature <em>first</em> &rarr; sender check &rarr; receiver check &rarr; forward. Both counters only ever run on identities the signature has already confirmed, never on a raw claimed value — so there's nothing left to spoof: an attacker can't burn through someone else's budget by putting their public key in the <code>senderPublicKey</code> field, because that field is only trusted once the accompanying signature proves whoever sent this really holds the matching private key. Ed25519 verification is microseconds, not a meaningful cost even checked on every request — the earlier instinct to rate-limit before verifying "to save the expensive check for later" wasn't actually buying anything worth the gap it opened.</p>
+
+    <div class="callout decided">
+      <span class="icon">DECIDED</span>
+      <p>Both rate-limit keys are signed, not claimed. <code>senderPublicKey</code> is trusted only after its signature verifies; <code>grant.issuerPublicKey</code> was already trusted only after the grant's own signature verifies. Symmetric, and the earlier spoofing gap is closed, not just bounded.</p>
+    </div>
+
+    <div class="callout open">
+      <span class="icon">OPEN</span>
+      <p>One caveat that's inherent to the platform, not this design: any HTTP server technically sees the connecting IP as a property of the protocol itself — that can't be made to disappear, and the hosting platform (Cloudflare/Vercel/etc.) will likely apply its own IP-level DDoS protection underneath this regardless. What's actually being decided here is narrower and real: the relay's <em>own application logic</em> never uses IP as a signal or a key, only the two signed ids above. A flood of purely fabricated requests with no valid signature at all still costs a small, fixed verification check each — that's a volumetric concern properly handled by the platform's own infrastructure, not something rate-limiting two trusted ids was ever going to solve.</p>
+    </div>
+
+    <h3>One seen-ids store, covering every delivery — request or response alike</h3>
+    <p>The grant doesn't change per request, so a relay that's <em>seen</em> a valid delivery once — grant, signature, encrypted payload, all of it — could resend that exact triplet later and it would still pass every check. That's true whichever direction it went: a replayed call <em>offer</em> (a request) and a replayed call <em>answer</em> (a response to one) are the same category of problem, and so is a replayed text. One uniform mechanism should catch all of them, not a patchwork of one-off checks per type.</p>
+
+    <p>Every relayed item — <code>text</code>, <code>call-offer</code>, <code>call-answer</code>, <code>call-ice</code>, <code>call-end</code> — already carries (or trivially gets) a unique id: <code>Message.id</code> for text, generated the same way today in <code>MessagesContext.tsx</code>; the session token itself for call signaling. A single local, persisted store checks all of them the same way, regardless of type or direction:</p>
+
+    <ul>
+      <li>A new persisted key, <code>seenDeliveryIds</code> — same <code>persist.ts</code> mechanism as everything else, local-only by construction.</li>
+      <li>On every incoming delivery, whatever its <code>type</code>: check <code>seenDeliveryIds</code> first. Already present &rarr; drop silently. Not present &rarr; record it, <em>then</em> hand it to the type-specific handler (<code>receiveMessage</code>, or the call state machine).</li>
+      <li>Independent of the message list or call state, so deleting a message, ending a call, or anything else the user does afterward never un-remembers that an id was seen.</li>
+      <li>Capped and pruned by count and age, so it only needs to outlive how long a stale replay could plausibly still be floating around — not forever.</li>
+    </ul>
+
+    <p>The call session-token <strong>ratchet stays too</strong>, layered on top for calls specifically — <code>seenDeliveryIds</code> answers "have I processed this exact delivery before," while the ratchet additionally answers "does this belong to the call that's actually live right now," which a simple id check alone can't (a genuinely fresh offer for a <em>new</em> call attempt has a new id, so dedupe won't catch it — only the ratchet knows a previous attempt was abandoned).</p>
+
+    <div class="callout decided">
+      <span class="icon">DECIDED</span>
+      <p>One universal layer (dedupe, every type, either direction) plus one call-specific layer on top (ordering/liveness within a live session) — every content type Ranah relays now has an anti-replay memory that doesn't depend on what the user does with it afterward. That's the full chain, closed.</p>
+    </div>
+  </section>
+
+  <!-- 3: STORAGE -->
+  <section class="piece" id="storage">
+    <div class="piece-head"><span class="piece-num">03</span><h2>Local-only storage</h2></div>
+    <p class="piece-tagline">Mostly a confirmation, not new work — the app was already built this way.</p>
+
+    <p>Contacts, messages, call log, reminders, settings and profile are already 100% local via <code>persist.ts</code> / AsyncStorage — confirmed by reading it, not assumed. Nothing architectural changes here. What's new is two fields:</p>
+
+    <ul>
+      <li><code>Contact</code> gains <code>publicKey</code> and <code>pushToken</code>.</li>
+      <li><code>profile</code> gains <code>publicKey</code> (the private half goes to <code>expo-secure-store</code>, not here).</li>
+    </ul>
+
+    <div class="callout decided">
+      <span class="icon">DECIDED</span>
+      <p><strong>Push tokens rotate</strong> — a reinstall or OS-level change invalidates one, and with zero server state there's no registry to catch it. Rather than a separate refresh protocol: every outgoing message and call-signaling packet carries <strong>the sender's own current token, read fresh at send time</strong>. Every time a contact hears from you, they silently get an up-to-date copy of your token for free, piggybacked on ordinary traffic — no chain, nothing to pre-issue, nothing to get out of sync.</p>
+    </div>
+    <div class="callout open">
+      <span class="icon">OPEN</span>
+      <p>The one gap nothing on the client side closes: if a token changes <em>and</em> there's been genuine silence since (no message either direction), the first message after that gap still fails — there was no traffic to piggyback the new token onto. That's inherent to zero server state, not a flaw in the piggyback idea. The fallback is re-pairing by QR, and it's an acceptable price for a server that never remembers anything.</p>
+    </div>
+  </section>
+
+  <!-- 4: QR -->
+  <section class="piece" id="qr">
+    <div class="piece-head"><span class="piece-num">04</span><h2>QR pairing, in the app</h2></div>
+    <p class="piece-tagline">The one piece of the whole design that's purely UI — and, usefully, needs no native module at all.</p>
+
+    <ul>
+      <li><strong>Show your code</strong> &mdash; <code>react-native-qrcode-svg</code>, pure JS, renders via <code>react-native-svg</code> (already a dependency).</li>
+      <li><strong>Scan theirs</strong> &mdash; <code>expo-camera</code>'s built-in barcode scanning, a stock Expo Go capability.</li>
+      <li><strong>Flow</strong> &mdash; one "Pair" screen: your QR on screen, a "Scan their code" button beside it. Two people trade a glance at each other's phones once, same shape as Signal/WhatsApp device-linking.</li>
+    </ul>
+
+    <div class="callout decided">
+      <span class="icon">DECIDED</span>
+      <p>Neither <code>expo-camera</code> nor <code>tweetnacl</code> need a custom dev client — pairing, crypto and text-over-relay (pieces 1&ndash;4) can be built and demoed entirely inside plain Expo Go. <strong>Only WebRTC forces the move.</strong> That's a real incremental delivery path: working end-to-end text before calling is touched at all.</p>
+    </div>
+  </section>
+
+  <!-- 5: WEBRTC -->
+  <section class="piece" id="webrtc">
+    <div class="piece-head"><span class="piece-num">05</span><h2>WebRTC calling</h2></div>
+    <p class="piece-tagline">The notification payload doesn't just wake the app — it <em>is</em> the signaling transport.</p>
+
+    <p>With no held connection anywhere, the SDP offer (typically a few hundred bytes to ~2KB) rides directly inside the push's <code>data</code> field. Each ICE candidate goes out the same way, as its own small follow-up push. Nothing is fetched from a server after the tap — the notification already carried the (encrypted) content.</p>
+
+    <div class="shape-label">The call sequence, end to end</div>
+    <div class="flow">
+      <div class="flow-step">
+        <div class="flow-dot">1</div>
+        <div><div class="flow-who">Caller's device</div><div class="flow-title">Build &amp; encrypt an SDP offer</div><div class="flow-desc"><code>RTCPeerConnection.createOffer()</code>, then <code>nacl.box()</code> it to the callee's stored public key.</div></div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-dot">2</div>
+        <div><div class="flow-who">Relay (stateless)</div><div class="flow-title">Forward, don't store</div><div class="flow-desc">POSTs the encrypted blob to Expo Push, addressed to the callee's token. Nothing written anywhere.</div></div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-dot">3</div>
+        <div><div class="flow-who">Callee's device</div><div class="flow-title">Notification arrives, with a ring-style sound</div><div class="flow-desc">A normal push &mdash; the app runs no code until it's tapped (see the earlier note on why this is a call <em>request</em>, not a synchronous ring).</div></div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-dot">4</div>
+        <div><div class="flow-who">Callee's device</div><div class="flow-title">Tap &rarr; decrypt &rarr; answer</div><div class="flow-desc">Open with the caller's known public key, <code>setRemoteDescription()</code>, gather local media, create + encrypt an answer, relay it back the same way.</div></div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-dot">5</div>
+        <div><div class="flow-who">Both devices</div><div class="flow-title">Trade ICE candidates, connect</div><div class="flow-desc">Same encrypted-push relay, one small message per candidate, until a direct peer connection forms.</div></div>
+      </div>
+    </div>
+
+    <h3>A second, ephemeral token — scoped to one call</h3>
+    <p>The pair token above is long-lived and addresses a device; it says nothing about which <em>call attempt</em> a given signaling message belongs to. Push delivery is best-effort and can redeliver or arrive out of order, so a second, disposable token rides inside the encrypted payload for the lifetime of a single call only &mdash; born with the offer, discarded at <code>call-end</code>, never persisted.</p>
+
+    <p>Each message carries two things: proof of the token it just received, and a freshly generated token for whatever comes next. A ratchet, not a static session id:</p>
+
+    <div class="shape-label">The ratchet, one call attempt</div>
+    <pre>Caller &rarr; offer:   { sdp,                        sessionToken: <span class="k">T0</span> }
+Callee &rarr; answer:  { sdp,      inResponseTo: <span class="k">T0</span>, sessionToken: <span class="k">T1</span> }
+Caller &rarr; ICE:     { candidate, inResponseTo: <span class="k">T1</span>, sessionToken: <span class="k">T2</span> }
+Callee &rarr; ICE:     { candidate, inResponseTo: <span class="k">T2</span>, sessionToken: <span class="k">T3</span> }
+<span class="c">…and so on until call-end, then the whole chain is thrown away</span></pre>
+
+    <p>What it buys, without any server involvement:</p>
+    <ul>
+      <li><strong>Replay/duplicate protection</strong> &mdash; a mismatched token means "not part of the live exchange," and it's dropped rather than acted on.</li>
+      <li><strong>Implicit session identity</strong> &mdash; if the caller retries after no answer, the retry's tokens are freshly generated and won't match the abandoned attempt's chain, so a late straggler from the dead attempt can't get confused with the live one.</li>
+      <li><strong>Nothing to persist</strong> &mdash; lives only in each device's in-memory call state. <code>callLog</code>/<code>missedNotes</code> still record <em>that</em> a call happened; the session tokens themselves never touch AsyncStorage.</li>
+    </ul>
+
+    <h3>Platform split</h3>
+    <ul>
+      <li><strong>Web</strong> &mdash; the browser's native <code>RTCPeerConnection</code>.</li>
+      <li><strong>Native</strong> &mdash; <code>react-native-webrtc</code>'s <code>RTCPeerConnection</code>, same shape, different import. Exactly what the existing <code>.native.ts</code> / <code>.ts</code> split (already used for <code>src/audio/</code>) is for: a <code>webrtc.ts</code> / <code>webrtc.native.ts</code> pair exporting one small interface for <code>call.tsx</code> to use.</li>
+    </ul>
+
+    <div class="callout open">
+      <span class="icon">OPEN</span>
+      <p><strong>STUN only, no TURN, for v1.</strong> Free public STUN handles NAT traversal for most home/wifi pairs but will fail on some networks (symmetric NATs, some carrier or corporate networks). A known, real gap &mdash; not an oversight. TURN (a small coturn instance, or a metered service) can be added later without touching anything else here.</p>
+    </div>
+
+    <h3>Where it lands in the existing app</h3>
+    <p><code>app/call.tsx</code> currently assumes a call is already live and only shows your own speech transcript. This adds the phase <em>before</em> that: decrypt the incoming offer, build the peer connection, answer, exchange ICE &mdash; only then does <code>callState</code> flip to <code>'active'</code>, exactly as it does today. The transcript doesn't disappear; it becomes a layer on top of real two-way audio instead of being the entire call.</p>
+  </section>
+
+  <!-- BUILD ORDER -->
+  <section class="piece" id="order">
+    <div class="piece-head"><h2 style="font-size:20px">Suggested build order</h2></div>
+    <div class="order-grid">
+      <div class="order-card"><div class="n">1</div><h4>Keys &amp; pairing</h4><p>Keypair generation, secure-store, QR show/scan. Testable in Expo Go.</p></div>
+      <div class="order-card"><div class="n">2</div><h4>Relay + text</h4><p>Stateless forward endpoint; swap <code>localTransport</code> for a relay-backed one. Real texting between two phones, no calling yet.</p></div>
+      <div class="order-card"><div class="n">3</div><h4>Dev client + WebRTC</h4><p>Move off Expo Go, add <code>react-native-webrtc</code>, get one basic two-way audio call working on a shared network.</p></div>
+      <div class="order-card"><div class="n">4</div><h4>Polish (later)</h4><p>TURN, push-token refresh, PushKit/CallKit for a true synchronous ring &mdash; all additive on top of this core.</p></div>
+    </div>
+  </section>
+
+  <footer class="doc-footer">
+    Ranah &middot; internal architecture note &middot; grounded in the current <code>ranah-app</code> source (ContactsContext, MessagesContext, persist.ts, notifications/scheduler.ts) rather than a from-scratch design.
+  </footer>
+
+</div>
+</body>
+</html>
