@@ -1,4 +1,5 @@
-import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { ensureIdentity, getPushToken } from '../crypto/identity';
 import { localTransport } from '../messages/transport';
 import { useContacts } from './ContactsContext';
 import { useInbox } from './InboxContext';
@@ -28,8 +29,13 @@ export interface Conversation {
   unread: number;
 }
 
-interface Profile {
+export interface Profile {
   id: string;
+  // This device's pairing identity (see CallingArchitecture/calling-architecture.html
+  // §Phase 1). Filled in once, shortly after first launch — absent until then.
+  boxPublicKey?: string;
+  signPublicKey?: string;
+  pushToken?: string;
 }
 
 const HOUR = 60 * 60 * 1000;
@@ -59,6 +65,8 @@ function seedMessages(me: string, now: number): Message[] {
 interface MessagesValue {
   // This device's user id (an account id, once CloClo has accounts).
   myId: string;
+  // This device's pairing identity — see the `Profile` type above.
+  profile: Profile;
   // Conversations with people still in Contacts, most recent first.
   conversations: Conversation[];
   unreadTotal: number;
@@ -83,11 +91,28 @@ const MessagesContext = createContext<MessagesValue | null>(null);
 export function MessagesProvider({ children }: { children: React.ReactNode }) {
   const { contactById } = useContacts();
   const { addItem } = useInbox();
-  const [profile] = useState<Profile>(() =>
+  const [profile, setProfile] = useState<Profile>(() =>
     readPersisted<Profile>('profile', { id: newId('me-') }, (v) => typeof (v as Profile | null)?.id === 'string')
   );
   usePersist('profile', profile);
   const myId = profile.id;
+
+  // Fills in this device's pairing identity once, shortly after first
+  // launch — a one-shot effect, not a listener/timer.
+  useEffect(() => {
+    if (profile.boxPublicKey && profile.signPublicKey && profile.pushToken) return;
+    let cancelled = false;
+    (async () => {
+      const identity = await ensureIdentity();
+      const pushToken = await getPushToken();
+      if (cancelled || !identity) return;
+      setProfile((prev) => ({ ...prev, ...identity, pushToken: pushToken || prev.pushToken }));
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [messages, setMessages] = useState<Message[]>(() => readPersisted('messages', seedMessages(myId, Date.now()), Array.isArray));
   usePersist('messages', messages);
 
@@ -168,6 +193,7 @@ export function MessagesProvider({ children }: { children: React.ReactNode }) {
   const value = useMemo<MessagesValue>(
     () => ({
       myId,
+      profile,
       conversations,
       unreadTotal,
       thread,
@@ -180,7 +206,7 @@ export function MessagesProvider({ children }: { children: React.ReactNode }) {
       deleteMessage,
       deleteThread,
     }),
-    [myId, conversations, unreadTotal, thread, sendMessage, receiveMessage, activeChat, hasMessage, markThreadRead, deleteMessage, deleteThread]
+    [myId, profile, conversations, unreadTotal, thread, sendMessage, receiveMessage, activeChat, hasMessage, markThreadRead, deleteMessage, deleteThread]
   );
 
   return <MessagesContext.Provider value={value}>{children}</MessagesContext.Provider>;

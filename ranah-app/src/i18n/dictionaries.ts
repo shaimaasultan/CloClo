@@ -98,6 +98,13 @@ export interface Dictionary {
   deleteConfirm: (name: string) => string;
   keepContact: string;
   noContacts: string;
+  // Pairing (Phase 1 of the calling architecture — QR key exchange).
+  pairDeviceLink: string;
+  pairTitle: string;
+  pairShowCode: string;
+  pairScanTheirs: string;
+  pairGrantCameraAccess: string;
+  pairWaitingForThem: string;
   // On a contact's birthday: a tag on their rows and cards, and the keeper's bubble.
   birthdayToday: string;
   // The "Birthdays today" reminder card on Contacts, and its note on the dial.
@@ -403,6 +410,12 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
     deleteConfirm: (name) => `Delete ${name}? This can’t be undone.`,
     keepContact: 'Keep',
     noContacts: 'No contacts yet — add someone to call',
+    pairDeviceLink: 'Pair a device',
+    pairTitle: 'Pair a device',
+    pairShowCode: 'Your code',
+    pairScanTheirs: 'Scan theirs',
+    pairGrantCameraAccess: 'Allow camera access',
+    pairWaitingForThem: 'Waiting for their code to update…',
     birthdayToday: 'Birthday today',
     birthdaysTitle: 'Birthdays today',
     birthdaysHint: 'Give them a call to wish them a happy birthday',
@@ -682,6 +695,12 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
     deleteConfirm: (name) => `تمسحي ${name}؟ مش هينفع ترجعيه.`,
     keepContact: 'خليه',
     noContacts: 'لسه مفيش جهات اتصال — ضيفي حد تكلميه',
+    pairDeviceLink: 'ضيفي جهاز',
+    pairTitle: 'ضيفي جهاز',
+    pairShowCode: 'الكود بتاعك',
+    pairScanTheirs: 'امسحي كوده',
+    pairGrantCameraAccess: 'اسمحي باستخدام الكاميرا',
+    pairWaitingForThem: 'مستنية الكود يتحدث عنده…',
     birthdayToday: 'عيد الميلاد النهارده',
     birthdaysTitle: 'أعياد ميلاد النهارده',
     birthdaysHint: 'كلميهم وقوليلهم كل سنة وانتوا طيبين',

@@ -1,4 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import type { Grant } from '../crypto/identity';
 import type { Caller, CallerActivity, KeepsakeKind, Lang } from '../i18n/dictionaries';
 import { useLang } from './LangContext';
 import { readPersisted, usePersist } from './persist';
@@ -17,6 +18,12 @@ export interface Contact {
   keepsake: KeepsakeKind;
   // Starred: listed first in Contacts and given a speed-dial hole on the dial.
   favourite?: boolean;
+  // Present once this contact has been paired by QR (see CallingArchitecture/
+  // calling-architecture.html §Phase 1) — absent for manually-added contacts.
+  boxPublicKey?: string;
+  signPublicKey?: string;
+  pushToken?: string;
+  grant?: Grant;
 }
 
 export type ContactDraft = Omit<Contact, 'id' | 'names' | 'favourite'>;
@@ -37,6 +44,10 @@ interface ContactsValue {
   updateContact: (id: string, draft: ContactDraft) => void;
   removeContact: (id: string) => void;
   toggleFavourite: (id: string) => void;
+  // Records a completed QR pairing against an existing contact — kept
+  // separate from addContact/updateContact so the manual add-contact form
+  // never has to know about these fields.
+  attachPairing: (id: string, pairing: { boxPublicKey: string; signPublicKey: string; pushToken: string; grant: Grant }) => void;
 }
 
 const ContactsContext = createContext<ContactsValue | null>(null);
@@ -103,9 +114,16 @@ export function ContactsProvider({ children }: { children: React.ReactNode }) {
     setStored((prev) => prev.map((c) => (c.id === id ? { ...c, favourite: !c.favourite } : c)));
   }, []);
 
+  const attachPairing = useCallback(
+    (id: string, pairing: { boxPublicKey: string; signPublicKey: string; pushToken: string; grant: Grant }) => {
+      setStored((prev) => prev.map((c) => (c.id === id ? { ...c, ...pairing } : c)));
+    },
+    []
+  );
+
   const value = useMemo<ContactsValue>(
-    () => ({ contacts, contactById, rawContact, addContact, updateContact, removeContact, toggleFavourite }),
-    [contacts, contactById, rawContact, addContact, updateContact, removeContact, toggleFavourite]
+    () => ({ contacts, contactById, rawContact, addContact, updateContact, removeContact, toggleFavourite, attachPairing }),
+    [contacts, contactById, rawContact, addContact, updateContact, removeContact, toggleFavourite, attachPairing]
   );
 
   return <ContactsContext.Provider value={value}>{children}</ContactsContext.Provider>;

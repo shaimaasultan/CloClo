@@ -40,6 +40,13 @@
           "microphonePermission": "Allow CloClo to use the microphone for live call transcripts and recording your own ringtones.",
           "speechRecognitionPermission": "Allow CloClo to turn what you say on a call into a live transcript."
         }
+      ],
+      "expo-secure-store",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow CloClo to use the camera to scan a pairing code."
+        }
       ]
     ]
   }

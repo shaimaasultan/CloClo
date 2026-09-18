@@ -105,6 +105,22 @@ export default function ContactsScreen() {
       <View style={[styles.toolbar, { flexDirection: rowDir }]}>
         <SearchBox value={query} onChange={setQuery} placeholder={t.searchPlaceholder} />
         <Pressable
+          onPress={() => router.push('/pair')}
+          role="button"
+          aria-label={t.pairDeviceLink}
+          style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
+            styles.iconBtn,
+            (pressed || hovered) && styles.iconBtnActive,
+          ]}
+        >
+          <Svg width={16} height={16} viewBox="0 0 24 24">
+            <Path
+              d="M4 4h6v6H4V4zm10 0h6v6h-6V4zM4 14h6v6H4v-6zm11 0h2v2h-2v-2zm4 0h2v2h-2v-2zm-4 4h2v2h-2v-2zm4 0h2v2h-2v-2z"
+              fill="rgba(239,230,211,.7)"
+            />
+          </Svg>
+        </Pressable>
+        <Pressable
           onPress={() => router.push('/contact')}
           role="button"
           style={({ pressed, hovered }: { pressed: boolean; hovered?: boolean }) => [
