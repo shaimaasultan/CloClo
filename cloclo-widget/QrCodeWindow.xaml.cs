@@ -1,0 +1,42 @@
+using System.IO;
+using System.Windows;
+using System.Windows.Media.Imaging;
+using QRCoder;
+
+namespace CloCloWidget;
+
+// A QR code for whatever text/URL was selected — the fastest way to get a
+// link onto your phone without any companion-app pairing, since the
+// phone's own camera just scans it. Generated entirely locally via
+// QRCoder, same "no network call" spirit as the rest of this widget.
+public partial class QrCodeWindow : Window
+{
+    public QrCodeWindow(string text)
+    {
+        InitializeComponent();
+        SourceTextBox.Text = text;
+
+        var generator = new QRCodeGenerator();
+        var data = generator.CreateQrCode(text, QRCodeGenerator.ECCLevel.Q);
+        var png = new PngByteQRCode(data).GetGraphic(10);
+
+        var bitmap = new BitmapImage();
+        using (var stream = new MemoryStream(png))
+        {
+            bitmap.BeginInit();
+            bitmap.CacheOption = BitmapCacheOption.OnLoad;
+            bitmap.StreamSource = stream;
+            bitmap.EndInit();
+        }
+        bitmap.Freeze();
+        QrImage.Source = bitmap;
+    }
+
+    private void Copy_Click(object sender, RoutedEventArgs e)
+    {
+        System.Windows.Clipboard.SetText(SourceTextBox.Text);
+        CopyButton.Content = "Copied!";
+    }
+
+    private void Close_Click(object sender, RoutedEventArgs e) => Close();
+}
