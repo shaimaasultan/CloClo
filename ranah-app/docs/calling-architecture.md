@@ -1,208 +1,302 @@
-# Ranah Calling Architecture
+# Calling & texting, without a server that remembers anything
 
-Design for end-to-end encrypted calls and texts between two Ranah installs — contacts, history and connection keys stay on-device; the server only ever forwards an opaque, encrypted blob through a push notification.
+*Ranah architecture note — implementation-ready. v1 scope: notification-triggered, not synchronous ring. Revised 2026-09-18.*
 
-**Scope for v1:** notification-triggered call requests, not a synchronous ring (see the discussion below). PushKit/CallKit-based true ringing is deferred, additive work.
+End-to-end encrypted calls and texts between two Ranah installs. Organized by what actually gets built together, not by abstract topic — every payload shows every field, every step names its tool, and every encryption/decryption is labeled with who does it and where.
 
-Grounded in the current `ranah-app` source (`ContactsContext`, `MessagesContext`, `persist.ts`, `notifications/scheduler.ts`), not designed from scratch.
+## Who's talking to whom
 
-## Five pieces, in build order
+Four different "servers" get mentioned in this doc. Only one of them is ours — mixing the other three up with it is the easiest way to misread this design.
 
-| # | Piece | Needs a custom dev client? |
-|---|-------|------------------------------|
-| 1 | E2E key exchange at pairing | No — Expo Go |
-| 2 | Relay server, stateless | No — Expo Go |
-| 3 | Local-only storage | No — Expo Go |
-| 4 | QR pairing UI | No — Expo Go |
-| 5 | WebRTC calling | **Yes** |
+| Name | What it is | Sees |
+|---|---|---|
+| **Relay server** (ours) | New. A stateless serverless function. | Encrypted blobs, plus the sender's and receiver's public keys (to verify the grant). Never plaintext, never stored. |
+| **STUN server** (third-party) | Not ours. Existing, free, public (e.g. Google's `stun.l.google.com:19302`). | Nothing but a UDP ping — tells a device its own public IP:port. No app data, no contacts, no call content ever reaches it. |
+| **Push service** (third-party) | Not ours. Expo's push API, itself forwarding to Apple APNs / Google FCM. | The encrypted blob, as the notification's data payload — can't decrypt it, only deliver it. |
+| **TURN server** (third-party, deferred) | Not ours (or self-hosted later). Deferred entirely — not part of v1. | Encrypted media packets, only if a direct P2P connection fails. Can't decrypt them either. |
 
-Only WebRTC forces the move off Expo Go. Pairing, crypto, and real text messaging between two phones can be built and demoed entirely first.
+Every "server" mention in the steps below is tagged the same way: **Relay** for ours, **STUN** / **Push** for the other two that actually appear in v1.
+
+**Contents:** [Phase 1 · Keys & Pairing](#phase-1-keys--pairing) · [Phase 2 · Relay & Text](#phase-2-relay--text) · [Phase 3 · WebRTC Calling](#phase-3-webrtc-calling) · [Reliability & retries](#reliability--retries)
 
 ---
 
-## 1. E2E key exchange at pairing
+## Phase 1 · Keys & Pairing
 
-The "session key" this whole design hinges on isn't a thing the server hands out — it's derived fresh, every time, from two public keys the devices already hold.
+`Expo Go — no dev client needed`
 
-Each device generates a keypair once, at first launch, using **tweetnacl** (pure JS/WASM, X25519 + XSalsa20-Poly1305 — the standard NaCl "box"). Pure JS/WASM means it runs identically on web and native with no config plugin or dev-client rebuild — crypto stays fully decoupled from the WebRTC native-module migration.
+Merges the old "key exchange" and "QR pairing UI" pieces — they're really one deliverable, since the QR code is the only thing that ever carries the keys. Nothing here touches the network at all; pairing happens in person, over a screen the two of you are both looking at.
 
-- **Private key** → `expo-secure-store` (iOS Keychain / Android Keystore). Never AsyncStorage, never backed up.
-- **Public key** → a new field on the existing `profile` object, already persisted, not sensitive.
-- After pairing, either side derives the shared secret fresh: `nacl.box(msg, nonce, theirPublicKey, myPrivateKey)`. Nothing about "the key" needs separate storage beyond each side's own keypair plus the other's public key, which pairing already delivered.
+**Tools:** tweetnacl · expo-secure-store · react-native-qrcode-svg · expo-camera · `persist.ts` (existing) · `ContactsContext.tsx` (existing)
 
-**Pairing QR payload:**
+> **Note:** Two keypairs, not one — tweetnacl uses different algorithms for encrypting and for signing, and earlier drafts of this doc glossed over that. **Box keypair** (X25519, `nacl.box.keyPair()`) encrypts/decrypts messages. **Sign keypair** (Ed25519, `nacl.sign.keyPair()`) signs the grant and every outgoing request so the relay can verify who sent what. Every payload below carries both public keys explicitly.
 
+**1. Generate both keypairs, once, at first launch** — *on device, no network*
+Tool: tweetnacl — `nacl.box.keyPair()`, `nacl.sign.keyPair()` — new file `src/crypto/identity.ts`. Secret keys go straight to `expo-secure-store` (two entries: `boxSecretKey`, `signSecretKey`) — iOS Keychain / Android Keystore, never AsyncStorage, never backed up. Public keys join the existing `profile` object.
+
+`profile` (persist.ts, key `"profile"`) — full shape after this step:
 ```json
 {
   "id": "me-8f2a1c",
-  "publicKey": "base64…",
-  "pushToken": "ExponentPushToken[…]",
-  "grant": { "...": "signed authorization for the relay — see §2" }
+  "boxPublicKey": "base64…",
+  "signPublicKey": "base64…"
 }
 ```
 
-**Decided:** scanning the code is a straight fit for the existing `addContact()` in `ContactsContext.tsx` — it just gets new fields to carry. The `grant` is what later lets the relay verify a sender with no lookup at all (see below).
+**2. Show your identity QR** — *on device, no encryption — shown in person*
+Tool: react-native-qrcode-svg (pure JS, renders via react-native-svg, already a dependency) — new screen `app/pair.tsx`. Both people open this screen at the same time. No grant yet — neither side knows the other's key, so there's nothing to authorize.
 
-## 2. Relay server, as a router
-
-Since the payload is already opaque to it, the server can be genuinely stateless — no database to even architect retention around.
-
-One HTTP endpoint, best run as a single serverless function (Cloudflare Worker / Vercel Edge Function) rather than a hosted process — there's nothing for a long-running server to hold.
-
-```
-POST /relay
-{
-  "grant": { "...": "signed at pairing time, see below" },
-  "senderPublicKey": "A's public key",
-  "signature": "sign_A(payload)",
-  "type": "call-offer",   // | call-ice | call-answer | call-end | text
-  "payload": "<nacl.box-encrypted blob, base64>"
-}
-```
-
-The function does exactly one thing: verify the grant and signature below, then hand `payload` to **Expo's push API** (`exp.host/--/api/v2/push/send`), addressed to whatever push token the grant names. `type` only picks a notification title/sound — it's never used to interpret the encrypted contents. Because the app already uses `expo-notifications`, this means one unified API instead of separately integrating APNs and FCM.
-
-### Who's allowed to reach you: a signed grant, not a lookup
-
-A bare `toPushToken` in the request isn't enough — the relay has no database, so it can't check "is this sender someone the recipient actually paired with." Worse, encryption alone doesn't help: the relay never decrypts anything, so it can't tell a real message from garbage either — a notification still lands on the recipient's phone before their app ever tries (and fails) to decrypt it. Confidentiality isn't delivery control.
-
-The fix is a credential the relay can verify with *no lookup at all* — the same trust model as a self-signed certificate or a capability token. At pairing, alongside the public-key exchange, B also issues A a grant, signed with B's own key:
-
+Identity QR payload — full shape, round 1:
 ```json
 {
-  "granteePublicKey": "A's public key",
-  "issuerPublicKey": "B's public key",
-  "pushToken": "B's current token",
-  "issuedAt": "…", "expiresAt": "…",
-  "signature": "sign_B(everything above)"
+  "id": "me-8f2a1c",
+  "boxPublicKey": "base64…",
+  "signPublicKey": "base64…",
+  "pushToken": "ExponentPushToken[…]"
 }
 ```
 
-Every field the relay needs to verify the grant travels *inside* the grant itself, so checking it needs nothing external:
+**3. Scan theirs** — *on device*
+Tool: expo-camera's built-in barcode scanner — stock Expo Go capability, no config plugin. Decoded straight into a draft `Contact`. Each side now holds the other's `boxPublicKey`, `signPublicKey`, and `pushToken` — but not yet a grant.
 
-1. Verify `grant.signature` against `grant.issuerPublicKey` — proves B really issued it, nothing looked up.
-2. Check `grant.granteePublicKey` matches the request's `senderPublicKey` — this grant names this sender.
-3. Verify the sender's own `signature` over the request — proves it really came from whoever holds A's private key.
-4. Route to `grant.pushToken`, never a bare token supplied separately.
+**4. Issue a grant, the instant their key is known** — *on device, signed locally — no network*
+Tool: tweetnacl — `nacl.sign.detached(payload, mySignSecretKey)`. This device now knows the other side's `signPublicKey`, so it can authorize them to reach it. This is the credential the relay verifies in Phase 2 — with no lookup, because everything it needs is inside the object itself.
+
+Grant — full shape:
+```json
+{
+  "granteePublicKey": "their signPublicKey",
+  "issuerPublicKey": "my own signPublicKey",
+  "pushToken": "my own current pushToken",
+  "issuedAt": 1737100000000,
+  "expiresAt": 1737200000000,
+  "signature": "base64 nacl.sign.detached(…, mySignSecretKey)"
+}
+```
+
+**5. Show the updated QR, second scan** — *on device, no encryption — still just shown in person*
+Tool: same react-native-qrcode-svg screen, re-rendered. The QR on screen updates the instant step 4 finishes — in the app this reads as one continuous back-and-forth scan, not two deliberate steps. The other person scans it again, this time getting the grant too.
+
+Identity QR payload — full shape, round 2:
+```json
+{
+  "id": "me-8f2a1c",
+  "boxPublicKey": "base64…",
+  "signPublicKey": "base64…",
+  "pushToken": "ExponentPushToken[…]",
+  "grant": { "…the object from step 4, naming THEM as grantee" }
+}
+```
+
+**6. Save the contact** — *on device*
+Tool: existing `addContact()` in ContactsContext.tsx, existing persist.ts. Both sides now hold everything Phase 2 needs: the other's box key (to encrypt to them), sign key (to verify their signatures), push token (to route to them), and a grant *they* issued (to prove to the relay this sender is authorized).
+
+Contact — new fields, full shape:
+```json
+{
+  "id": "b-2f91ac",
+  "name": "…",
+  "boxPublicKey": "…",
+  "signPublicKey": "…",
+  "pushToken": "…",
+  "grant": { "…the grant THEY issued to me" }
+}
+```
+*(plus existing fields: number, birthday, activity, sky, localHour, keepsake, favourite)*
+
+> **Note:** No encryption or decryption happens anywhere in Phase 1 — pairing is entirely in-person, over a screen, never over the network. What this phase actually produces is the *capability* to encrypt: by the end of it, each side holds the other's box key, ready for Phase 2.
+
+---
+
+## Phase 2 · Relay & Text
+
+`Expo Go — no dev client needed`
+
+Everything needed for real, working, end-to-end encrypted text messages between two phones: the relay server itself, rate limiting, replay protection, and the local storage changes that support them — one deliverable, demoable on its own before calling exists at all.
+
+**Tools:** Cloudflare Workers / Vercel Edge · tweetnacl · Expo Push API · `MessagesContext.tsx` (existing) · `persist.ts` (existing)
+
+**1. Compose** — *on device A*
+Tool: existing `sendMessage()` in MessagesContext.tsx.
+```json
+{
+  "id": "m1a2b3c4",
+  "from": "me-8f2a1c",
+  "to": "b-2f91ac",
+  "text": "…",
+  "at": 1737100000000,
+  "status": "sending"
+}
+```
+
+**2. Encrypt** — **ENCRYPTED here — on device A, sender**
+Tool: tweetnacl — `nacl.box(JSON.stringify(message), nonce, contact.boxPublicKey, my.boxSecretKey)`. Plaintext never leaves this step, ever. Everything downstream — relay, push service, APNs/FCM — only ever sees the output of this line.
+
+**3. Sign the request** — *on device A*
+Tool: tweetnacl — `nacl.sign.detached(payload, my.signSecretKey)`.
+
+**4. Send to the relay** — *A → Relay*
+Every field that ever crosses the network for a text message:
+```json
+{
+  "grant": { "…the grant B issued A, from Phase 1 step 4" },
+  "senderPublicKey": "A's signPublicKey",
+  "signature": "base64, from step 3",
+  "type": "text",
+  "payload": "base64 nacl.box ciphertext, from step 2"
+}
+```
+
+**5. Verify, rate-limit, dedupe** — *on the Relay — sees ciphertext only, never plaintext*
+Tool: the hosting platform's own request handler (Workers/Edge Function code) — no external library needed, just tweetnacl's verify functions. In order, cheapest-irrelevant-first:
+1. Verify `grant.signature` against `grant.issuerPublicKey` — self-contained, nothing looked up.
+2. Check `grant.granteePublicKey == senderPublicKey` — this grant names this sender.
+3. Verify the outer `signature` against `senderPublicKey` — proves the request really came from A.
+4. Rate-limit check: `senderPublicKey` (~30/min, ~300/hr) then `grant.issuerPublicKey` (~60/min) — both only trusted because steps 1–3 already verified them; nothing here is a raw claimed value. Deliberately no IP-based limiting — see the note below.
 5. Reject if `expiresAt` has passed.
 
-**Decided:** someone who merely obtains a bare push token can't produce a valid grant for it — that only comes from actually pairing with the recipient, or stealing their private key outright. The grant refreshes the same piggyback way as the push token, so it never needs to be long-lived to stay usable.
+**6. Forward, don't store** — *Relay → Push service → APNs/FCM*
+Tool: Expo Push API (`exp.host/--/api/v2/push/send`) — one unified call instead of separately integrating APNs and FCM. The same opaque `payload` rides inside the push notification's data field. None of these three — relay, Expo, APNs/FCM — can decrypt it. Nothing about this request is written to disk anywhere in this step.
 
-### Rate limiting: sender id and receiver id, nothing else
+**7. Notification arrives** — *device B, asleep or awake*
+A plain OS notification — sound/banner only. No app code runs until it's tapped.
 
-The grant stops *strangers*; it doesn't stop a legitimate but compromised or buggy paired contact from flooding. Deliberately **no IP-based limiting** — both counters below key on identifiers the relay already has to see to verify the grant in the first place (`senderPublicKey`, `grant.issuerPublicKey` as the recipient's own persistent id), so this adds no new visibility at all, rather than introducing IP as a fourth thing the server pays attention to. Both are short-lived, auto-expiring counters — not stored user data: no message content, no contacts, nothing beyond an opaque key for a few seconds to minutes before vanishing.
+**8. Tap → decrypt** — **DECRYPTED here — on device B, recipient**
+Tool: tweetnacl — `nacl.box.open(payload, nonce, contactA.boxPublicKey, my.boxSecretKey)`. Recovers the original `Message` JSON from step 1. This is the only device, other than A itself, that ever sees the plaintext.
 
-| Layer | Keyed on | Rough budget | Catches |
-|---|---|---|---|
-| Sender id | `senderPublicKey` | ~30/min, ~300/hr | One identity stuck in a flood/retry loop |
-| Receiver id | `grant.issuerPublicKey` | ~60/min | One recipient, regardless of how many senders are hitting them |
+**9. Dedupe** — *on device B, local only*
+Tool: new persisted key `seenDeliveryIds`, same persist.ts mechanism as everything else. Check `message.id` against the local store before doing anything else — already seen → drop silently. A relay that's seen a valid request once could resend it later and it would still pass every check in step 5, since the grant doesn't change per request; this is what actually catches that, independent of message deletion or call state, capped and pruned by count and age.
 
-**Order**: verify grant + signature *first* → sender check → receiver check → forward. Both counters only ever run on identities the signature has already confirmed, never on a raw claimed value — so there's nothing left to spoof: an attacker can't burn through someone else's budget by putting their public key in the `senderPublicKey` field, because that field is only trusted once the accompanying signature proves whoever sent this really holds the matching private key. Ed25519 verification is microseconds, not a meaningful cost even checked on every request — the earlier instinct to rate-limit before verifying "to save the expensive check for later" wasn't actually buying anything worth the gap it opened.
+**10. Deliver** — *on device B*
+Tool: existing `receiveMessage()` in MessagesContext.tsx, existing InboxContext.
 
-**Decided:** both rate-limit keys are signed, not claimed. `senderPublicKey` is trusted only after its signature verifies; `grant.issuerPublicKey` was already trusted only after the grant's own signature verifies. Symmetric, and the earlier spoofing gap is closed, not just bounded.
+> **Open:** Any HTTP server technically sees the connecting IP as a property of the protocol itself — that can't be made to disappear, and the hosting platform applies its own IP-level DDoS protection underneath this regardless. What step 5 actually decides is narrower: the relay's *own application logic* never uses IP as a signal or a key, only the two signed ids.
 
-**Open:** one caveat that's inherent to the platform, not this design: any HTTP server technically sees the connecting IP as a property of the protocol itself — that can't be made to disappear, and the hosting platform (Cloudflare/Vercel/etc.) will likely apply its own IP-level DDoS protection underneath this regardless. What's actually being decided here is narrower and real: the relay's *own application logic* never uses IP as a signal or a key, only the two signed ids above. A flood of purely fabricated requests with no valid signature at all still costs a small, fixed verification check each — that's a volumetric concern properly handled by the platform's own infrastructure, not something rate-limiting two trusted ids was ever going to solve.
+> **Open — stale push tokens.** A reinstall invalidates a token, and with zero server state there's no registry to catch it. Fix: every outgoing message carries the sender's own current token, read fresh at send time (piggybacked on ordinary traffic — see step 4's `grant.pushToken`, refreshed the same way). The one gap that leaves: if a token changes *and* there's been genuine silence since, the first message after that gap still fails, since nothing was in flight to piggyback the new token onto. Fallback: re-pair by QR (Phase 1) — an acceptable price for a server that never remembers anything.
 
-### One seen-ids store, covering every delivery — request or response alike
+---
 
-The grant doesn't change per request, so a relay that's *seen* a valid delivery once — grant, signature, encrypted payload, all of it — could resend that exact triplet later and it would still pass every check. That's true whichever direction it went: a replayed call *offer* (a request) and a replayed call *answer* (a response to one) are the same category of problem, and so is a replayed text. One uniform mechanism should catch all of them, not a patchwork of one-off checks per type.
+## Phase 3 · WebRTC Calling
 
-Every relayed item — `text`, `call-offer`, `call-answer`, `call-ice`, `call-end` — already carries (or trivially gets) a unique id: `Message.id` for text, generated the same way today in `MessagesContext.tsx`; the session token itself for call signaling. A single local, persisted store checks all of them the same way, regardless of type or direction:
+`Custom dev client required`
 
-- A new persisted key, `seenDeliveryIds` — same `persist.ts` mechanism as everything else, local-only by construction.
-- On every incoming delivery, whatever its `type`: check `seenDeliveryIds` first. Already present → drop silently. Not present → record it, *then* hand it to the type-specific handler (`receiveMessage`, or the call state machine).
-- Independent of the message list or call state, so deleting a message, ending a call, or anything else the user does afterward never un-remembers that an id was seen.
-- Capped and pruned by count and age, so it only needs to outlive how long a stale replay could plausibly still be floating around — not forever.
+`react-native-webrtc` is a native module — Expo Go can't load it. This is the one phase that needs `expo-dev-client` + an EAS build before anything in it can even be tested. Everything else it needs (relay, encryption, push) is Phase 2, unchanged.
 
-The call session-token **ratchet stays too**, layered on top for calls specifically — `seenDeliveryIds` answers "have I processed this exact delivery before," while the ratchet additionally answers "does this belong to the call that's actually live right now," which a simple id check alone can't (a genuinely fresh offer for a *new* call attempt has a new id, so dedupe won't catch it — only the ratchet knows a previous attempt was abandoned).
+**Tools:** expo-dev-client + EAS Build · react-native-webrtc (native) · browser RTCPeerConnection (web) · tweetnacl (same as Phase 2) · Phase 2's relay (no new server)
 
-**Decided:** one universal layer (dedupe, every type, either direction) plus one call-specific layer on top (ordering/liveness within a live session) — every content type Ranah relays now has an anti-replay memory that doesn't depend on what the user does with it afterward. That's the full chain, closed.
+> **Note:** Steps 2–4 below are the exact same encrypt → sign → relay → push → tap → decrypt sequence as Phase 2, just carrying SDP/ICE instead of a text message. No new server, no new relay code — only a new `type` value and a new payload shape.
 
-## 3. Local-only storage
+**1. Create an offer** — *on device A, caller*
+Tool: `webrtc.native.ts` (wraps react-native-webrtc) or `webrtc.ts` (wraps the browser's own RTCPeerConnection) — same small interface either way, exactly the `.native.ts`/`.ts` split already used for `src/audio/`. `RTCPeerConnection.createOffer()`. A fresh session token `T0` is also generated here — random, in memory only, born with this call attempt.
 
-Mostly a confirmation, not new work — the app was already built this way.
-
-Contacts, messages, call log, reminders, settings and profile are already 100% local via `persist.ts` / AsyncStorage — confirmed by reading it, not assumed. Nothing architectural changes here. What's new is two fields:
-
-- `Contact` gains `publicKey` and `pushToken`.
-- `profile` gains `publicKey` (the private half goes to `expo-secure-store`, not here).
-
-**Decided — stale push tokens:** a reinstall or OS-level change invalidates a token, and with zero server state there's no registry to catch it. Rather than a separate refresh protocol: every outgoing message and call-signaling packet carries **the sender's own current token, read fresh at send time**. Every time a contact hears from you, they silently get an up-to-date copy of your token for free, piggybacked on ordinary traffic — no chain, nothing to pre-issue, nothing to get out of sync.
-
-**Open:** the one gap nothing on the client side closes: if a token changes *and* there's been genuine silence since (no message either direction), the first message after that gap still fails — there was no traffic to piggyback the new token onto. That's inherent to zero server state, not a flaw in the piggyback idea. The fallback is re-pairing by QR, and it's an acceptable price for a server that never remembers anything.
-
-## 4. QR pairing, in the app
-
-The one piece of the whole design that's purely UI — and, usefully, needs no native module at all.
-
-- **Show your code** — `react-native-qrcode-svg`, pure JS, renders via `react-native-svg` (already a dependency).
-- **Scan theirs** — `expo-camera`'s built-in barcode scanning, a stock Expo Go capability.
-- **Flow** — one "Pair" screen: your QR on screen, a "Scan their code" button beside it. Two people trade a glance at each other's phones once, same shape as Signal/WhatsApp device-linking.
-
-**Decided:** neither `expo-camera` nor `tweetnacl` need a custom dev client — pairing, crypto and text-over-relay (pieces 1–4) can be built and demoed entirely inside plain Expo Go. **Only WebRTC forces the move.** That's a real incremental delivery path: working end-to-end text before calling is touched at all.
-
-## 5. WebRTC calling
-
-The notification payload doesn't just wake the app — it *is* the signaling transport.
-
-With no held connection anywhere, the SDP offer (typically a few hundred bytes to ~2KB) rides directly inside the push's `data` field. Each ICE candidate goes out the same way, as its own small follow-up push. Nothing is fetched from a server after the tap — the notification already carried the (encrypted) content.
-
-**The call sequence, end to end:**
-
-1. **Caller's device** — build & encrypt an SDP offer: `RTCPeerConnection.createOffer()`, then `nacl.box()` it to the callee's stored public key.
-2. **Relay (stateless)** — forward, don't store: POSTs the encrypted blob to Expo Push, addressed to the callee's token. Nothing written anywhere.
-3. **Callee's device** — notification arrives, with a ring-style sound. A normal push — the app runs no code until it's tapped. This is a call *request*, not a synchronous ring (see the note below).
-4. **Callee's device** — tap → decrypt → answer: open with the caller's known public key, `setRemoteDescription()`, gather local media, create + encrypt an answer, relay it back the same way.
-5. **Both devices** — trade ICE candidates, connect: same encrypted-push relay, one small message per candidate, until a direct peer connection forms.
-
-### A second, ephemeral token — scoped to one call
-
-The pair token above is long-lived and addresses a device; it says nothing about which *call attempt* a given signaling message belongs to. Push delivery is best-effort and can redeliver or arrive out of order, so a second, disposable token rides inside the encrypted payload for the lifetime of a single call only — born with the offer, discarded at `call-end`, never persisted.
-
-Each message carries two things: proof of the token it just received, and a freshly generated token for whatever comes next. A ratchet, not a static session id:
-
-```
-Caller → offer:   { sdp,                        sessionToken: T0 }
-Callee → answer:  { sdp,      inResponseTo: T0, sessionToken: T1 }
-Caller → ICE:     { candidate, inResponseTo: T1, sessionToken: T2 }
-Callee → ICE:     { candidate, inResponseTo: T2, sessionToken: T3 }
-…and so on until call-end, then the whole chain is thrown away
+**2. Encrypt, sign, relay, push** — **ENCRYPTED on device A** → Relay → Push → APNs/FCM
+Identical mechanics to Phase 2 steps 2–6. `type` is now `"call-offer"`, and the encrypted payload carries the session token alongside the SDP:
+```json
+{
+  "sdp": "…",
+  "sessionToken": "T0"
+}
 ```
 
-What it buys, without any server involvement:
+**3. Tap → decrypt → answer** — **DECRYPTED on device B, callee**
+Tool: same webrtc.ts/webrtc.native.ts, same tweetnacl as Phase 2 step 8. `setRemoteDescription()`, gather local media (`getUserMedia`), `createAnswer()` — then encrypt + sign + relay the answer back through the identical Phase 2 path, `type: "call-answer"`:
+```json
+{
+  "sdp": "…",
+  "inResponseTo": "T0",
+  "sessionToken": "T1"
+}
+```
 
-- **Replay/duplicate protection** — a mismatched token means "not part of the live exchange," and it's dropped rather than acted on.
-- **Implicit session identity** — if the caller retries after no answer, the retry's tokens are freshly generated and won't match the abandoned attempt's chain, so a late straggler from the dead attempt can't get confused with the live one.
-- **Nothing to persist** — lives only in each device's in-memory call state. `callLog`/`missedNotes` still record *that* a call happened; the session tokens themselves never touch AsyncStorage.
+**4. Trade ICE candidates** — *both devices, same encrypt/relay/decrypt loop*
+`type: "call-ice"`, one small message per candidate, each continuing the ratchet:
+```json
+{
+  "candidate": "…",
+  "inResponseTo": "T_n",
+  "sessionToken": "T_n+1"
+}
+```
 
-Why this works where rotating the *real* push token doesn't: a live call session, by definition, requires continuous back-and-forth to exist at all. There's no long-silence case to bridge — if messages stop flowing, the call attempt has effectively already failed or ended.
+**5. NAT discovery, in parallel with steps 1 & 3** — *device ↔ STUN server directly — not through the relay*
+While gathering ICE candidates, each device's own WebRTC stack queries a STUN server — a free public one (e.g. Google's `stun.l.google.com:19302`) — completely separately from everything above. This is the one point in the whole design where a device talks to a server that isn't our relay. STUN sees a UDP ping and replies "here's your public IP:port" — nothing about the call, the contact, or any encrypted payload ever reaches it.
 
-### Platform split
+**6. Connect, direct** — *device A ↔ device B, no server involved*
+Once enough ICE candidates have been traded, the two devices connect directly — peer to peer. Audio/video flows DTLS/SRTP-encrypted between A and B only; the relay, STUN, and the push service are no longer part of the path at all once this succeeds.
 
-- **Web** — the browser's native `RTCPeerConnection`.
-- **Native** — `react-native-webrtc`'s `RTCPeerConnection`, same shape, different import. Exactly what the existing `.native.ts` / `.ts` split (already used for `src/audio/`) is for: a `webrtc.ts` / `webrtc.native.ts` pair exporting one small interface for `call.tsx` to use.
+**7. Hang up** — *same relay path as above, `type: "call-end"`*
+The whole session-token chain (`T0`, `T1`, …) is discarded on both sides — it only ever lived in memory. `callLog`/`missedNotes` (existing, persisted) still record *that* a call happened; never the tokens themselves.
 
-**Open — STUN only, no TURN, for v1.** Free public STUN handles NAT traversal for most home/wifi pairs but will fail on some networks (symmetric NATs, some carrier or corporate networks). A known, real gap, not an oversight. TURN (a small coturn instance, or a metered service) can be added later without touching anything else here.
+### Why the ratchet, on top of the relay's own replay protection
+
+Phase 2's `seenDeliveryIds` answers "have I processed this exact delivery before." The session token answers something dedupe alone can't: "does this belong to the call that's actually live right now." A caller's retry after no answer generates fresh tokens that won't match the abandoned attempt's chain — a late straggler from the dead attempt can't get confused with the live one, even though its id would look perfectly new to dedupe.
+
+> **Open — STUN only, no TURN, for v1.** Step 5's STUN lookup handles most home/wifi pairs; it will fail on some networks (symmetric NATs, some carrier or corporate networks) with no fallback in v1. A known, real gap — a TURN server (deferred) would relay the still-encrypted media when direct connection fails, without touching anything built here.
 
 ### Where it lands in the existing app
 
-`app/call.tsx` currently assumes a call is already live and only shows your own speech transcript. This adds the phase *before* that: decrypt the incoming offer, build the peer connection, answer, exchange ICE — only then does `callState` flip to `'active'`, exactly as it does today. The transcript doesn't disappear; it becomes a layer on top of real two-way audio instead of being the entire call.
+`app/call.tsx` currently assumes a call is already live and only shows your own speech transcript. Phase 3 adds the part *before* that — steps 1–6 above — and only then does `callState` flip to `'active'`, exactly as it does today. The transcript doesn't disappear; it becomes a layer on top of real two-way audio instead of being the entire call.
 
 ---
 
-## Why "notification-triggered," not a synchronous ring
+## Reliability & retries
 
-A **normal** push notification does not wake the app to run code in the background on iOS — it just shows a banner/sound. The app only starts doing anything once the user taps it. On Android, default-priority messages are also subject to Doze-mode delay. So the realistic flow is: caller sends → callee sees a notification with a ring-like sound → callee taps → app opens → **now** the WebRTC handshake starts. There's no live "ringing…" feedback for the caller, and no OS-level full-screen incoming-call UI over the lock screen (that requires PushKit/CallKit on iOS and ConnectionService on Android — deliberately deferred).
+*Cross-cutting.*
 
-This is closer to "a call request you tap to open and then connect" than a synchronous ring — more like requesting a FaceTime than receiving a phone call. Chosen deliberately for v1 to avoid CallKit/ConnectionService integration and VoIP-push entitlement rules. **Extends cleanly later**: PushKit/CallKit/ConnectionService are additive — a second, higher-priority delivery path and a new full-screen incoming-call UI — the relay design, E2E keys, local-only storage, and WebRTC core don't change.
+What happens if any one of the four servers from the "who's talking to whom" table is unreachable mid-call. The retry policy is different at every hop, because each hop trusts a different thing — this is one packet's path, top to bottom, end to end.
 
-## Suggested build order
+```
+[client]  Device A — caller, encrypts+signs
+             |
+             |  backoff x4 (1s,2s,4s,8s+jitter); 4xx is terminal
+             v
+[ours]    Relay server — verifies, forwards only
+             |
+             |  Expo-managed retry (2-3 attempts, inside the relay)
+             v
+[3rd party] Push service — Expo -> APNs/FCM
+             |
+             |  no retry on our side (fire-and-forget)
+             v
+[client]  Device B — callee, decrypts+dedupes
 
-1. **Keys & pairing** — keypair generation, secure-store, QR show/scan. Testable in Expo Go.
-2. **Relay + text** — stateless forward endpoint; swap `localTransport` for a relay-backed one. Real texting between two phones, no calling yet.
-3. **Dev client + WebRTC** — move off Expo Go, add `react-native-webrtc`, get one basic two-way audio call working on a shared network.
-4. **Polish (later)** — TURN, PushKit/CallKit for a true synchronous ring — all additive on top of this core.
+[3rd party] STUN server — parallel per device
+             queried independently by A and B the whole time above,
+             not on this packet's path (UDP retransmit, ~7 attempts,
+             handled inside the ICE stack)
+```
+
+**1. Device A → Relay** — *client-side backoff*
+Timeout or 5xx: the client retries with backoff (1s, 2s, 4s, 8s + jitter), capped at 4 attempts, then surfaces "couldn't send" in the UI. A 4xx — bad signature, expired grant — is terminal: no retry, since resending the identical request would just fail the same check again.
+
+**2. Relay → Push service** — *retried by the relay itself*
+An Expo API error or timeout gets 2–3 retries inside the same request, bounded by the relay function's own execution limit — the client never sees this hop fail unless all of those are exhausted.
+
+**3. Push service → APNs/FCM → Device B** — *no retry on our side*
+Transient failures here are Expo's own internal queue/retry — opaque to us. If the device is offline or its token is dead (`DeviceNotRegistered`), the relay does not retry; recovery is the stale-token piggyback from Phase 2, not a retry loop.
+
+**4. Device ↔ STUN, in parallel with 1–3** — *handled inside the ICE stack*
+UDP packet loss is retransmitted automatically by the native WebRTC/ICE stack per RFC 5389 (~7 attempts) — invisible to app code, nothing for us to implement.
+
+**5. Device ↔ TURN** — *v2, deferred — not built in v1*
+If a TURN allocation ever fails once added, ICE just falls back to whatever candidates it already has; with none, the call fails to connect. Not part of v1 at all — see Phase 3's open callout.
+
+**6. Whole call, offer delivered but never answered** — *app-level retry, not a raw resend*
+The caller's app sends a fresh offer with a new session-token chain rather than retransmitting the old one, bounded to 1–2 re-attempts before showing "no answer".
+
+| Hop | Failure | Retry | Bound |
+|---|---|---|---|
+| Device A → Relay | timeout / 5xx | Client backoff (1s, 2s, 4s, 8s + jitter) | 4 attempts |
+| Device A → Relay | 4xx (bad signature, expired grant) | None — terminal | 0 |
+| Relay → Push service | Expo API error/timeout | Relay retries the forward itself | 2–3 attempts |
+| Push service → APNs/FCM | transient (rate limit, hiccup) | Expo's own internal queue/retry | opaque to us |
+| Push → device | offline, `DeviceNotRegistered` | None — fire-and-forget | recovered via stale-token piggyback, not a retry |
+| Device ↔ STUN | UDP packet loss | Native ICE stack retransmits (RFC 5389) | ~7 retransmits |
+| Device ↔ TURN (v2) | allocation fails | ICE falls back to other candidates, else fails | n/a — not built in v1 |
+| Whole call | no answer | Caller sends a fresh offer, new session-token chain | 1–2 re-attempts |
+
+> **Note:** This stays simple because the relay holds no state — a retry is just "send the identical signed request again," nothing to reconcile, no partial-write cleanup. The one thing that has to catch a duplicate that *did* land twice (relay retried after the first attempt actually succeeded but the ack was lost) is `seenDeliveryIds` on the receiving device, already part of Phase 2. That single mechanism is what makes every retry above safe by construction, rather than needing separate idempotency handling at each hop.
 
 ---
 
-*Also published as an interactive doc: see the Claude artifact "Ranah Calling Architecture" for the same content with diagrams.*
+*Ranah — internal architecture note — grounded in the current `ranah-app` source (ContactsContext, MessagesContext, persist.ts, notifications/scheduler.ts) rather than a from-scratch design.*
