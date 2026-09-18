@@ -965,7 +965,12 @@ public partial class MainWindow : Window
 
     private void PlaceWindow()
     {
-        if (_settings.WindowLeft is double left && _settings.WindowTop is double top)
+        // Only trusts the saved spot if it's still actually on a connected
+        // monitor — a saved position from a second screen that's since been
+        // unplugged (or any other monitor-configuration change) would
+        // otherwise place the widget in space nothing can ever show, with
+        // no way to get it back short of editing settings.json by hand.
+        if (_settings.WindowLeft is double left && _settings.WindowTop is double top && IsOnAnyScreen(left, top))
         {
             Left = left;
             Top = top;
@@ -976,6 +981,12 @@ public partial class MainWindow : Window
         var area = SystemParameters.WorkArea;
         Left = area.Right - Width - 16;
         Top = area.Bottom - Height - 16;
+    }
+
+    private static bool IsOnAnyScreen(double left, double top)
+    {
+        var point = new System.Drawing.Point((int)left, (int)top);
+        return DrawingForms.Screen.AllScreens.Any(s => s.Bounds.Contains(point));
     }
 
     private void SaveWindowPosition()
