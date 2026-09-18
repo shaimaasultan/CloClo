@@ -44,6 +44,31 @@
     30%{ transform:translateY(-2px) rotate(-4deg); }
     65%{ transform:translateY(-3px) rotate(2.5deg); }
   }
+
+  /* A one-shot "noticed that" bounce the instant Watch() starts (see
+     PushPerk in MainWindow.xaml.cs) — ties Keeper's posture to the same
+     click that's about to start updating the label, rather than the label
+     being the only sign anything happened. Overrides the ambient
+     breathe/windSway animation on #keeperWrap for its own short duration,
+     then the JS removes the class and the ambient one resumes on its own. */
+  @keyframes perkUp{
+    0%{ transform:translateY(0) scale(1); }
+    30%{ transform:translateY(-6px) scale(1.04); }
+    60%{ transform:translateY(-2px) scale(1.01); }
+    100%{ transform:translateY(0) scale(1); }
+  }
+  #keeperWrap.perk{ animation:perkUp .5s ease-out; }
+
+  /* Idle fidgets — a small pool of rare, random micro-animations while
+     genuinely just standing there (awake, not asleep or mid-stretch), same
+     spirit as blinking: charm, not signal. One of these plays at a time,
+     picked and scheduled from the script below. */
+  @keyframes fidgetLean{ 0%,100%{ transform:rotate(0deg); } 50%{ transform:rotate(-2deg); } }
+  @keyframes fidgetSquish{ 0%,100%{ transform:scaleY(1); } 50%{ transform:scaleY(.97); } }
+  @keyframes fidgetHeadTilt{ 0%,100%{ transform:rotate(0deg); } 50%{ transform:rotate(4deg); } }
+  #keeperWrap.fidget-lean{ animation:fidgetLean 1.1s ease-in-out; }
+  #keeperWrap.fidget-squish{ animation:fidgetSquish .9s ease-in-out; }
+  #head.fidget-tilt{ animation:fidgetHeadTilt 1.3s ease-in-out; transform-origin:50px 50px; }
   /* Floating "z"s next to the head, shown only while asleep (see setAsleep
      in the script below) — same idea as the sleep visual already designed
      for the Ranah phone app's Keeper. */
@@ -661,6 +686,50 @@
     if (!msg || msg.type !== 'activity') return;
     setActivityState(msg.state, msg.secondsLeft);
   });
+
+  // ---- perk-up: a one-shot bounce the moment Watch() starts on the host
+  // side (see PushPerk in MainWindow.xaml.cs), and idle fidgets: a small
+  // pool of rare, random micro-animations while just standing there. Both
+  // share one "is #keeperWrap already mid-animation" guard so they don't
+  // silently stomp each other — a low-stakes collision either way, but
+  // cheap to avoid. ----
+  const keeperWrapEl = document.getElementById('keeperWrap');
+  const headEl = document.getElementById('head');
+  let wrapBusy = false;
+
+  function perk() {
+    if (activityState !== 'awake' || wrapBusy) return;
+    wrapBusy = true;
+    keeperWrapEl.classList.add('perk');
+    setTimeout(() => { keeperWrapEl.classList.remove('perk'); wrapBusy = false; }, 500);
+  }
+  window.chrome?.webview?.addEventListener('message', (e) => {
+    const msg = e.data;
+    if (!msg || msg.type !== 'perk') return;
+    perk();
+  });
+
+  const FIDGETS = [
+    { el: keeperWrapEl, cls: 'fidget-lean', duration: 1100, locksWrap: true },
+    { el: keeperWrapEl, cls: 'fidget-squish', duration: 900, locksWrap: true },
+    { el: headEl, cls: 'fidget-tilt', duration: 1300, locksWrap: false },
+  ];
+  function scheduleFidget() {
+    const wait = 15000 + Math.random() * 25000; // 15–40s, sparse on purpose
+    setTimeout(() => {
+      if (activityState === 'awake' && !wrapBusy) {
+        const pick = FIDGETS[Math.floor(Math.random() * FIDGETS.length)];
+        if (pick.locksWrap) wrapBusy = true;
+        pick.el.classList.add(pick.cls);
+        setTimeout(() => {
+          pick.el.classList.remove(pick.cls);
+          if (pick.locksWrap) wrapBusy = false;
+        }, pick.duration);
+      }
+      scheduleFidget();
+    }, wait);
+  }
+  scheduleFidget();
 
   // ---- lightning flash, storm only ----
   function scheduleFlash() {

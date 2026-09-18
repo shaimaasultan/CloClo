@@ -503,7 +503,16 @@ public partial class MainWindow : Window
         _watchedFetcher = fetcher;
         _nowPlayingTimer ??= CreateNowPlayingTimer();
         _nowPlayingTimer.Start(); // idempotent — resumes it if the pause button stopped it earlier
+        PushPerk();
         _ = RefreshWatched();
+    }
+
+    // A one-shot cue the instant watching starts — ties Keeper's posture to
+    // the same click that's about to start updating the label, purely
+    // cosmetic like the rest of the activity-state work.
+    private void PushPerk()
+    {
+        try { Web.CoreWebView2?.PostWebMessageAsJson("{\"type\":\"perk\"}"); } catch { /* page not ready yet */ }
     }
 
     // The pause button inside the label itself, not a fourth icon — stops
