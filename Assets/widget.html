@@ -66,9 +66,20 @@
   @keyframes fidgetLean{ 0%,100%{ transform:rotate(0deg); } 50%{ transform:rotate(-2deg); } }
   @keyframes fidgetSquish{ 0%,100%{ transform:scaleY(1); } 50%{ transform:scaleY(.97); } }
   @keyframes fidgetHeadTilt{ 0%,100%{ transform:rotate(0deg); } 50%{ transform:rotate(4deg); } }
+  /* A lateral weight-shift, distinct from the lean's pure rotate. */
+  @keyframes fidgetShiftWeight{ 0%,100%{ transform:translateX(0); } 50%{ transform:translateX(2.5px); } }
+  /* A quick tug at the sleeve — same small nudge applied to both the arm
+     stroke and its hand circle so they move together and stay attached. */
+  @keyframes fidgetSweaterAdjust{
+    0%,100%{ transform:translate(0,0); }
+    40%{ transform:translate(1px,-1.5px); }
+    75%{ transform:translate(-0.5px,0); }
+  }
   #keeperWrap.fidget-lean{ animation:fidgetLean 1.1s ease-in-out; }
   #keeperWrap.fidget-squish{ animation:fidgetSquish .9s ease-in-out; }
   #head.fidget-tilt{ animation:fidgetHeadTilt 1.3s ease-in-out; transform-origin:50px 50px; }
+  #keeperWrap.fidget-shift{ animation:fidgetShiftWeight 1.2s ease-in-out; }
+  #armR.fidget-sweater, #handR.fidget-sweater{ animation:fidgetSweaterAdjust .8s ease-in-out; }
   /* Floating "z"s next to the head, shown only while asleep (see setAsleep
      in the script below) — same idea as the sleep visual already designed
      for the Ranah phone app's Keeper. */
@@ -709,10 +720,17 @@
     perk();
   });
 
+  const armREl = document.getElementById('armR');
+  // els is an array so a fidget can move more than one part together (the
+  // sweater-tug needs the arm stroke and its hand circle to move as one,
+  // or they'd visibly separate) — every fidget uses the same shape even
+  // when it only touches a single element.
   const FIDGETS = [
-    { el: keeperWrapEl, cls: 'fidget-lean', duration: 1100, locksWrap: true },
-    { el: keeperWrapEl, cls: 'fidget-squish', duration: 900, locksWrap: true },
-    { el: headEl, cls: 'fidget-tilt', duration: 1300, locksWrap: false },
+    { els: [keeperWrapEl], cls: 'fidget-lean', duration: 1100, locksWrap: true },
+    { els: [keeperWrapEl], cls: 'fidget-squish', duration: 900, locksWrap: true },
+    { els: [headEl], cls: 'fidget-tilt', duration: 1300, locksWrap: false },
+    { els: [keeperWrapEl], cls: 'fidget-shift', duration: 1200, locksWrap: true },
+    { els: [armREl, handR], cls: 'fidget-sweater', duration: 800, locksWrap: false },
   ];
   function scheduleFidget() {
     const wait = 15000 + Math.random() * 25000; // 15–40s, sparse on purpose
@@ -720,9 +738,9 @@
       if (activityState === 'awake' && !wrapBusy) {
         const pick = FIDGETS[Math.floor(Math.random() * FIDGETS.length)];
         if (pick.locksWrap) wrapBusy = true;
-        pick.el.classList.add(pick.cls);
+        for (const el of pick.els) el.classList.add(pick.cls);
         setTimeout(() => {
-          pick.el.classList.remove(pick.cls);
+          for (const el of pick.els) el.classList.remove(pick.cls);
           if (pick.locksWrap) wrapBusy = false;
         }, pick.duration);
       }
