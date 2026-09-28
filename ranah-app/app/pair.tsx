@@ -1,7 +1,7 @@
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import { ScreenShell } from '../src/components/ScreenShell/ScreenShell';
 import { mintGrant, type Grant } from '../src/crypto/identity';
@@ -111,7 +111,9 @@ export default function PairScreen() {
 
   return (
     <ScreenShell active="contacts" back={{ label: t.contactsTitle, title: t.pairTitle, onPress: () => router.dismissTo('/contacts') }}>
-      {ready ? (
+      {Platform.OS === 'web' ? (
+        <Text style={styles.waiting}>{t.pairNativeOnly}</Text>
+      ) : ready ? (
         <View style={styles.form}>
           <Text style={[styles.label, { textAlign }]}>{t.contactNameLabel}</Text>
           <TextInput

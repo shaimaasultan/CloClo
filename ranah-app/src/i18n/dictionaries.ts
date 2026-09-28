@@ -105,6 +105,7 @@ export interface Dictionary {
   pairScanTheirs: string;
   pairGrantCameraAccess: string;
   pairWaitingForThem: string;
+  pairNativeOnly: string;
   // On a contact's birthday: a tag on their rows and cards, and the keeper's bubble.
   birthdayToday: string;
   // The "Birthdays today" reminder card on Contacts, and its note on the dial.
@@ -416,6 +417,7 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
     pairScanTheirs: 'Scan theirs',
     pairGrantCameraAccess: 'Allow camera access',
     pairWaitingForThem: 'Waiting for their code to update…',
+    pairNativeOnly: 'Pairing needs the phone app — open CloClo on your phone or emulator.',
     birthdayToday: 'Birthday today',
     birthdaysTitle: 'Birthdays today',
     birthdaysHint: 'Give them a call to wish them a happy birthday',
@@ -701,6 +703,7 @@ export const DICTIONARIES: Record<Lang, Dictionary> = {
     pairScanTheirs: 'امسحي كوده',
     pairGrantCameraAccess: 'اسمحي باستخدام الكاميرا',
     pairWaitingForThem: 'مستنية الكود يتحدث عنده…',
+    pairNativeOnly: 'الإقران بيشتغل على تطبيق الموبايل بس — افتحي كلوكلو على موبايلك أو المحاكي.',
     birthdayToday: 'عيد الميلاد النهارده',
     birthdaysTitle: 'أعياد ميلاد النهارده',
     birthdaysHint: 'كلميهم وقوليلهم كل سنة وانتوا طيبين',
