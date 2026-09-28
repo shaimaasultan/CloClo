@@ -3,3 +3,9 @@ Recording *.mp4
 
 # Local Claude Code settings and launch configuration
 .claude/
+
+# Demo clips recorded from the app — large binaries that don't belong in history
+demo*.mp4
+
+# Console transcript left behind by a mis-typed shell redirect
+CWindowssystem32cmd.exe .txt
