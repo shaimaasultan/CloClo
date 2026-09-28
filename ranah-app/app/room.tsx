@@ -4,6 +4,7 @@ import { Animated, Easing, LayoutChangeEvent, Pressable, StyleSheet, Text, useWi
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { setRainLevel } from '../src/audio/tones';
+import { AnimatedTransformG } from '../src/components/AnimatedTransformG/AnimatedTransformG';
 import { AuthorFooter } from '../src/components/AuthorFooter/AuthorFooter';
 import { BrandHeader, isHeaderStacked, STACKED_HEADER_EXTRA } from '../src/components/BrandHeader/BrandHeader';
 import { CallInfoBar } from '../src/components/CallInfoBar/CallInfoBar';
@@ -143,7 +144,6 @@ function stripCollapsable<P extends object>(Comp: React.ComponentType<P>) {
 }
 const AnimatedRect = Animated.createAnimatedComponent(stripCollapsable(Rect));
 const AnimatedCircle = Animated.createAnimatedComponent(stripCollapsable(Circle));
-const AnimatedG = Animated.createAnimatedComponent(stripCollapsable(G));
 
 function useFlicker(active: boolean) {
   const value = useRef(new Animated.Value(0)).current;
@@ -212,9 +212,9 @@ function Wobble({
 }) {
   return (
     <G transform={`translate(${pivot[0]} ${pivot[1]})`}>
-      <AnimatedG transform={rotate}>
+      <AnimatedTransformG transform={rotate}>
         <G transform={`translate(${-pivot[0]} ${-pivot[1]})`}>{children}</G>
-      </AnimatedG>
+      </AnimatedTransformG>
     </G>
   );
 }
@@ -345,12 +345,12 @@ function RoomWeather({ colours, sky, phase }: { colours: CaseColours; sky: Weath
         <G>
           <Ellipse cx={342} cy={276} rx={38} ry={6} fill={WATER} opacity={0.42} />
           <G transform="translate(342 276)">
-            <AnimatedG
+            <AnimatedTransformG
               transform={ripple.interpolate({ inputRange: [0, 1], outputRange: ['scale(0.2)', 'scale(1)'] })}
               opacity={ripple.interpolate({ inputRange: [0, 1], outputRange: [0.8, 0] })}
             >
               <Ellipse cx={0} cy={0} rx={30} ry={5} fill="none" stroke={WATER_LIGHT} strokeWidth={1.4} />
-            </AnimatedG>
+            </AnimatedTransformG>
           </G>
 
           {/* Umbrella stand beside the door, still dripping. */}
@@ -358,12 +358,12 @@ function RoomWeather({ colours, sky, phase }: { colours: CaseColours; sky: Weath
           <Path d="M300 196 L294 234 L306 234 Z" fill={colours.body1} stroke={colours.metal3} strokeWidth={0.8} />
           <Line x1={300} y1={190} x2={300} y2={197} stroke={colours.metal3} strokeWidth={1.4} strokeLinecap="round" />
           <G transform="translate(300 266)">
-            <AnimatedG
+            <AnimatedTransformG
               transform={drip.interpolate({ inputRange: [0, 1], outputRange: ['translate(0, 0)', 'translate(0, 10)'] })}
               opacity={drip.interpolate({ inputRange: [0, 0.8, 1], outputRange: [0.9, 0.9, 0] })}
             >
               <Circle cx={0} cy={0} r={1.8} fill={WATER} />
-            </AnimatedG>
+            </AnimatedTransformG>
           </G>
         </G>
       )}

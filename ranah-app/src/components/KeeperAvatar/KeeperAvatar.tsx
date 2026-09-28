@@ -8,6 +8,7 @@ import { useReducedMotion } from '../../state/useReducedMotion';
 import { USE_NATIVE_DRIVER } from '../../theme/animation';
 import { pointer } from '../../theme/pointer';
 import { CaseColours } from '../../theme/tokens';
+import { AnimatedTransformG } from '../AnimatedTransformG/AnimatedTransformG';
 import type { WeatherKind } from '../WeatherLayer/WeatherLayer';
 
 // The keeper is drawn in a 100x140 box: head centred at (50,50), shoulders
@@ -79,15 +80,6 @@ export function keeperPose(
   if (activity === 'music') return 'music';
   return 'wave';
 }
-
-// react-native-svg's Animated wrapper leaks `collapsable` to the DOM on web.
-function stripCollapsable<P extends object>(Comp: React.ComponentType<P>) {
-  return React.forwardRef<unknown, P & { collapsable?: boolean }>((props, ref) => {
-    const { collapsable, ...rest } = props;
-    return <Comp ref={ref as never} {...(rest as P)} />;
-  });
-}
-const AnimatedG = Animated.createAnimatedComponent(stripCollapsable(G));
 
 interface KeeperAvatarProps {
   // Height of the character; width follows the 100:140 drawing.
@@ -669,10 +661,10 @@ export function KeeperAvatar({
           <G>
             {restLeft()}
             <G transform="translate(65 80)">
-              <AnimatedG transform={waveRotate}>
+              <AnimatedTransformG transform={waveRotate}>
                 <Path d="M0 0 Q11 -8 12 -22" stroke={clothing} strokeWidth={7} strokeLinecap="round" fill="none" />
                 <Circle cx={12} cy={-23} r={4} fill={SKIN} />
-              </AnimatedG>
+              </AnimatedTransformG>
             </G>
           </G>
         );

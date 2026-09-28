@@ -30,7 +30,13 @@ function stripCollapsable<P extends object>(Comp: React.ComponentType<P>) {
   });
 }
 
-const AnimatedG = Animated.createAnimatedComponent(stripCollapsable(G));
+// Weather particles animate their own coordinates rather than a transform.
+// An Animated `transform` skips the string parsing react-native-svg does in
+// JS for a static one, so the native view receives the raw string and Fabric
+// rejects it — it expects a transform array. Coordinates are plain numbers
+// on every platform, so they animate cleanly on native and on web.
+const AnimatedCircle = Animated.createAnimatedComponent(stripCollapsable(Circle));
+const AnimatedLine = Animated.createAnimatedComponent(stripCollapsable(Line));
 const AnimatedRect = Animated.createAnimatedComponent(stripCollapsable(Rect));
 
 function useFallLoop(duration: number) {
@@ -63,39 +69,31 @@ function useSwayLoop(duration: number) {
 
 function Raindrop({ width, height, x, len, duration, opacity }: { width: number; height: number; x: number; len: number; duration: number; opacity: number }) {
   const fall = useFallLoop(duration);
-  // react-native-svg's Animated transform prop only interpolates a single
-  // numeric slot per template string reliably on web (RN-style transform
-  // arrays serialize to "[object Object]" there) — so each animated axis
-  // gets its own template string with one number in it.
-  const transform = fall.interpolate({
-    inputRange: [0, 1],
-    outputRange: [`translate(0, ${-len - 20})`, `translate(0, ${height + 20})`],
-  });
+  // The drop is a slanted line `len` tall; both ends fall together, from
+  // just above the top edge to just past the bottom one.
+  const y1 = fall.interpolate({ inputRange: [0, 1], outputRange: [-len - 20, height + 20] });
+  const y2 = fall.interpolate({ inputRange: [0, 1], outputRange: [-20, height + len + 20] });
   return (
-    <AnimatedG transform={transform} opacity={opacity}>
-      <Line x1={x} y1={0} x2={x - len * 0.22} y2={len} stroke="#cfe3f7" strokeWidth={1.6} strokeLinecap="round" />
-    </AnimatedG>
+    <AnimatedLine
+      x1={x}
+      y1={y1}
+      x2={x - len * 0.22}
+      y2={y2}
+      stroke="#cfe3f7"
+      strokeWidth={1.6}
+      strokeLinecap="round"
+      opacity={opacity}
+    />
   );
 }
 
 function Snowflake({ width, height, x, r, duration, swayDuration, swayAmount, opacity }: { width: number; height: number; x: number; r: number; duration: number; swayDuration: number; swayAmount: number; opacity: number }) {
   const fall = useFallLoop(duration);
   const sway = useSwayLoop(swayDuration);
-  const fallTransform = fall.interpolate({
-    inputRange: [0, 1],
-    outputRange: [`translate(${x}, ${-r - 20})`, `translate(${x}, ${height + 20})`],
-  });
-  const swayTransform = sway.interpolate({
-    inputRange: [0, 1],
-    outputRange: [`translate(${-swayAmount}, 0)`, `translate(${swayAmount}, 0)`],
-  });
-  return (
-    <AnimatedG transform={fallTransform} opacity={opacity}>
-      <AnimatedG transform={swayTransform}>
-        <Circle cx={0} cy={0} r={r} fill="#f5f0e4" />
-      </AnimatedG>
-    </AnimatedG>
-  );
+  // Falls down its own column while drifting `swayAmount` either side of it.
+  const cy = fall.interpolate({ inputRange: [0, 1], outputRange: [-r - 20, height + 20] });
+  const cx = sway.interpolate({ inputRange: [0, 1], outputRange: [x - swayAmount, x + swayAmount] });
+  return <AnimatedCircle cx={cx} cy={cy} r={r} fill="#f5f0e4" opacity={opacity} />;
 }
 
 function StormFlash({ width, height }: { width: number; height: number }) {
